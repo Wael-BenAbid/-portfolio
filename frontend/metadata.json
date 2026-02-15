@@ -1,0 +1,8 @@
+{
+  "name": "Cinematic Immersive Portfolio",
+  "description": "A high-end, immersive portfolio for a Full-Stack Developer and Drone Photographer featuring Three.js, Framer Motion, and a dark cinematic aesthetic.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
