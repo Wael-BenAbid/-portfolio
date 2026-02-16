@@ -1,121 +1,45 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Briefcase, GraduationCap, Code, Globe2, Award, Heart, Mail, Phone, MapPin, Linkedin, Github, ExternalLink } from 'lucide-react';
-
-const API_URL = 'http://localhost:8000/api';
-
-interface CVData {
-  personal_info: {
-    full_name: string;
-    job_title: string;
-    email: string;
-    phone: string;
-    location: string;
-    profile_image: string;
-    summary: string;
-    linkedin: string;
-    github: string;
-  };
-  experiences: Array<{
-    id: number;
-    title: string;
-    company: string;
-    location: string;
-    start_date: string;
-    end_date: string | null;
-    is_current: boolean;
-    description: string;
-  }>;
-  education: Array<{
-    id: number;
-    degree: string;
-    institution: string;
-    location: string;
-    start_date: string;
-    end_date: string | null;
-    is_current: boolean;
-    description: string;
-    gpa: string;
-  }>;
-  skills: Array<{
-    id: number;
-    name: string;
-    level: string;
-    category: string;
-    percentage: number;
-  }>;
-  languages: Array<{
-    id: number;
-    name: string;
-    level: string;
-  }>;
-  certifications: Array<{
-    id: number;
-    name: string;
-    issuer: string;
-    issue_date: string;
-    expiry_date: string | null;
-    credential_id: string;
-    credential_url: string;
-  }>;
-  projects: Array<{
-    id: number;
-    title: string;
-    description: string;
-    technologies: string;
-    url: string;
-    github_url: string;
-    is_ongoing: boolean;
-  }>;
-  interests: Array<{
-    id: number;
-    name: string;
-    icon: string;
-    description: string;
-  }>;
-}
+import { Briefcase, GraduationCap, Code, Globe2, Award, Heart, Mail, Phone, MapPin, Linkedin, Github, ExternalLink, AlertCircle } from 'lucide-react';
+import { useCV } from '../hooks/useData';
+import { AboutSkeleton, ErrorDisplay } from '../components/Loading';
 
 const About: React.FC = () => {
-  const [cvData, setCVData] = useState<CVData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: cvData, loading, error, refetch } = useCV();
   const [activeSection, setActiveSection] = useState('experience');
-
-  useEffect(() => {
-    fetchCVData();
-  }, []);
-
-  const fetchCVData = async () => {
-    try {
-      const response = await fetch(`${API_URL}/cv/`);
-      if (response.ok) {
-        const data = await response.json();
-        setCVData(data);
-      }
-    } catch (error) {
-      console.error('Error fetching CV data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
+  // Loading state
   if (loading) {
+    return <AboutSkeleton />;
+  }
+
+  // Error state
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <p className="text-gray-500 font-display uppercase tracking-widest">Loading...</p>
+      <div className="min-h-screen bg-[#0a0a0a] pt-40 px-8 md:px-24">
+        <ErrorDisplay error={error} onRetry={refetch} />
       </div>
     );
   }
 
+  // No data state
   if (!cvData) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <p className="text-gray-500 font-display uppercase tracking-widest">No CV data available</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center">
+        <AlertCircle className="w-16 h-16 text-gray-500 mb-4" />
+        <h2 className="text-2xl font-display font-bold mb-4">No CV Data Available</h2>
+        <p className="text-gray-400 mb-8">CV information has not been configured yet.</p>
+        <a 
+          href="/admin/settings" 
+          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+        >
+          Configure in Admin
+        </a>
       </div>
     );
   }
@@ -123,12 +47,12 @@ const About: React.FC = () => {
   const { personal_info, experiences, education, skills, languages, certifications, projects, interests } = cvData;
 
   // Group skills by category
-  const skillsByCategory = skills.reduce((acc, skill) => {
+  const skillsByCategory = skills.reduce<Record<string, typeof skills>>((acc, skill) => {
     const cat = skill.category;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(skill);
     return acc;
-  }, {} as Record<string, typeof skills>);
+  }, {});
 
   return (
     <motion.div
@@ -150,7 +74,8 @@ const About: React.FC = () => {
             >
               <img 
                 src={personal_info.profile_image} 
-                alt={personal_info.full_name} 
+                alt={personal_info.full_name}
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             </motion.div>
@@ -274,7 +199,7 @@ const About: React.FC = () => {
                   <h3 className="text-xl font-display font-bold uppercase">{exp.title}</h3>
                   <p className="text-blue-500 font-display">{exp.company}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {exp.location} • {formatDate(exp.start_date)} - {exp.is_current ? 'Present' : (exp.end_date && formatDate(exp.end_date))}
+                    {exp.location} | {formatDate(exp.start_date)} - {exp.is_current ? 'Present' : (exp.end_date && formatDate(exp.end_date))}
                   </p>
                 </div>
                 <p className="text-sm text-gray-400 mt-4 whitespace-pre-line">{exp.description}</p>
@@ -299,16 +224,18 @@ const About: React.FC = () => {
                 transition={{ delay: idx * 0.1 }}
                 className="relative pl-8 border-l-2 border-gray-800 hover:border-blue-500 transition-colors"
               >
-                <div className="absolute left-[-9px] top-0 w-4 h-4 bg-green-500 rounded-full" />
+                <div className="absolute left-[-9px] top-0 w-4 h-4 bg-blue-500 rounded-full" />
                 <div className="mb-2">
                   <h3 className="text-xl font-display font-bold uppercase">{edu.degree}</h3>
-                  <p className="text-green-500 font-display">{edu.institution}</p>
+                  <p className="text-blue-500 font-display">{edu.institution}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {edu.location} • {formatDate(edu.start_date)} - {edu.is_current ? 'Present' : (edu.end_date && formatDate(edu.end_date))}
-                    {edu.gpa && ` • GPA: ${edu.gpa}`}
+                    {edu.location} | {formatDate(edu.start_date)} - {edu.is_current ? 'Present' : (edu.end_date && formatDate(edu.end_date))}
                   </p>
+                  {edu.gpa && <p className="text-xs text-gray-400 mt-1">GPA: {edu.gpa}</p>}
                 </div>
-                {edu.description && <p className="text-sm text-gray-400 mt-4">{edu.description}</p>}
+                {edu.description && (
+                  <p className="text-sm text-gray-400 mt-4">{edu.description}</p>
+                )}
               </motion.div>
             ))}
           </motion.div>
@@ -321,35 +248,29 @@ const About: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Skills</h2>
-            <div className="grid md:grid-cols-2 gap-12">
-              {Object.entries(skillsByCategory).map(([category, categorySkills], catIdx) => (
-                <motion.div
-                  key={category}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: catIdx * 0.1 }}
-                >
-                  <h3 className="text-sm font-display uppercase tracking-widest text-gray-500 mb-6 capitalize">{category}</h3>
-                  <div className="space-y-4">
-                    {categorySkills.map((skill, idx) => (
-                      <div key={skill.id}>
-                        <div className="flex justify-between text-xs font-display uppercase tracking-widest mb-2">
-                          <span>{skill.name}</span>
-                          <span className="text-gray-500">{skill.percentage}%</span>
+            <div className="grid gap-8">
+              {Object.entries(skillsByCategory).map(([category, categorySkills]) => (
+                <div key={category}>
+                  <h3 className="text-sm font-display text-gray-500 uppercase tracking-widest mb-4">{category}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(categorySkills as typeof skills).map((skill) => (
+                      <div key={skill.id} className="bg-gray-900/50 p-4 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-display text-sm">{skill.name}</span>
+                          <span className="text-xs text-gray-500">{skill.percentage}%</span>
                         </div>
-                        <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
-                            whileInView={{ width: `${skill.percentage}%` }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 1, delay: idx * 0.1 }}
-                            className="h-full bg-blue-500 rounded-full"
+                            animate={{ width: `${skill.percentage}%` }}
+                            transition={{ duration: 1, ease: 'easeOut' }}
+                            className="h-full bg-gradient-to-r from-blue-500 to-blue-400"
                           />
                         </div>
                       </div>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -362,19 +283,13 @@ const About: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Languages</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {languages.map((lang, idx) => (
-                <motion.div
-                  key={lang.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-6 bg-[#111] border border-gray-800 rounded-lg hover:border-blue-500/50 transition-colors"
-                >
-                  <Globe2 size={24} className="text-blue-500 mb-4" />
-                  <h3 className="font-display font-bold uppercase">{lang.name}</h3>
-                  <p className="text-xs text-gray-500 uppercase mt-1">{lang.level}</p>
-                </motion.div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {languages.map((lang) => (
+                <div key={lang.id} className="bg-gray-900/50 p-6 rounded-lg text-center">
+                  <Globe2 className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                  <h4 className="font-display font-bold uppercase">{lang.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">{lang.level}</p>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -388,35 +303,31 @@ const About: React.FC = () => {
             className="space-y-6"
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Certifications</h2>
-            {certifications.map((cert, idx) => (
-              <motion.div
-                key={cert.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.1 }}
-                className="p-6 bg-[#111] border border-gray-800 rounded-lg hover:border-blue-500/50 transition-colors flex justify-between items-start"
-              >
-                <div>
-                  <div className="flex items-center gap-3">
-                    <Award size={20} className="text-yellow-500" />
-                    <h3 className="font-display font-bold uppercase">{cert.name}</h3>
-                  </div>
-                  <p className="text-sm text-gray-400 mt-2">{cert.issuer}</p>
+            {certifications.map((cert) => (
+              <div key={cert.id} className="bg-gray-900/50 p-6 rounded-lg flex items-start gap-4">
+                <Award className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-display font-bold uppercase">{cert.name}</h4>
+                  <p className="text-sm text-gray-400">{cert.issuer}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Issued: {formatDate(cert.issue_date)}
-                    {cert.expiry_date && ` • Expires: ${formatDate(cert.expiry_date)}`}
+                    {cert.expiry_date && ` | Expires: ${formatDate(cert.expiry_date)}`}
                   </p>
                   {cert.credential_id && (
-                    <p className="text-xs text-gray-600 mt-1">Credential ID: {cert.credential_id}</p>
+                    <p className="text-xs text-gray-500">Credential ID: {cert.credential_id}</p>
+                  )}
+                  {cert.credential_url && (
+                    <a 
+                      href={cert.credential_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-2"
+                    >
+                      View Credential <ExternalLink size={12} />
+                    </a>
                   )}
                 </div>
-                {cert.credential_url && (
-                  <a href={cert.credential_url} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-400">
-                    <ExternalLink size={18} />
-                  </a>
-                )}
-              </motion.div>
+              </div>
             ))}
           </motion.div>
         )}
@@ -426,46 +337,43 @@ const About: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Projects</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {projects.map((proj, idx) => (
-                <motion.div
-                  key={proj.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-6 bg-[#111] border border-gray-800 rounded-lg hover:border-blue-500/50 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-display font-bold uppercase">{proj.title}</h3>
-                    {proj.is_ongoing && (
-                      <span className="text-[10px] bg-green-500/20 text-green-500 px-2 py-1 rounded uppercase">Ongoing</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-400 mb-4">{proj.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {proj.technologies.split(',').map((tech, i) => (
-                      <span key={i} className="text-[10px] bg-gray-800 px-2 py-1 rounded uppercase">{tech.trim()}</span>
-                    ))}
-                  </div>
-                  <div className="flex gap-4">
-                    {proj.url && (
-                      <a href={proj.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1">
-                        <ExternalLink size={12} /> Live Demo
-                      </a>
-                    )}
-                    {proj.github_url && (
-                      <a href={proj.github_url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1">
-                        <Github size={12} /> GitHub
-                      </a>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            {projects.map((project) => (
+              <div key={project.id} className="bg-gray-900/50 p-6 rounded-lg">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-display font-bold uppercase">{project.title}</h4>
+                  {project.is_ongoing && (
+                    <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-1 rounded">Ongoing</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-400 mb-4">{project.description}</p>
+                <p className="text-xs text-gray-500 mb-4">Technologies: {project.technologies}</p>
+                <div className="flex gap-4">
+                  {project.url && (
+                    <a 
+                      href={project.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline"
+                    >
+                      Live Demo <ExternalLink size={12} />
+                    </a>
+                  )}
+                  {project.github_url && (
+                    <a 
+                      href={project.github_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+                    >
+                      <Github size={12} /> Source Code
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </motion.div>
         )}
 
@@ -475,23 +383,33 @@ const About: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Interests & Hobbies</h2>
-            <div className="grid md:grid-cols-4 gap-6">
-              {interests.map((int, idx) => (
-                <motion.div
-                  key={int.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-6 bg-[#111] border border-gray-800 rounded-lg hover:border-blue-500/50 transition-colors text-center"
-                >
-                  {int.icon && <span className="text-4xl mb-4 block">{int.icon}</span>}
-                  <h3 className="font-display font-bold uppercase">{int.name}</h3>
-                  {int.description && <p className="text-xs text-gray-500 mt-2">{int.description}</p>}
-                </motion.div>
+            <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8">Interests</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {interests.map((interest) => (
+                <div key={interest.id} className="bg-gray-900/50 p-6 rounded-lg text-center">
+                  <div className="text-3xl mb-2">{interest.icon}</div>
+                  <h4 className="font-display font-bold uppercase">{interest.name}</h4>
+                  {interest.description && (
+                    <p className="text-xs text-gray-500 mt-2">{interest.description}</p>
+                  )}
+                </div>
               ))}
             </div>
           </motion.div>
+        )}
+
+        {/* Empty state for active section */}
+        {['experience', 'education', 'skills', 'languages', 'certifications', 'projects', 'interests'].includes(activeSection) && 
+          ((activeSection === 'experience' && experiences.length === 0) ||
+           (activeSection === 'education' && education.length === 0) ||
+           (activeSection === 'skills' && skills.length === 0) ||
+           (activeSection === 'languages' && languages.length === 0) ||
+           (activeSection === 'certifications' && certifications.length === 0) ||
+           (activeSection === 'projects' && projects.length === 0) ||
+           (activeSection === 'interests' && interests.length === 0)) && (
+          <div className="py-16 text-center">
+            <p className="text-gray-500 font-display uppercase tracking-widest">No data available for this section.</p>
+          </div>
         )}
       </div>
     </motion.div>

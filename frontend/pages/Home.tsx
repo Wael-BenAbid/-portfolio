@@ -1,55 +1,29 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { PROJECTS, INITIAL_ABOUT } from '../constants';
 import { ChevronRight } from 'lucide-react';
-import { API_BASE_URL } from '../constants';
-
-interface SiteSettings {
-  hero_title: string;
-  hero_subtitle: string;
-  hero_tagline: string;
-  about_title: string;
-  about_quote: string;
-  profile_image: string;
-  drone_image: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  footer_text: string;
-  copyright_year: number;
-  version: string;
-  instagram_url: string;
-  linkedin_url: string;
-  github_url: string;
-}
+import { useProjects, useSettings } from '../hooks/useData';
+import { ProjectCardSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
+import type { Project } from '../types';
 
 const Home: React.FC = () => {
   const aboutSectionRef = useRef<HTMLDivElement>(null);
-  const featuredWorks = PROJECTS.slice(0, 4);
-  const [aboutData, setAboutData] = useState(INITIAL_ABOUT);
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  
+  // Fetch projects and settings from API
+  const { 
+    data: projectsData, 
+    loading: projectsLoading, 
+    error: projectsError 
+  } = useProjects();
+  
+  const { 
+    data: settings, 
+    loading: settingsLoading, 
+    error: settingsError 
+  } = useSettings();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('portfolio_about');
-    if (saved) setAboutData(JSON.parse(saved));
-    
-    // Fetch site settings
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/settings/`);
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-    }
-  };
+  // Get featured projects (first 4)
+  const featuredWorks: Project[] = projectsData?.results?.slice(0, 4) || [];
 
   // Scroll-based image transition for about section
   const { scrollYProgress: aboutScrollProgress } = useScroll({
@@ -70,11 +44,11 @@ const Home: React.FC = () => {
   const heroTagline = settings?.hero_tagline || 'Digital Experiences & Aerial Visuals';
   const aboutTitle = settings?.about_title || 'THE MIND BEHIND';
   const aboutQuote = settings?.about_quote || '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."';
-  const locationName = settings?.location || aboutData.location;
-  const latitude = settings?.latitude || aboutData.coordinates.lat;
-  const longitude = settings?.longitude || aboutData.coordinates.lng;
-  const profileImage = settings?.profile_image || aboutData.profileImage;
-  const droneImage = settings?.drone_image || aboutData.droneImage;
+  const locationName = settings?.location || 'Casablanca, Morocco';
+  const latitude = settings?.latitude || 33.5731;
+  const longitude = settings?.longitude || -7.5898;
+  const profileImage = settings?.profile_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';
+  const droneImage = settings?.drone_image || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=800&auto=format&fit=crop';
   const footerText = settings?.footer_text || 'DESIGNED BY ADRIAN';
   const copyrightYear = settings?.copyright_year || 2024;
   const version = settings?.version || '1.0';
@@ -137,7 +111,24 @@ const Home: React.FC = () => {
 
           {/* Project Cards - Vertical Stack */}
           <div className="space-y-16 md:space-y-24">
-            {featuredWorks.map((project, i) => (
+            {projectsLoading && (
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="relative">
+                    <ProjectCardSkeleton />
+                  </div>
+                ))}
+              </>
+            )}
+            
+            {projectsError && (
+              <ErrorDisplay 
+                error={projectsError} 
+                onRetry={() => window.location.reload()}
+              />
+            )}
+            
+            {!projectsLoading && !projectsError && featuredWorks.map((project, i) => (
               <motion.div 
                 key={project.id}
                 initial={{ opacity: 0, y: 50 }}
@@ -150,7 +141,8 @@ const Home: React.FC = () => {
                   <motion.div className="w-full h-full overflow-hidden rounded-2xl">
                     <img 
                       src={project.thumbnail} 
-                      alt={project.title} 
+                      alt={project.title}
+                      loading="lazy"
                       className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[1.5s] ease-out"
                     />
                   </motion.div>
@@ -175,6 +167,15 @@ const Home: React.FC = () => {
                 </Link>
               </motion.div>
             ))}
+            
+            {!projectsLoading && !projectsError && featuredWorks.length === 0 && (
+              <div className="py-24 text-center">
+                <p className="text-gray-500 font-display uppercase tracking-widest">No projects available yet.</p>
+                <Link to="/work" className="mt-4 inline-block text-blue-500 hover:underline">
+                  View all works
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* See More CTA */}
@@ -219,6 +220,7 @@ const Home: React.FC = () => {
               <img 
                 src={droneImage} 
                 alt="Drone Work" 
+                loading="lazy"
                 className="w-full h-[60vh] object-cover rounded-2xl"
               />
             </motion.div>
@@ -226,6 +228,7 @@ const Home: React.FC = () => {
               <img 
                 src={profileImage} 
                 alt="Profile" 
+                loading="lazy"
                 className="w-full h-full object-cover rounded-2xl border-4 border-black shadow-2xl"
               />
             </div>

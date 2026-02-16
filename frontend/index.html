@@ -4,11 +4,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Immersive Portfolio | Adrian</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SEO Meta Tags -->
+    <title>Adrian | Full Stack Developer & Creative Portfolio</title>
+    <meta name="description" content="Professional portfolio showcasing full stack development projects, creative work, and technical expertise. Explore my work in web development, drone photography, and digital experiences." />
+    <meta name="keywords" content="full stack developer, web developer, portfolio, react, django, drone photography, creative developer" />
+    <meta name="author" content="Adrian" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Adrian | Full Stack Developer & Creative Portfolio" />
+    <meta property="og:description" content="Professional portfolio showcasing full stack development projects, creative work, and technical expertise." />
+    <meta property="og:site_name" content="Adrian Portfolio" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Adrian | Full Stack Developer & Creative Portfolio" />
+    <meta name="twitter:description" content="Professional portfolio showcasing full stack development projects, creative work, and technical expertise." />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#0f0f0f" />
+    
+    <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://esm.sh" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    
+    <!-- Preload critical fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --accent: #3b82f6;
@@ -44,6 +71,26 @@
       }
       .text-outline {
         -webkit-text-stroke: 1px rgba(255,255,255,0.3);
+      }
+      
+      /* Loading state styles */
+      #root:empty {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #root:empty::after {
+        content: '';
+        width: 40px;
+        height: 40px;
+        border: 2px solid #333;
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
       }
     </style>
   <script type="importmap">

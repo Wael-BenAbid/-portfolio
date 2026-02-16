@@ -1,12 +1,9 @@
-
+"""
+API Serializers - Authentication and User Management
+"""
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import (
-    Project, MediaItem, Skill, About, Like, ContactMessage, Notification, 
-    EmailSubscription, SiteSettings, CVExperience, CVEducation, CVSkill, 
-    CVLanguage, CVCertification, CVProject, CVInterest
-)
 
 User = get_user_model()
 
@@ -87,139 +84,59 @@ class SocialAuthSerializer(serializers.Serializer):
         return user, True
 
 
-class MediaItemSerializer(serializers.ModelSerializer):
-    likes_count = serializers.ReadOnlyField()
-    is_liked = serializers.SerializerMethodField()
-
-    class Meta:
-        model = MediaItem
-        fields = '__all__'
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for admin to update user details including password"""
+    new_password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     
-    def get_is_liked(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Like.objects.filter(user=request.user, media=obj).exists()
-        return False
-
-
-class ProjectSerializer(serializers.ModelSerializer):
-    media = MediaItemSerializer(many=True, read_only=True)
-    likes_count = serializers.ReadOnlyField()
-    is_liked = serializers.SerializerMethodField()
-
     class Meta:
-        model = Project
-        fields = '__all__'
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'user_type', 
+                  'profile_image', 'bio', 'phone', 'new_password']
+        read_only_fields = ['id']
+        extra_kwargs = {
+            'profile_image': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'bio': {'required': False, 'allow_blank': True},
+            'phone': {'required': False, 'allow_blank': True},
+            'first_name': {'required': False, 'allow_blank': True},
+            'last_name': {'required': False, 'allow_blank': True},
+        }
     
-    def get_is_liked(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Like.objects.filter(user=request.user, project=obj).exists()
-        return False
-
-
-class SkillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Skill
-        fields = '__all__'
-
-
-class AboutSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = About
-        fields = '__all__'
-
-
-class LikeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Like
-        fields = '__all__'
-
-
-class ContactMessageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ContactMessage
-        fields = '__all__'
-        read_only_fields = ['status', 'admin_reply', 'replied_at', 'created_at']
-
-
-class NotificationSerializer(serializers.ModelSerializer):
-    is_read = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Notification
-        fields = '__all__'
+    def validate_email(self, value):
+        user = self.instance
+        if user and User.objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
     
-    def get_is_read(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return request.user in obj.is_read.all()
-        return False
+    def validate_new_password(self, value):
+        if value and value.strip():
+            validate_password(value)
+        return value
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop('new_password', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if password and password.strip():
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
 
 
-class EmailSubscriptionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EmailSubscription
-        fields = '__all__'
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
 
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
 
-class SiteSettingsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SiteSettings
-        fields = '__all__'
-
-
-# ============ CV Serializers ============
-
-class CVExperienceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVExperience
-        fields = '__all__'
-
-
-class CVEducationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVEducation
-        fields = '__all__'
-
-
-class CVSkillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVSkill
-        fields = '__all__'
-
-
-class CVLanguageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVLanguage
-        fields = '__all__'
-
-
-class CVCertificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVCertification
-        fields = '__all__'
-
-
-class CVProjectSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVProject
-        fields = '__all__'
-
-
-class CVInterestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CVInterest
-        fields = '__all__'
-
-
-class CVFullSerializer(serializers.Serializer):
-    """Serializer for full CV data"""
-    personal_info = serializers.DictField()
-    experiences = CVExperienceSerializer(many=True)
-    education = CVEducationSerializer(many=True)
-    skills = CVSkillSerializer(many=True)
-    languages = CVLanguageSerializer(many=True)
-    certifications = CVCertificationSerializer(many=True)
-    projects = CVProjectSerializer(many=True)
-    interests = CVInterestSerializer(many=True)
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        return attrs

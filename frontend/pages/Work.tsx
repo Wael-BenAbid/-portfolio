@@ -1,25 +1,76 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { INITIAL_PROJECTS, STORAGE_KEYS } from '../constants';
 import { Category, Project } from '../types';
+import { useProjects } from '../hooks/useData';
+import { 
+  ProjectsGridSkeleton, 
+  ErrorDisplay,
+  PageLoading 
+} from '../components/Loading';
+import { APIError } from '../services/api';
 
 const Work: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { data, loading, error, refetch } = useProjects();
   const [filter, setFilter] = useState<Category | 'All'>('All');
   const categories: (Category | 'All')[] = ['All', 'Development', 'Drone', 'Mixed'];
 
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    if (saved) {
-      setProjects(JSON.parse(saved));
-    } else {
-      setProjects(INITIAL_PROJECTS);
-    }
-  }, []);
-
+  // Get projects from API response or empty array
+  const projects: Project[] = data?.results || [];
+  
   const filteredProjects = projects.filter(p => filter === 'All' || p.category === filter);
+
+  // Loading state
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+      >
+        <header className="mb-24">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
+          >
+            Selected <br /> Works
+          </motion.h1>
+
+          <div className="flex flex-wrap gap-8 border-b border-gray-800 pb-8">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                disabled
+                className="font-display text-xs tracking-widest uppercase text-gray-500"
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </header>
+        <ProjectsGridSkeleton count={6} />
+      </motion.div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+      >
+        <header className="mb-24">
+          <h1 className="text-6xl md:text-8xl font-display font-bold uppercase mb-12">
+            Selected <br /> Works
+          </h1>
+        </header>
+        <ErrorDisplay error={error} onRetry={refetch} />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -69,13 +120,14 @@ const Work: React.FC = () => {
                   <img 
                     src={project.thumbnail} 
                     alt={project.title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale group-hover:grayscale-0"
                   />
                   <div className="absolute inset-0 bg-blue-900/0 group-hover:bg-blue-900/10 transition-colors duration-500" />
                   
                   <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     <span className="px-3 py-1 border border-white/50 rounded-full text-[10px] uppercase font-display backdrop-blur-md">
-                      Explorar
+                      Explore
                     </span>
                   </div>
                 </div>

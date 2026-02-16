@@ -1,23 +1,35 @@
 """
 Django settings for portfolio project.
 """
-
 from pathlib import Path
 import os
 from datetime import timedelta
+import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-change-this-in-production-key-here'
+# ===========================================
+# SECURITY SETTINGS
+# ===========================================
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECRET_KEY - Required, no default for security
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-key-change-in-production')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# DEBUG - Default to False for security
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-# Application definition
+# ALLOWED_HOSTS - Required in production
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# ===========================================
+# APPLICATION DEFINITION
+# ===========================================
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -28,7 +40,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    # Main API app (contains CustomUser for backward compatibility)
     'api',
+    # Microservices Apps
+    'projects',
+    'cv',
+    'content',
+    'interactions',
 ]
 
 MIDDLEWARE = [
@@ -65,19 +83,25 @@ WSGI_APPLICATION = 'portfolio.wsgi.application'
 # Custom User Model
 AUTH_USER_MODEL = 'api.CustomUser'
 
-# Database
+# ===========================================
+# DATABASE SETTINGS
+# ===========================================
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', '12345'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5433'),
     }
 }
 
-# Password validation
+# ===========================================
+# PASSWORD VALIDATION
+# ===========================================
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -93,34 +117,45 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
+# ===========================================
+# INTERNATIONALIZATION
+# ===========================================
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+# ===========================================
+# STATIC & MEDIA FILES
+# ===========================================
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# ===========================================
+# CORS SETTINGS
+# ===========================================
 
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# Get allowed origins from environment
+cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',')]
 
-# Django REST Framework settings
+# Only allow all origins in development
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+
+# ===========================================
+# DJANGO REST FRAMEWORK
+# ===========================================
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -133,16 +168,20 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10
 }
 
-# Social Authentication Settings
-# Google OAuth2
+# ===========================================
+# SOCIAL AUTHENTICATION
+# ===========================================
+
 GOOGLE_OAUTH2_CLIENT_ID = os.environ.get('GOOGLE_OAUTH2_CLIENT_ID', '')
 GOOGLE_OAUTH2_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH2_CLIENT_SECRET', '')
 
-# Facebook OAuth
 FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
 
-# Email settings for notifications
+# ===========================================
+# EMAIL SETTINGS
+# ===========================================
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
@@ -150,3 +189,51 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@portfolio.com')
+
+# ===========================================
+# SECURITY HEADERS (Production)
+# ===========================================
+
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# ===========================================
+# LOGGING
+# ===========================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}

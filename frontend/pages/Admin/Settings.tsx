@@ -139,6 +139,9 @@ interface User {
   user_type: string;
   first_name: string;
   last_name: string;
+  profile_image?: string;
+  bio?: string;
+  phone?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -169,6 +172,18 @@ const Settings: React.FC = () => {
   const [editingCertification, setEditingCertification] = useState<CVCertification | null>(null);
   const [editingCVProject, setEditingCVProject] = useState<CVProject | null>(null);
   const [editingInterest, setEditingInterest] = useState<CVInterest | null>(null);
+  
+  // User Edit State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserData, setEditUserData] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    bio: '',
+    new_password: '',
+    profile_image: ''
+  });
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -291,6 +306,118 @@ const Settings: React.FC = () => {
       }
     } catch (error) {
       console.error('Error updating user:', error);
+    }
+  };
+
+  // Open user edit modal
+  const openEditUser = (u: User) => {
+    setEditingUser(u);
+    setEditUserData({
+      email: u.email,
+      first_name: u.first_name || '',
+      last_name: u.last_name || '',
+      phone: u.phone || '',
+      bio: u.bio || '',
+      new_password: '',
+      profile_image: u.profile_image || ''
+    });
+  };
+
+  // Handle user edit save
+  const handleSaveUserEdit = async () => {
+    if (!editingUser) return;
+    
+    try {
+      const dataToSend: Record<string, string | undefined> = {
+        email: editUserData.email,
+        first_name: editUserData.first_name || undefined,
+        last_name: editUserData.last_name || undefined,
+        phone: editUserData.phone || undefined,
+        bio: editUserData.bio || undefined,
+      };
+      
+      // Only include profile_image if it has a value
+      if (editUserData.profile_image) {
+        dataToSend.profile_image = editUserData.profile_image;
+      }
+      
+      // Only include password if it was changed
+      if (editUserData.new_password && editUserData.new_password.trim()) {
+        dataToSend.new_password = editUserData.new_password;
+      }
+      
+      // Remove undefined values
+      Object.keys(dataToSend).forEach(key => {
+        if (dataToSend[key] === undefined || dataToSend[key] === '') {
+          delete dataToSend[key];
+        }
+      });
+      
+      const response = await fetch(`${API_URL}/admin/users/${editingUser.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`
+        },
+        body: JSON.stringify(dataToSend)
+      });
+      
+      if (response.ok) {
+        setEditingUser(null);
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        console.error('Update error:', error);
+        // Handle validation errors
+        const errorMessages = [];
+        if (error.email) errorMessages.push(`Email: ${error.email.join(', ')}`);
+        if (error.new_password) errorMessages.push(`Password: ${error.new_password.join(', ')}`);
+        if (error.non_field_errors) errorMessages.push(error.non_field_errors.join(', '));
+        alert(errorMessages.length > 0 ? errorMessages.join('\n') : (error.error || 'Failed to update user'));
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Failed to update user');
+    }
+  };
+
+  // Handle user delete
+  const handleDeleteUser = async (userId: number) => {
+    if (userId === user?.id) {
+      alert('Cannot delete your own account');
+      return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/admin/users/${userId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Token ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user');
+    }
+  };
+
+  // Handle user profile image upload
+  const handleUserProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const url = await uploadImage(file);
+    if (url) {
+      setEditUserData({ ...editUserData, profile_image: url });
     }
   };
 
@@ -2184,10 +2311,19 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               {users.map(u => (
                 <div key={u.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-display font-bold">{u.email}</h4>
-                    <p className="text-xs text-gray-500 mt-1">{u.first_name} {u.last_name}</p>
-                    <p className="text-xs text-gray-600 mt-1">Created: {new Date(u.created_at).toLocaleDateString()}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center">
+                      {u.profile_image ? (
+                        <img src={u.profile_image} alt={u.email} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-gray-500" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-display font-bold">{u.email}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{u.first_name} {u.last_name}</p>
+                      <p className="text-xs text-gray-600 mt-1">Created: {new Date(u.created_at).toLocaleDateString()}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <select 
@@ -2202,10 +2338,155 @@ const Settings: React.FC = () => {
                     <span className={`text-xs px-3 py-1 rounded ${u.is_active ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
+                    <button
+                      onClick={() => openEditUser(u)}
+                      className="p-2 hover:bg-gray-800 rounded transition-colors"
+                      title="Edit User"
+                    >
+                      <Edit2 className="w-4 h-4 text-blue-500" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u.id)}
+                      className="p-2 hover:bg-gray-800 rounded transition-colors"
+                      title="Delete User"
+                      disabled={u.id === user?.id}
+                    >
+                      <Trash2 className={`w-4 h-4 ${u.id === user?.id ? 'text-gray-600' : 'text-red-500'}`} />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* User Edit Modal */}
+        {editingUser && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[#111] border border-gray-800 p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display text-lg font-bold">Edit User</h3>
+                <button onClick={() => setEditingUser(null)} className="hover:text-red-500 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Profile Image */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center">
+                    {editUserData.profile_image ? (
+                      <img src={editUserData.profile_image} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-8 h-8 text-gray-500" />
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUserProfileImageUpload}
+                      className="hidden"
+                      id="user-profile-image"
+                    />
+                    <label
+                      htmlFor="user-profile-image"
+                      className="cursor-pointer px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-display uppercase tracking-wider transition-colors inline-flex items-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploading ? 'Uploading...' : 'Change Photo'}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">Email</label>
+                  <input
+                    type="email"
+                    value={editUserData.email}
+                    onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                {/* First Name */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">First Name</label>
+                  <input
+                    type="text"
+                    value={editUserData.first_name}
+                    onChange={e => setEditUserData({ ...editUserData, first_name: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">Last Name</label>
+                  <input
+                    type="text"
+                    value={editUserData.last_name}
+                    onChange={e => setEditUserData({ ...editUserData, last_name: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">Phone</label>
+                  <input
+                    type="text"
+                    value={editUserData.phone}
+                    onChange={e => setEditUserData({ ...editUserData, phone: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">Bio</label>
+                  <textarea
+                    value={editUserData.bio}
+                    onChange={e => setEditUserData({ ...editUserData, bio: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none h-24 resize-none"
+                  />
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2 font-display uppercase tracking-wider">New Password (leave blank to keep current)</label>
+                  <input
+                    type="password"
+                    value={editUserData.new_password}
+                    onChange={e => setEditUserData({ ...editUserData, new_password: e.target.value })}
+                    className="w-full bg-transparent border border-gray-800 px-4 py-3 focus:border-blue-500 outline-none"
+                    placeholder="Enter new password"
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={handleSaveUserEdit}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 font-display text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setEditingUser(null)}
+                    className="px-6 py-3 border border-gray-700 hover:border-gray-500 font-display text-xs uppercase tracking-wider transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
       </main>
