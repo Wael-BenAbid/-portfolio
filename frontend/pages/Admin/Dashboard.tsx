@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
-import { STORAGE_KEYS, INITIAL_PROJECTS, API_BASE_URL } from '../../constants';
+import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
 import { Project } from '../../types';
 import { useAuth } from '../../App';
 
@@ -50,9 +50,8 @@ const Dashboard: React.FC = () => {
         if (projectsList.length > 0) {
           setProjects(projectsList);
         } else {
-          // If API returns empty, use initial projects
-          setProjects(INITIAL_PROJECTS);
-          localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_PROJECTS));
+          // If API returns empty, use empty array
+          setProjects([]);
         }
       } else {
         // Fallback to localStorage
@@ -60,8 +59,7 @@ const Dashboard: React.FC = () => {
         if (saved) {
           setProjects(JSON.parse(saved));
         } else {
-          setProjects(INITIAL_PROJECTS);
-          localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_PROJECTS));
+          setProjects([]);
         }
       }
     } catch (error) {
@@ -71,8 +69,7 @@ const Dashboard: React.FC = () => {
       if (saved) {
         setProjects(JSON.parse(saved));
       } else {
-        setProjects(INITIAL_PROJECTS);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_PROJECTS));
+        setProjects([]);
       }
     }
   };

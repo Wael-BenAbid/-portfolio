@@ -14,6 +14,7 @@ import { z } from 'zod';
 interface UseQueryOptions<T> {
   enabled?: boolean;
   initialData?: T | null;
+  fallbackData?: T | null;
   onSuccess?: (data: T) => void;
   onError?: (error: APIError) => void;
   schema?: z.ZodSchema<T>;
@@ -45,7 +46,7 @@ export function useQuery<T>(
   endpoint: string | null,
   options: UseQueryOptions<T> = {}
 ): UseQueryResult<T> {
-  const { enabled = true, initialData = null, onSuccess, onError, schema } = options;
+  const { enabled = true, initialData = null, fallbackData = null, onSuccess, onError, schema } = options;
   
   const [data, setData] = useState<T | null>(initialData);
   const [error, setError] = useState<APIError | null>(null);
@@ -74,15 +75,24 @@ export function useQuery<T>(
         const apiError = err instanceof APIError 
           ? err 
           : new APIError('An unexpected error occurred', 500, err);
-        setError(apiError);
-        onError?.(apiError);
+        
+        // Don't set error for network failures when we have fallback data
+        if (apiError.status !== 0 || !fallbackData) {
+          setError(apiError);
+          onError?.(apiError);
+        }
+        
+        // Use fallback data if available when API fails
+        if (fallbackData) {
+          setData(fallbackData);
+        }
       }
     } finally {
       if (isMounted.current) {
         setLoading(false);
       }
     }
-  }, [endpoint, schema, onSuccess, onError]);
+  }, [endpoint, schema, onSuccess, onError, fallbackData]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -218,25 +228,25 @@ interface ProjectsResponse {
   count: number;
 }
 
+// Fallback empty data when API is unavailable
+const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
+
 export function useProjects() {
   return useQuery<ProjectsResponse>('/projects/', {
-    schema: z.object({
-      results: z.array(ProjectSchema),
-      count: z.number(),
-    }),
+    fallbackData: EMPTY_PROJECTS_RESPONSE,
   });
 }
 
 export function useProject(slug: string | undefined) {
   return useQuery<Project>(
     slug ? `/projects/${slug}/` : null,
-    { schema: ProjectSchema }
+    {}
   );
 }
 
 export function useSkills() {
   return useQuery<Skill[]>('/projects/skills/', {
-    schema: z.array(SkillSchema),
+    fallbackData: [],
   });
 }
 
@@ -248,9 +258,17 @@ import { SiteSettingsSchema } from '../services/validations';
 
 export type SiteSettings = z.infer<typeof SiteSettingsSchema>;
 
+// Default settings when API is unavailable
+const DEFAULT_SETTINGS: SiteSettings = {
+  hero_title: 'ACTIVE',
+  hero_subtitle: 'THEORY',
+  hero_tagline: 'Digital Experiences & Aerial Visuals',
+  about_title: 'THE MIND BEHIND',
+};
+
 export function useSettings() {
   return useQuery<SiteSettings>('/settings/', {
-    schema: SiteSettingsSchema,
+    fallbackData: DEFAULT_SETTINGS,
   });
 }
 
@@ -262,9 +280,29 @@ import { CVDataSchema } from '../services/validations';
 
 export type CVData = z.infer<typeof CVDataSchema>;
 
+// Default empty CV data when API is unavailable
+const DEFAULT_CV_DATA: CVData = {
+  personal_info: {
+    full_name: '',
+    job_title: '',
+    email: '',
+    phone: '',
+    location: '',
+    profile_image: '',
+    summary: '',
+  },
+  experiences: [],
+  education: [],
+  skills: [],
+  languages: [],
+  certifications: [],
+  projects: [],
+  interests: [],
+};
+
 export function useCV() {
   return useQuery<CVData>('/cv/', {
-    schema: CVDataSchema,
+    fallbackData: DEFAULT_CV_DATA,
   });
 }
 

@@ -53,6 +53,10 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   AUTH_USER: 'auth_user',
   THEME: 'portfolio_theme',
+  PROJECTS: 'portfolio_projects',
+  SETTINGS: 'portfolio_settings',
+  CV: 'portfolio_cv',
+  ABOUT: 'portfolio_about',
 };
 
 // Default fallback data (used when API is unavailable)

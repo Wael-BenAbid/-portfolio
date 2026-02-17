@@ -1,36 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../App';
 import { User, LogOut } from 'lucide-react';
-import { API_BASE_URL } from '../constants';
-
-interface SiteSettings {
-  site_title: string;
-  logo_url: string;
-}
+import { useSettings } from '../hooks/useData';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/settings/`);
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-    }
-  };
+  const { data: settings } = useSettings();
 
   // Filter out Login link if user is authenticated
   const links = [
@@ -40,8 +19,7 @@ export const Navbar: React.FC = () => {
     { name: 'Contact', path: '/contact' },
   ];
 
-  const siteTitle = settings?.site_title || 'ADRIAN';
-  const logoUrl = settings?.logo_url;
+  const siteTitle = settings?.hero_title || 'ABIDOS';
 
   return (
     <nav className="fixed top-0 left-0 w-full z-[100] px-8 py-10 flex justify-between items-center pointer-events-none">
@@ -51,20 +29,14 @@ export const Navbar: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           className="font-display text-lg font-bold tracking-tighter flex items-center gap-2"
         >
-          {logoUrl ? (
-            <img src={logoUrl} alt={siteTitle} className="h-8 w-auto" />
-          ) : (
-            <>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                {siteTitle}
-              </motion.span>
-            </>
-          )}
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            {siteTitle}
+          </motion.span>
         </motion.div>
       </Link>
 

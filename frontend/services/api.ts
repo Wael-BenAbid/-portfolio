@@ -103,13 +103,22 @@ export const api = {
    * GET request
    */
   async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions): Promise<T> {
-    const response = await fetch(buildURL(endpoint, params), {
-      method: 'GET',
-      headers: getDefaultHeaders(options?.token),
-      ...options,
-    });
-    
-    return handleResponse<T>(response);
+    try {
+      const response = await fetch(buildURL(endpoint, params), {
+        method: 'GET',
+        headers: getDefaultHeaders(options?.token),
+        ...options,
+      });
+      
+      return handleResponse<T>(response);
+    } catch (error) {
+      // Silently handle network errors - return empty response
+      // This allows the app to work offline or when backend is unavailable
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new APIError('Network error - backend unavailable', 0, { networkError: true });
+      }
+      throw error;
+    }
   },
 
   /**

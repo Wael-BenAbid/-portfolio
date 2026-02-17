@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Instagram, Linkedin, Github, MapPin } from 'lucide-react';
-import { STORAGE_KEYS, INITIAL_ABOUT } from '../constants';
+import { STORAGE_KEYS, DEFAULT_ABOUT } from '../constants';
 import { AboutData } from '../types';
 
 const Contact: React.FC = () => {
-  const [about, setAbout] = useState<AboutData>(INITIAL_ABOUT);
+  const [about, setAbout] = useState<AboutData>(DEFAULT_ABOUT);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.ABOUT);
