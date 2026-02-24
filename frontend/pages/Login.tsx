@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Chrome, Facebook } from 'lucide-react';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_BASE_URL } from '../constants';
 
 interface LoginProps {
   onLogin: (user: any, token: string) => void;
@@ -24,23 +23,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/login/`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.user, data.token);
+        // Token is in HttpOnly cookie, so we don't need to pass it here
+        onLogin(data.user, '');
         if (data.user.user_type === 'admin') {
           navigate('/admin');
         } else {
           navigate('/');
         }
       } else {
-        setError(data.non_field_errors?.[0] || 'Invalid credentials');
+        setError(data.error || 'Invalid credentials');
       }
     } catch (err) {
       setError('Connection error. Please try again.');

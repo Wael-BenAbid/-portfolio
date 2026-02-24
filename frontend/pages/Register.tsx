@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, Chrome, Facebook } from 'lucide-react';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_BASE_URL } from '../constants';
 
 interface RegisterProps {
   onLogin: (user: any, token: string) => void;
@@ -44,7 +43,7 @@ const Register: React.FC<RegisterProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/register/`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -53,7 +52,8 @@ const Register: React.FC<RegisterProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.user, data.token);
+        // Token is in HttpOnly cookie, so we don't need to pass it here
+        onLogin(data.user, '');
         navigate('/');
       } else {
         const errorMsg = String(Object.values(data).flat()[0] || 'Registration failed');

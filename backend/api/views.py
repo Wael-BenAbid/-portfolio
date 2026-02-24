@@ -6,6 +6,9 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+from django.conf import settings
 
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, SocialAuthSerializer,
@@ -17,6 +20,7 @@ User = get_user_model()
 
 # ============ Authentication Views ============
 
+@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
@@ -27,12 +31,23 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token, created = Token.objects.get_or_create(user=user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'token': token.key
+        
+        # Set token as HttpOnly cookie
+        response = Response({
+            'user': UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
+        response.set_cookie(
+            'auth_token',
+            token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax',
+            max_age=3600 * 24 * 7  # 7 days
+        )
+        return response
 
 
+@method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     
@@ -58,10 +73,20 @@ class LoginView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         token, created = Token.objects.get_or_create(user=user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'token': token.key
+        
+        # Set token as HttpOnly cookie
+        response = Response({
+            'user': UserSerializer(user).data
         })
+        response.set_cookie(
+            'auth_token',
+            token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax',
+            max_age=3600 * 24 * 7  # 7 days
+        )
+        return response
 
 
 class SocialAuthView(APIView):
@@ -72,11 +97,21 @@ class SocialAuthView(APIView):
         serializer.is_valid(raise_exception=True)
         user, created = serializer.create_or_get_user(serializer.validated_data)
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({
+        
+        # Set token as HttpOnly cookie
+        response = Response({
             'user': UserSerializer(user).data,
-            'token': token.key,
             'is_new_user': created
         })
+        response.set_cookie(
+            'auth_token',
+            token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax',
+            max_age=3600 * 24 * 7  # 7 days
+        )
+        return response
 
 
 class LogoutView(APIView):
@@ -87,7 +122,9 @@ class LogoutView(APIView):
             request.user.auth_token.delete()
         except:
             pass
-        return Response({'message': 'Successfully logged out.'})
+        response = Response({'message': 'Successfully logged out.'})
+        response.delete_cookie('auth_token')
+        return response
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
-from .models import Experience, Education, Skill as CVSkill, Language, Certification
+from .models import CVExperience, CVEducation, CVSkill, CVLanguage, CVCertification
 
 User = get_user_model()
 
@@ -21,19 +21,19 @@ class ExperienceModelTest(TestCase):
             'start_date': '2020-01-01',
             'end_date': '2023-01-01',
             'description': 'Developed web applications',
-            'current': False
+            'is_current': False
         }
     
     def test_create_experience(self):
         """Test creating an experience"""
-        experience = Experience.objects.create(**self.experience_data)
+        experience = CVExperience.objects.create(**self.experience_data)
         self.assertEqual(experience.title, 'Software Developer')
         self.assertEqual(experience.company, 'Tech Company')
-        self.assertFalse(experience.current)
+        self.assertFalse(experience.is_current)
     
     def test_experience_str_representation(self):
         """Test string representation of experience"""
-        experience = Experience.objects.create(**self.experience_data)
+        experience = CVExperience.objects.create(**self.experience_data)
         self.assertIn('Software Developer', str(experience))
 
 
@@ -48,18 +48,18 @@ class EducationModelTest(TestCase):
             'start_date': '2015-09-01',
             'end_date': '2020-06-30',
             'description': 'Computer Science studies',
-            'current': False
+            'is_current': False
         }
     
     def test_create_education(self):
         """Test creating an education entry"""
-        education = Education.objects.create(**self.education_data)
+        education = CVEducation.objects.create(**self.education_data)
         self.assertEqual(education.degree, 'Master in Computer Science')
         self.assertEqual(education.institution, 'University of Tunis')
     
     def test_education_str_representation(self):
         """Test string representation of education"""
-        education = Education.objects.create(**self.education_data)
+        education = CVEducation.objects.create(**self.education_data)
         self.assertIn('Master in Computer Science', str(education))
 
 
@@ -69,15 +69,17 @@ class CVSkillModelTest(TestCase):
     def setUp(self):
         self.skill_data = {
             'name': 'Python',
-            'category': 'backend',
-            'proficiency': 90
+            'level': 'advanced',
+            'category': 'technical',
+            'percentage': 90
         }
     
     def test_create_cv_skill(self):
         """Test creating a CV skill"""
         skill = CVSkill.objects.create(**self.skill_data)
         self.assertEqual(skill.name, 'Python')
-        self.assertEqual(skill.proficiency, 90)
+        self.assertEqual(skill.level, 'advanced')
+        self.assertEqual(skill.percentage, 90)
 
 
 class LanguageModelTest(TestCase):
@@ -86,14 +88,14 @@ class LanguageModelTest(TestCase):
     def setUp(self):
         self.language_data = {
             'name': 'English',
-            'proficiency': 'fluent'
+            'level': 'fluent'
         }
     
     def test_create_language(self):
         """Test creating a language"""
-        language = Language.objects.create(**self.language_data)
+        language = CVLanguage.objects.create(**self.language_data)
         self.assertEqual(language.name, 'English')
-        self.assertEqual(language.proficiency, 'fluent')
+        self.assertEqual(language.level, 'fluent')
 
 
 class CertificationModelTest(TestCase):
@@ -103,14 +105,14 @@ class CertificationModelTest(TestCase):
         self.certification_data = {
             'name': 'AWS Certified Developer',
             'issuer': 'Amazon Web Services',
-            'date_obtained': '2023-01-15',
+            'issue_date': '2023-01-15',
             'expiry_date': '2026-01-15',
             'credential_id': 'AWS-12345'
         }
     
     def test_create_certification(self):
         """Test creating a certification"""
-        cert = Certification.objects.create(**self.certification_data)
+        cert = CVCertification.objects.create(**self.certification_data)
         self.assertEqual(cert.name, 'AWS Certified Developer')
         self.assertEqual(cert.issuer, 'Amazon Web Services')
 
@@ -121,7 +123,6 @@ class CVAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='admin'
@@ -129,7 +130,7 @@ class CVAPITest(TestCase):
     
     def test_list_experiences(self):
         """Test listing experiences"""
-        Experience.objects.create(
+        CVExperience.objects.create(
             title='Developer',
             company='Test Company',
             location='Tunis',
@@ -141,7 +142,7 @@ class CVAPITest(TestCase):
     
     def test_list_education(self):
         """Test listing education"""
-        Education.objects.create(
+        CVEducation.objects.create(
             degree='Bachelor',
             institution='University',
             location='Tunis',

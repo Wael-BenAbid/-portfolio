@@ -1,7 +1,7 @@
 import { Project, Skill, AboutData } from './types';
 
 // API Configuration
-export const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -84,10 +84,10 @@ export const getOptimizedImageUrl = (url: string, width: number = 800): string =
   // Handle Unsplash URLs with optimization parameters
   if (url.includes('unsplash.com')) {
     const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}w=${width}&q=80&auto=format&fit=crop`;
+    return `${url}${separator}w=${width}&q=80&auto=format&fit=crop&fm=webp`;
   }
   
-  // Return original URL for other sources
+  // Handle other image sources (could add more optimizers here)
   return url;
 };
 

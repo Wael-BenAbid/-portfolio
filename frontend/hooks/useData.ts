@@ -18,6 +18,7 @@ interface UseQueryOptions<T> {
   onSuccess?: (data: T) => void;
   onError?: (error: APIError) => void;
   schema?: z.ZodSchema<T>;
+  maxRetries?: number;
 }
 
 interface UseQueryResult<T> {
@@ -46,7 +47,7 @@ export function useQuery<T>(
   endpoint: string | null,
   options: UseQueryOptions<T> = {}
 ): UseQueryResult<T> {
-  const { enabled = true, initialData = null, fallbackData = null, onSuccess, onError, schema } = options;
+  const { enabled = true, initialData = null, fallbackData = null, onSuccess, onError, schema, maxRetries } = options;
   
   const [data, setData] = useState<T | null>(initialData);
   const [error, setError] = useState<APIError | null>(null);
@@ -61,7 +62,7 @@ export function useQuery<T>(
     setError(null);
     
     try {
-      const result = await api.get<T>(endpoint);
+      const result = await api.get<T>(endpoint, undefined, { maxRetries });
       
       // Validate with schema if provided
       const validatedData = schema ? schema.parse(result) : result;

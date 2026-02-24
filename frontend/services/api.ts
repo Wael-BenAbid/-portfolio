@@ -31,10 +31,17 @@ interface RequestOptions extends RequestInit {
 }
 
 /**
- * Get auth token from localStorage
+ * Get auth token from cookies
  */
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'auth_token') {
+      return value;
+    }
+  }
+  return null;
 };
 
 /**
@@ -80,8 +87,24 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
       errorData = { message: response.statusText };
     }
     
+    // Create user-friendly error message
+    let errorMessage = 'An unexpected error occurred';
+    if (errorData?.message) {
+      errorMessage = errorData.message;
+    } else if (errorData?.detail) {
+      errorMessage = errorData.detail;
+    } else if (response.status === 401) {
+      errorMessage = 'Authentication required. Please log in.';
+    } else if (response.status === 403) {
+      errorMessage = 'You do not have permission to perform this action.';
+    } else if (response.status === 404) {
+      errorMessage = 'The requested resource was not found.';
+    } else if (response.status === 500) {
+      errorMessage = 'Internal server error. Please try again later.';
+    }
+    
     throw new APIError(
-      errorData?.message || errorData?.detail || `HTTP Error: ${response.status}`,
+      errorMessage,
       response.status,
       errorData
     );
@@ -96,43 +119,73 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 };
 
 /**
+ * Retry logic for API calls
+ */
+const retryWithExponentialBackoff = async <T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (maxRetries <= 0) {
+      throw error;
+    }
+    
+    // Wait with exponential backoff
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    return retryWithExponentialBackoff(fn, maxRetries - 1, delay * 2);
+  }
+};
+
+/**
  * Main fetch wrapper with error handling
  */
 export const api = {
   /**
    * GET request
    */
-  async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions): Promise<T> {
-    try {
-      const response = await fetch(buildURL(endpoint, params), {
-        method: 'GET',
-        headers: getDefaultHeaders(options?.token),
-        ...options,
-      });
-      
-      return handleResponse<T>(response);
-    } catch (error) {
-      // Silently handle network errors - return empty response
-      // This allows the app to work offline or when backend is unavailable
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new APIError('Network error - backend unavailable', 0, { networkError: true });
+  async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
+    const maxRetries = options?.maxRetries ?? 3;
+    
+    return retryWithExponentialBackoff(async () => {
+      try {
+        const response = await fetch(buildURL(endpoint, params), {
+          method: 'GET',
+          headers: getDefaultHeaders(options?.token),
+          ...options,
+        });
+        
+        return handleResponse<T>(response);
+      } catch (error) {
+        // Silently handle network errors - return empty response
+        // This allows the app to work offline or when backend is unavailable
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new APIError('Network error - backend unavailable', 0, { networkError: true });
+        }
+        throw error;
       }
-      throw error;
-    }
+    }, maxRetries);
   },
 
   /**
    * POST request
    */
-  async post<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: getDefaultHeaders(options?.token),
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
+  async post<T>(endpoint: string, body?: unknown, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
+    const maxRetries = options?.maxRetries ?? 3;
     
-    return handleResponse<T>(response);
+    return retryWithExponentialBackoff(async () => {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: getDefaultHeaders(options?.token),
+        body: body ? JSON.stringify(body) : undefined,
+        ...options,
+      });
+      
+      return handleResponse<T>(response);
+    }, maxRetries);
   },
 
   /**

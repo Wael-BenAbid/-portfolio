@@ -45,6 +45,11 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Get optimized URL
   const optimizedSrc = getOptimizedImageUrl(src, width || 800);
+  
+  // Get WebP version for modern browsers
+  const webpSrc = src.includes('unsplash.com') 
+    ? getOptimizedImageUrl(src, width || 800).replace(/&auto=format/, '&auto=format&fm=webp')
+    : optimizedSrc;
 
   // Intersection Observer for lazy loading
   useEffect(() => {

@@ -45,6 +45,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const AuthPage = lazy(() => import('./pages/Auth'));
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const AdminSettings = lazy(() => import('./pages/Admin/Settings'));
+const AdminCV = lazy(() => import('./pages/Admin/CV'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren<{ adminOnly?: boolean }>) => {
@@ -66,14 +67,40 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  const getAuthTokenFromCookie = (): string | null => {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'auth_token') {
+        return value;
+      }
+    }
+    return null;
+  };
+
+  const getUserFromCookie = (): User | null => {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'auth_user') {
+        try {
+          return JSON.parse(decodeURIComponent(value));
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
-    // Check for stored auth on mount
-    const storedToken = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('auth_user');
+    // Check for stored auth on mount using cookies only
+    const cookieToken = getAuthTokenFromCookie();
+    const cookieUser = getUserFromCookie();
     
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    if (cookieToken && cookieUser) {
+      setToken(cookieToken);
+      setUser(cookieUser);
     }
     
     // Redirect to home if landing on auth page without coming from a link
@@ -87,15 +114,18 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    localStorage.setItem('auth_token', authToken);
-    localStorage.setItem('auth_user', JSON.stringify(userData));
+    // Set cookies instead of localStorage
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    document.cookie = `auth_token=${authToken}; expires=${expires.toUTCString()}; path=/; Secure; HttpOnly; SameSite=Strict`;
+    document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(userData))}; expires=${expires.toUTCString()}; path=/; Secure; SameSite=Strict`;
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    // Remove cookies
+    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'auth_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   };
 
   return (
@@ -134,6 +164,11 @@ const AnimatedRoutes = () => {
           <Route path="/admin/settings" element={
             <ProtectedRoute adminOnly>
               <AdminSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/cv" element={
+            <ProtectedRoute adminOnly>
+              <AdminCV />
             </ProtectedRoute>
           } />
           

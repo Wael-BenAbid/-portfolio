@@ -5,3 +5,7 @@ class InteractionsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'interactions'
     verbose_name = 'User Interactions'
+
+    def ready(self):
+        # Import signals to register them
+        import interactions.signals

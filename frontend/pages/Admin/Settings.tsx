@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Save, LayoutDashboard, Globe, Key, Mail, Users, Bell, Lock, MapPin, Image, Type, Sparkles, Upload, Loader2, Plus, Trash2, Edit2, X, Briefcase, GraduationCap, Award, Code, Globe2, Heart, User } from 'lucide-react';
+import { Save, LayoutDashboard, Globe, Key, Mail, Users, MapPin, Image, Upload, Loader2, Plus, Trash2, Edit2, X, User, Sparkles, Type } from 'lucide-react';
 import { useAuth } from '../../App';
 
 const API_URL = 'http://localhost:8000/api';
@@ -18,14 +18,6 @@ interface SiteSettings {
   hero_title: string;
   hero_subtitle: string;
   hero_tagline: string;
-  // CV Personal Info
-  cv_full_name: string;
-  cv_job_title: string;
-  cv_email: string;
-  cv_phone: string;
-  cv_location: string;
-  cv_profile_image: string;
-  cv_summary: string;
   // Location
   location: string;
   latitude: number;
@@ -59,80 +51,6 @@ interface SiteSettings {
   meta_keywords: string;
 }
 
-interface CVExperience {
-  id?: number;
-  title: string;
-  company: string;
-  location: string;
-  start_date: string;
-  end_date: string | null;
-  is_current: boolean;
-  description: string;
-  order: number;
-}
-
-interface CVEducation {
-  id?: number;
-  degree: string;
-  institution: string;
-  location: string;
-  start_date: string;
-  end_date: string | null;
-  is_current: boolean;
-  description: string;
-  gpa: string;
-  order: number;
-}
-
-interface CVSkill {
-  id?: number;
-  name: string;
-  level: string;
-  category: string;
-  percentage: number;
-  order: number;
-}
-
-interface CVLanguage {
-  id?: number;
-  name: string;
-  level: string;
-  order: number;
-}
-
-interface CVCertification {
-  id?: number;
-  name: string;
-  issuer: string;
-  issue_date: string;
-  expiry_date: string | null;
-  credential_id: string;
-  credential_url: string;
-  description: string;
-  order: number;
-}
-
-interface CVProject {
-  id?: number;
-  title: string;
-  description: string;
-  technologies: string;
-  url: string;
-  github_url: string;
-  start_date: string | null;
-  end_date: string | null;
-  is_ongoing: boolean;
-  order: number;
-}
-
-interface CVInterest {
-  id?: number;
-  name: string;
-  icon: string;
-  description: string;
-  order: number;
-}
-
 interface User {
   id: number;
   email: string;
@@ -146,32 +64,49 @@ interface User {
   created_at: string;
 }
 
+const DEFAULT_SETTINGS: SiteSettings = {
+  site_name: '',
+  site_title: '',
+  logo_url: '',
+  favicon_url: '',
+  site_description: '',
+  hero_title: '',
+  hero_subtitle: '',
+  hero_tagline: '',
+  location: '',
+  latitude: 0,
+  longitude: 0,
+  instagram_url: '',
+  linkedin_url: '',
+  github_url: '',
+  twitter_url: '',
+  google_client_id: '',
+  google_client_secret: '',
+  facebook_app_id: '',
+  facebook_app_secret: '',
+  email_host: '',
+  email_port: 587,
+  email_host_user: '',
+  email_host_password: '',
+  default_from_email: '',
+  contact_email: '',
+  contact_phone: '',
+  footer_text: '',
+  copyright_year: new Date().getFullYear(),
+  version: '1.0.0',
+  meta_title: '',
+  meta_description: '',
+  meta_keywords: '',
+};
+
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('branding');
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [users, setUsers] = useState<User[]>([]);
   const [savedStatus, setSavedStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
-  
-  // CV Data States
-  const [experiences, setExperiences] = useState<CVExperience[]>([]);
-  const [education, setEducation] = useState<CVEducation[]>([]);
-  const [skills, setSkills] = useState<CVSkill[]>([]);
-  const [languages, setLanguages] = useState<CVLanguage[]>([]);
-  const [certifications, setCertifications] = useState<CVCertification[]>([]);
-  const [cvProjects, setCVProjects] = useState<CVProject[]>([]);
-  const [interests, setInterests] = useState<CVInterest[]>([]);
-  
-  // Edit States
-  const [editingExperience, setEditingExperience] = useState<CVExperience | null>(null);
-  const [editingEducation, setEditingEducation] = useState<CVEducation | null>(null);
-  const [editingSkill, setEditingSkill] = useState<CVSkill | null>(null);
-  const [editingLanguage, setEditingLanguage] = useState<CVLanguage | null>(null);
-  const [editingCertification, setEditingCertification] = useState<CVCertification | null>(null);
-  const [editingCVProject, setEditingCVProject] = useState<CVProject | null>(null);
-  const [editingInterest, setEditingInterest] = useState<CVInterest | null>(null);
   
   // User Edit State
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -192,7 +127,6 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     fetchSettings();
-    fetchCVData();
     if (user?.user_type === 'admin') {
       fetchUsers();
     }
@@ -212,54 +146,9 @@ const Settings: React.FC = () => {
     }
   };
 
-  const fetchCVData = async () => {
-    try {
-      const [expRes, eduRes, skillRes, langRes, certRes, projRes, intRes] = await Promise.all([
-        fetch(`${API_URL}/cv/experiences/`),
-        fetch(`${API_URL}/cv/education/`),
-        fetch(`${API_URL}/cv/skills/`),
-        fetch(`${API_URL}/cv/languages/`),
-        fetch(`${API_URL}/cv/certifications/`),
-        fetch(`${API_URL}/cv/projects/`),
-        fetch(`${API_URL}/cv/interests/`)
-      ]);
-      
-      if (expRes.ok) {
-        const data = await expRes.json();
-        setExperiences(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (eduRes.ok) {
-        const data = await eduRes.json();
-        setEducation(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (skillRes.ok) {
-        const data = await skillRes.json();
-        setSkills(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (langRes.ok) {
-        const data = await langRes.json();
-        setLanguages(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (certRes.ok) {
-        const data = await certRes.json();
-        setCertifications(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (projRes.ok) {
-        const data = await projRes.json();
-        setCVProjects(Array.isArray(data) ? data : (data.results || []));
-      }
-      if (intRes.ok) {
-        const data = await intRes.json();
-        setInterests(Array.isArray(data) ? data : (data.results || []));
-      }
-    } catch (error) {
-      console.error('Error fetching CV data:', error);
-    }
-  };
-
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/users/`, {
+      const response = await fetch(`${API_URL}/auth/admin/users/`, {
         headers: { 'Authorization': `Token ${token}` }
       });
       if (response.ok) {
@@ -293,7 +182,7 @@ const Settings: React.FC = () => {
 
   const handleUpdateUserType = async (userId: number, userType: string) => {
     try {
-      const response = await fetch(`${API_URL}/admin/users/${userId}/`, {
+      const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -353,7 +242,7 @@ const Settings: React.FC = () => {
         }
       });
       
-      const response = await fetch(`${API_URL}/admin/users/${editingUser.id}/`, {
+      const response = await fetch(`${API_URL}/auth/admin/users/${editingUser.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -391,7 +280,7 @@ const Settings: React.FC = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/admin/users/${userId}/`, {
+      const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Token ${token}`
@@ -473,260 +362,6 @@ const Settings: React.FC = () => {
     if (profileInputRef.current) profileInputRef.current.value = '';
   };
 
-  // ============ CV CRUD Functions ============
-
-  // Experience
-  const saveExperience = async (exp: CVExperience) => {
-    const method = exp.id ? 'PATCH' : 'POST';
-    const url = exp.id ? `${API_URL}/cv/experiences/${exp.id}/` : `${API_URL}/cv/experiences/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(exp)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingExperience(null);
-      }
-    } catch (error) {
-      console.error('Error saving experience:', error);
-    }
-  };
-
-  const deleteExperience = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this experience?')) return;
-    try {
-      await fetch(`${API_URL}/cv/experiences/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting experience:', error);
-    }
-  };
-
-  // Education
-  const saveEducation = async (edu: CVEducation) => {
-    const method = edu.id ? 'PATCH' : 'POST';
-    const url = edu.id ? `${API_URL}/cv/education/${edu.id}/` : `${API_URL}/cv/education/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(edu)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingEducation(null);
-      }
-    } catch (error) {
-      console.error('Error saving education:', error);
-    }
-  };
-
-  const deleteEducation = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this education?')) return;
-    try {
-      await fetch(`${API_URL}/cv/education/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting education:', error);
-    }
-  };
-
-  // Skill
-  const saveSkill = async (skill: CVSkill) => {
-    const method = skill.id ? 'PATCH' : 'POST';
-    const url = skill.id ? `${API_URL}/cv/skills/${skill.id}/` : `${API_URL}/cv/skills/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(skill)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingSkill(null);
-      }
-    } catch (error) {
-      console.error('Error saving skill:', error);
-    }
-  };
-
-  const deleteSkill = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this skill?')) return;
-    try {
-      await fetch(`${API_URL}/cv/skills/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting skill:', error);
-    }
-  };
-
-  // Language
-  const saveLanguage = async (lang: CVLanguage) => {
-    const method = lang.id ? 'PATCH' : 'POST';
-    const url = lang.id ? `${API_URL}/cv/languages/${lang.id}/` : `${API_URL}/cv/languages/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(lang)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingLanguage(null);
-      }
-    } catch (error) {
-      console.error('Error saving language:', error);
-    }
-  };
-
-  const deleteLanguage = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this language?')) return;
-    try {
-      await fetch(`${API_URL}/cv/languages/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting language:', error);
-    }
-  };
-
-  // Certification
-  const saveCertification = async (cert: CVCertification) => {
-    const method = cert.id ? 'PATCH' : 'POST';
-    const url = cert.id ? `${API_URL}/cv/certifications/${cert.id}/` : `${API_URL}/cv/certifications/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(cert)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingCertification(null);
-      }
-    } catch (error) {
-      console.error('Error saving certification:', error);
-    }
-  };
-
-  const deleteCertification = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this certification?')) return;
-    try {
-      await fetch(`${API_URL}/cv/certifications/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting certification:', error);
-    }
-  };
-
-  // CV Project
-  const saveCVProject = async (proj: CVProject) => {
-    const method = proj.id ? 'PATCH' : 'POST';
-    const url = proj.id ? `${API_URL}/cv/projects/${proj.id}/` : `${API_URL}/cv/projects/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(proj)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingCVProject(null);
-      }
-    } catch (error) {
-      console.error('Error saving project:', error);
-    }
-  };
-
-  const deleteCVProject = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
-    try {
-      await fetch(`${API_URL}/cv/projects/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting project:', error);
-    }
-  };
-
-  // Interest
-  const saveInterest = async (int: CVInterest) => {
-    const method = int.id ? 'PATCH' : 'POST';
-    const url = int.id ? `${API_URL}/cv/interests/${int.id}/` : `${API_URL}/cv/interests/`;
-    
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
-        },
-        body: JSON.stringify(int)
-      });
-      if (response.ok) {
-        fetchCVData();
-        setEditingInterest(null);
-      }
-    } catch (error) {
-      console.error('Error saving interest:', error);
-    }
-  };
-
-  const deleteInterest = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this interest?')) return;
-    try {
-      await fetch(`${API_URL}/cv/interests/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      fetchCVData();
-    } catch (error) {
-      console.error('Error deleting interest:', error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -759,61 +394,9 @@ const Settings: React.FC = () => {
             <Type size={16} /> Hero Section
           </button>
           
-          <button 
-            onClick={() => setActiveTab('cv-personal')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-personal' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <User size={16} /> CV Personal
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-experience')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-experience' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Briefcase size={16} /> Experience
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-education')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-education' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <GraduationCap size={16} /> Education
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-skills')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-skills' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Code size={16} /> Skills
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-languages')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-languages' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Globe2 size={16} /> Languages
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-certifications')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-certifications' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Award size={16} /> Certifications
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-projects')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-projects' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Code size={16} /> CV Projects
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('cv-interests')}
-            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'cv-interests' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-          >
-            <Heart size={16} /> Interests
-          </button>
+          <Link to="/admin/cv" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
+            <User size={16} /> CV Management
+          </Link>
           
           <button 
             onClick={() => setActiveTab('location')}
@@ -867,14 +450,6 @@ const Settings: React.FC = () => {
           <h1 className="text-4xl font-display font-bold uppercase">
             {activeTab === 'branding' && 'Branding Settings'}
             {activeTab === 'hero' && 'Hero Section'}
-            {activeTab === 'cv-personal' && 'CV Personal Info'}
-            {activeTab === 'cv-experience' && 'Work Experience'}
-            {activeTab === 'cv-education' && 'Education'}
-            {activeTab === 'cv-skills' && 'Skills'}
-            {activeTab === 'cv-languages' && 'Languages'}
-            {activeTab === 'cv-certifications' && 'Certifications'}
-            {activeTab === 'cv-projects' && 'CV Projects'}
-            {activeTab === 'cv-interests' && 'Interests'}
             {activeTab === 'location' && 'Location Settings'}
             {activeTab === 'social' && 'Social Media Links'}
             {activeTab === 'oauth' && 'OAuth Configuration'}
@@ -906,7 +481,7 @@ const Settings: React.FC = () => {
                   <div className="flex gap-2 items-center">
                     <input 
                       type="url"
-                      value={settings.logo_url}
+                      value={settings.logo_url || ''}
                       onChange={e => setSettings({...settings, logo_url: e.target.value})}
                       className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
                       placeholder="https://example.com/logo.png"
@@ -940,7 +515,7 @@ const Settings: React.FC = () => {
                   <div className="flex gap-2 items-center">
                     <input 
                       type="url"
-                      value={settings.favicon_url}
+                      value={settings.favicon_url || ''}
                       onChange={e => setSettings({...settings, favicon_url: e.target.value})}
                       className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
                       placeholder="https://example.com/favicon.ico"
@@ -1042,954 +617,9 @@ const Settings: React.FC = () => {
           </form>
         )}
 
-        {/* CV Personal Info Tab */}
-        {activeTab === 'cv-personal' && settings && (
-          <form onSubmit={handleSaveSettings} className="max-w-4xl space-y-12">
-            <section className="space-y-8">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Personal Information</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Full Name</label>
-                    <input 
-                      type="text"
-                      value={settings.cv_full_name}
-                      onChange={e => setSettings({...settings, cv_full_name: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Job Title</label>
-                    <input 
-                      type="text"
-                      value={settings.cv_job_title}
-                      onChange={e => setSettings({...settings, cv_job_title: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="Full Stack Developer"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Email</label>
-                    <input 
-                      type="email"
-                      value={settings.cv_email}
-                      onChange={e => setSettings({...settings, cv_email: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Phone</label>
-                    <input 
-                      type="text"
-                      value={settings.cv_phone}
-                      onChange={e => setSettings({...settings, cv_phone: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="+1 234 567 890"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Location</label>
-                  <input 
-                    type="text"
-                    value={settings.cv_location}
-                    onChange={e => setSettings({...settings, cv_location: e.target.value})}
-                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                    placeholder="New York, USA"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Profile Image</label>
-                  <div className="flex gap-2 items-center">
-                    <input 
-                      type="url"
-                      value={settings.cv_profile_image}
-                      onChange={e => setSettings({...settings, cv_profile_image: e.target.value})}
-                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="https://example.com/profile.jpg"
-                    />
-                    <input 
-                      type="file"
-                      ref={profileInputRef}
-                      onChange={(e) => handleImageUpload(e, 'cv_profile_image')}
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      className="hidden"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => profileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                      {uploadingField === 'cv_profile_image' ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                      Upload
-                    </button>
-                  </div>
-                  {settings.cv_profile_image && (
-                    <img src={settings.cv_profile_image} alt="Profile" className="mt-4 w-32 h-32 object-cover rounded-lg" />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Professional Summary</label>
-                  <textarea 
-                    value={settings.cv_summary}
-                    onChange={e => setSettings({...settings, cv_summary: e.target.value})}
-                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-32 text-gray-300"
-                    placeholder="A brief professional summary..."
-                  />
-                </div>
-              </div>
-            </section>
 
-            <button type="submit" className="px-12 py-5 bg-white text-black font-display text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-4">
-              <Save size={16} /> Save Settings
-            </button>
-          </form>
-        )}
 
-        {/* Experience Tab */}
-        {activeTab === 'cv-experience' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Work Experience</h3>
-              <button 
-                onClick={() => setEditingExperience({ title: '', company: '', location: '', start_date: '', end_date: null, is_current: false, description: '', order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Experience
-              </button>
-            </div>
 
-            {/* Experience Form */}
-            {editingExperience && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingExperience.id ? 'Edit' : 'Add'} Experience</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Job Title</label>
-                      <input 
-                        type="text"
-                        value={editingExperience.title}
-                        onChange={e => setEditingExperience({...editingExperience, title: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="Software Engineer"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Company</label>
-                      <input 
-                        type="text"
-                        value={editingExperience.company}
-                        onChange={e => setEditingExperience({...editingExperience, company: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="Tech Company"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Location</label>
-                    <input 
-                      type="text"
-                      value={editingExperience.location}
-                      onChange={e => setEditingExperience({...editingExperience, location: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="New York, USA"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Start Date</label>
-                      <input 
-                        type="date"
-                        value={editingExperience.start_date}
-                        onChange={e => setEditingExperience({...editingExperience, start_date: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">End Date</label>
-                      <input 
-                        type="date"
-                        value={editingExperience.end_date || ''}
-                        onChange={e => setEditingExperience({...editingExperience, end_date: e.target.value || null})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        disabled={editingExperience.is_current}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox"
-                      id="is_current"
-                      checked={editingExperience.is_current}
-                      onChange={e => setEditingExperience({...editingExperience, is_current: e.target.checked, end_date: e.target.checked ? null : editingExperience.end_date})}
-                      className="w-4 h-4 accent-blue-500"
-                    />
-                    <label htmlFor="is_current" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Currently working here</label>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
-                    <textarea 
-                      value={editingExperience.description}
-                      onChange={e => setEditingExperience({...editingExperience, description: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
-                      placeholder="Describe your responsibilities and achievements..."
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveExperience(editingExperience)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingExperience(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Experience List */}
-            <div className="space-y-4">
-              {experiences.map(exp => (
-                <div key={exp.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-start group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <h4 className="font-display font-bold uppercase tracking-widest">{exp.title}</h4>
-                    <p className="text-sm text-gray-400 mt-1">{exp.company} • {exp.location}</p>
-                    <p className="text-xs text-gray-500 mt-2">{exp.start_date} - {exp.is_current ? 'Present' : exp.end_date}</p>
-                    <p className="text-xs text-gray-600 mt-2 line-clamp-2">{exp.description}</p>
-                  </div>
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingExperience(exp)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => exp.id && deleteExperience(exp.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education Tab */}
-        {activeTab === 'cv-education' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Education</h3>
-              <button 
-                onClick={() => setEditingEducation({ degree: '', institution: '', location: '', start_date: '', end_date: null, is_current: false, description: '', gpa: '', order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Education
-              </button>
-            </div>
-
-            {editingEducation && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingEducation.id ? 'Edit' : 'Add'} Education</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Degree</label>
-                      <input 
-                        type="text"
-                        value={editingEducation.degree}
-                        onChange={e => setEditingEducation({...editingEducation, degree: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="Bachelor of Science in Computer Science"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Institution</label>
-                      <input 
-                        type="text"
-                        value={editingEducation.institution}
-                        onChange={e => setEditingEducation({...editingEducation, institution: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="University Name"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Location</label>
-                      <input 
-                        type="text"
-                        value={editingEducation.location}
-                        onChange={e => setEditingEducation({...editingEducation, location: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="City, Country"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">GPA</label>
-                      <input 
-                        type="text"
-                        value={editingEducation.gpa}
-                        onChange={e => setEditingEducation({...editingEducation, gpa: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="3.8/4.0"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Start Date</label>
-                      <input 
-                        type="date"
-                        value={editingEducation.start_date}
-                        onChange={e => setEditingEducation({...editingEducation, start_date: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">End Date</label>
-                      <input 
-                        type="date"
-                        value={editingEducation.end_date || ''}
-                        onChange={e => setEditingEducation({...editingEducation, end_date: e.target.value || null})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        disabled={editingEducation.is_current}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox"
-                      id="edu_current"
-                      checked={editingEducation.is_current}
-                      onChange={e => setEditingEducation({...editingEducation, is_current: e.target.checked, end_date: e.target.checked ? null : editingEducation.end_date})}
-                      className="w-4 h-4 accent-blue-500"
-                    />
-                    <label htmlFor="edu_current" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Currently studying here</label>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
-                    <textarea 
-                      value={editingEducation.description}
-                      onChange={e => setEditingEducation({...editingEducation, description: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
-                      placeholder="Relevant coursework, achievements, activities..."
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveEducation(editingEducation)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingEducation(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="space-y-4">
-              {education.map(edu => (
-                <div key={edu.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-start group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <h4 className="font-display font-bold uppercase tracking-widest">{edu.degree}</h4>
-                    <p className="text-sm text-gray-400 mt-1">{edu.institution} • {edu.location}</p>
-                    <p className="text-xs text-gray-500 mt-2">{edu.start_date} - {edu.is_current ? 'Present' : edu.end_date} {edu.gpa && `• GPA: ${edu.gpa}`}</p>
-                  </div>
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingEducation(edu)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => edu.id && deleteEducation(edu.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills Tab */}
-        {activeTab === 'cv-skills' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Skills</h3>
-              <button 
-                onClick={() => setEditingSkill({ name: '', level: 'intermediate', category: 'technical', percentage: 80, order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Skill
-              </button>
-            </div>
-
-            {editingSkill && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingSkill.id ? 'Edit' : 'Add'} Skill</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Skill Name</label>
-                      <input 
-                        type="text"
-                        value={editingSkill.name}
-                        onChange={e => setEditingSkill({...editingSkill, name: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="JavaScript"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Category</label>
-                      <select 
-                        value={editingSkill.category}
-                        onChange={e => setEditingSkill({...editingSkill, category: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
-                      >
-                        <option value="technical" className="bg-[#111]">Technical</option>
-                        <option value="language" className="bg-[#111]">Language</option>
-                        <option value="soft" className="bg-[#111]">Soft Skills</option>
-                        <option value="tool" className="bg-[#111]">Tools & Software</option>
-                        <option value="other" className="bg-[#111]">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Level</label>
-                      <select 
-                        value={editingSkill.level}
-                        onChange={e => setEditingSkill({...editingSkill, level: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
-                      >
-                        <option value="beginner" className="bg-[#111]">Beginner</option>
-                        <option value="intermediate" className="bg-[#111]">Intermediate</option>
-                        <option value="advanced" className="bg-[#111]">Advanced</option>
-                        <option value="expert" className="bg-[#111]">Expert</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Percentage ({editingSkill.percentage}%)</label>
-                      <input 
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={editingSkill.percentage}
-                        onChange={e => setEditingSkill({...editingSkill, percentage: parseInt(e.target.value)})}
-                        className="w-full accent-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveSkill(editingSkill)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingSkill(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              {skills.map(skill => (
-                <div key={skill.id} className="p-4 bg-[#111] border border-gray-900 flex justify-between items-center group hover:border-blue-500/50 transition-all">
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-display font-bold uppercase tracking-widest text-sm">{skill.name}</h4>
-                      <span className="text-xs text-gray-500">{skill.percentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${skill.percentage}%` }}></div>
-                    </div>
-                    <p className="text-[10px] text-gray-500 mt-1 uppercase">{skill.category} • {skill.level}</p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingSkill(skill)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => skill.id && deleteSkill(skill.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Languages Tab */}
-        {activeTab === 'cv-languages' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Languages</h3>
-              <button 
-                onClick={() => setEditingLanguage({ name: '', level: 'intermediate', order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Language
-              </button>
-            </div>
-
-            {editingLanguage && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingLanguage.id ? 'Edit' : 'Add'} Language</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Language</label>
-                      <input 
-                        type="text"
-                        value={editingLanguage.name}
-                        onChange={e => setEditingLanguage({...editingLanguage, name: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="English"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Level</label>
-                      <select 
-                        value={editingLanguage.level}
-                        onChange={e => setEditingLanguage({...editingLanguage, level: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
-                      >
-                        <option value="native" className="bg-[#111]">Native</option>
-                        <option value="fluent" className="bg-[#111]">Fluent</option>
-                        <option value="advanced" className="bg-[#111]">Advanced</option>
-                        <option value="intermediate" className="bg-[#111]">Intermediate</option>
-                        <option value="basic" className="bg-[#111]">Basic</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveLanguage(editingLanguage)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingLanguage(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4">
-              {languages.map(lang => (
-                <div key={lang.id} className="p-4 bg-[#111] border border-gray-900 flex justify-between items-center group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <h4 className="font-display font-bold uppercase tracking-widest text-sm">{lang.name}</h4>
-                    <p className="text-xs text-gray-500 mt-1 uppercase">{lang.level}</p>
-                  </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingLanguage(lang)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => lang.id && deleteLanguage(lang.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Certifications Tab */}
-        {activeTab === 'cv-certifications' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Certifications</h3>
-              <button 
-                onClick={() => setEditingCertification({ name: '', issuer: '', issue_date: '', expiry_date: null, credential_id: '', credential_url: '', description: '', order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Certification
-              </button>
-            </div>
-
-            {editingCertification && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingCertification.id ? 'Edit' : 'Add'} Certification</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Certification Name</label>
-                      <input 
-                        type="text"
-                        value={editingCertification.name}
-                        onChange={e => setEditingCertification({...editingCertification, name: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="AWS Solutions Architect"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Issuing Organization</label>
-                      <input 
-                        type="text"
-                        value={editingCertification.issuer}
-                        onChange={e => setEditingCertification({...editingCertification, issuer: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="Amazon Web Services"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Issue Date</label>
-                      <input 
-                        type="date"
-                        value={editingCertification.issue_date}
-                        onChange={e => setEditingCertification({...editingCertification, issue_date: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Expiry Date (Optional)</label>
-                      <input 
-                        type="date"
-                        value={editingCertification.expiry_date || ''}
-                        onChange={e => setEditingCertification({...editingCertification, expiry_date: e.target.value || null})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Credential ID</label>
-                      <input 
-                        type="text"
-                        value={editingCertification.credential_id}
-                        onChange={e => setEditingCertification({...editingCertification, credential_id: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="ABC123XYZ"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Credential URL</label>
-                      <input 
-                        type="url"
-                        value={editingCertification.credential_url}
-                        onChange={e => setEditingCertification({...editingCertification, credential_url: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="https://..."
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
-                    <textarea 
-                      value={editingCertification.description}
-                      onChange={e => setEditingCertification({...editingCertification, description: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
-                      placeholder="Brief description..."
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveCertification(editingCertification)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingCertification(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="space-y-4">
-              {certifications.map(cert => (
-                <div key={cert.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-start group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <h4 className="font-display font-bold uppercase tracking-widest">{cert.name}</h4>
-                    <p className="text-sm text-gray-400 mt-1">{cert.issuer}</p>
-                    <p className="text-xs text-gray-500 mt-2">Issued: {cert.issue_date} {cert.expiry_date && `• Expires: ${cert.expiry_date}`}</p>
-                    {cert.credential_id && <p className="text-xs text-gray-600 mt-1">Credential ID: {cert.credential_id}</p>}
-                  </div>
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingCertification(cert)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => cert.id && deleteCertification(cert.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CV Projects Tab */}
-        {activeTab === 'cv-projects' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">CV Projects</h3>
-              <button 
-                onClick={() => setEditingCVProject({ title: '', description: '', technologies: '', url: '', github_url: '', start_date: null, end_date: null, is_ongoing: false, order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Project
-              </button>
-            </div>
-
-            {editingCVProject && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingCVProject.id ? 'Edit' : 'Add'} Project</h4>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Project Title</label>
-                    <input 
-                      type="text"
-                      value={editingCVProject.title}
-                      onChange={e => setEditingCVProject({...editingCVProject, title: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="Project Name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
-                    <textarea 
-                      value={editingCVProject.description}
-                      onChange={e => setEditingCVProject({...editingCVProject, description: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
-                      placeholder="Describe the project..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Technologies (comma-separated)</label>
-                    <input 
-                      type="text"
-                      value={editingCVProject.technologies}
-                      onChange={e => setEditingCVProject({...editingCVProject, technologies: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                      placeholder="React, Node.js, PostgreSQL"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Live URL</label>
-                      <input 
-                        type="url"
-                        value={editingCVProject.url}
-                        onChange={e => setEditingCVProject({...editingCVProject, url: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="https://..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">GitHub URL</label>
-                      <input 
-                        type="url"
-                        value={editingCVProject.github_url}
-                        onChange={e => setEditingCVProject({...editingCVProject, github_url: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="https://github.com/..."
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox"
-                      id="proj_ongoing"
-                      checked={editingCVProject.is_ongoing}
-                      onChange={e => setEditingCVProject({...editingCVProject, is_ongoing: e.target.checked})}
-                      className="w-4 h-4 accent-blue-500"
-                    />
-                    <label htmlFor="proj_ongoing" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Ongoing project</label>
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveCVProject(editingCVProject)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingCVProject(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="space-y-4">
-              {cvProjects.map(proj => (
-                <div key={proj.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-start group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <h4 className="font-display font-bold uppercase tracking-widest">{proj.title}</h4>
-                    <p className="text-xs text-gray-400 mt-2 line-clamp-2">{proj.description}</p>
-                    <p className="text-xs text-gray-500 mt-2">{proj.technologies}</p>
-                    <div className="flex gap-4 mt-2">
-                      {proj.url && <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">Live Demo</a>}
-                      {proj.github_url && <a href={proj.github_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">GitHub</a>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingCVProject(proj)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => proj.id && deleteCVProject(proj.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Interests Tab */}
-        {activeTab === 'cv-interests' && (
-          <div className="max-w-4xl space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Interests & Hobbies</h3>
-              <button 
-                onClick={() => setEditingInterest({ name: '', icon: '', description: '', order: 0 })}
-                className="px-6 py-3 bg-blue-500 text-white font-display text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-              >
-                <Plus size={14} /> Add Interest
-              </button>
-            </div>
-
-            {editingInterest && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 bg-[#111] border border-gray-800 rounded-xl"
-              >
-                <h4 className="text-lg font-display font-bold uppercase mb-6">{editingInterest.id ? 'Edit' : 'Add'} Interest</h4>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Name</label>
-                      <input 
-                        type="text"
-                        value={editingInterest.name}
-                        onChange={e => setEditingInterest({...editingInterest, name: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="Photography"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Icon (emoji or name)</label>
-                      <input 
-                        type="text"
-                        value={editingInterest.icon}
-                        onChange={e => setEditingInterest({...editingInterest, icon: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                        placeholder="📷 or camera"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
-                    <textarea 
-                      value={editingInterest.description}
-                      onChange={e => setEditingInterest({...editingInterest, description: e.target.value})}
-                      className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
-                      placeholder="Brief description..."
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => saveInterest(editingInterest)}
-                      className="px-8 py-3 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button 
-                      onClick={() => setEditingInterest(null)}
-                      className="px-8 py-3 bg-transparent border border-gray-800 text-gray-500 font-display text-[10px] uppercase tracking-widest hover:border-white hover:text-white transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4">
-              {interests.map(int => (
-                <div key={int.id} className="p-4 bg-[#111] border border-gray-900 flex justify-between items-start group hover:border-blue-500/50 transition-all">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {int.icon && <span className="text-xl">{int.icon}</span>}
-                      <h4 className="font-display font-bold uppercase tracking-widest text-sm">{int.name}</h4>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">{int.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingInterest(int)} className="text-gray-500 hover:text-white">
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => int.id && deleteInterest(int.id)} className="text-gray-500 hover:text-red-500">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Location Tab */}
         {activeTab === 'location' && settings && (

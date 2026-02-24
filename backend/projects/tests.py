@@ -38,7 +38,6 @@ class ProjectModelTest(TestCase):
     
     def setUp(self):
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='admin'
@@ -46,9 +45,8 @@ class ProjectModelTest(TestCase):
         self.project_data = {
             'title': 'Test Project',
             'description': 'A test project description',
-            'technologies': 'Python, Django, React',
-            'category': 'web',
-            'featured': True
+            'category': 'Development',
+            'is_featured': True
         }
     
     def test_create_project(self):
@@ -56,7 +54,7 @@ class ProjectModelTest(TestCase):
         project = Project.objects.create(**self.project_data)
         self.assertEqual(project.title, 'Test Project')
         self.assertEqual(project.description, 'A test project description')
-        self.assertTrue(project.featured)
+        self.assertTrue(project.is_featured)
     
     def test_project_str_representation(self):
         """Test string representation of project"""
@@ -70,7 +68,6 @@ class ProjectAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='admin'
@@ -78,8 +75,7 @@ class ProjectAPITest(TestCase):
         self.project = Project.objects.create(
             title='Test Project',
             description='A test project',
-            technologies='Python, Django',
-            category='web'
+            category='Development'
         )
     
     def test_list_projects(self):
@@ -89,7 +85,7 @@ class ProjectAPITest(TestCase):
     
     def test_retrieve_project(self):
         """Test retrieving a single project"""
-        response = self.client.get(f'/api/projects/{self.project.id}/')
+        response = self.client.get(f'/api/projects/{self.project.slug}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Test Project')
     
@@ -98,11 +94,10 @@ class ProjectAPITest(TestCase):
         data = {
             'title': 'New Project',
             'description': 'New project description',
-            'technologies': 'React, Node.js',
-            'category': 'web'
+            'category': 'Development'
         }
         response = self.client.post('/api/projects/', data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
     
     def test_create_project_authenticated(self):
         """Test creating project with authentication"""
@@ -110,8 +105,7 @@ class ProjectAPITest(TestCase):
         data = {
             'title': 'New Project',
             'description': 'New project description',
-            'technologies': 'React, Node.js',
-            'category': 'web'
+            'category': 'Development'
         }
         response = self.client.post('/api/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -120,7 +114,7 @@ class ProjectAPITest(TestCase):
         """Test updating a project"""
         self.client.force_authenticate(user=self.user)
         data = {'title': 'Updated Project'}
-        response = self.client.patch(f'/api/projects/{self.project.id}/', data, format='json')
+        response = self.client.patch(f'/api/projects/{self.project.slug}/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.project.refresh_from_db()
         self.assertEqual(self.project.title, 'Updated Project')
@@ -128,7 +122,7 @@ class ProjectAPITest(TestCase):
     def test_delete_project(self):
         """Test deleting a project"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.delete(f'/api/projects/{self.project.id}/')
+        response = self.client.delete(f'/api/projects/{self.project.slug}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Project.objects.count(), 0)
 
@@ -139,7 +133,6 @@ class SkillAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='admin'
@@ -152,7 +145,7 @@ class SkillAPITest(TestCase):
     
     def test_list_skills(self):
         """Test listing all skills"""
-        response = self.client.get('/api/skills/')
+        response = self.client.get('/api/projects/skills/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
     
     def test_create_skill_authenticated(self):
@@ -163,5 +156,5 @@ class SkillAPITest(TestCase):
             'category': 'frontend',
             'proficiency': 85
         }
-        response = self.client.post('/api/skills/', data, format='json')
+        response = self.client.post('/api/projects/skills/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

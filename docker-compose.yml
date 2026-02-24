@@ -12,10 +12,21 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
+    # Do not expose database port publicly
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: portfolio_redis
+    restart: unless-stopped
+    # Do not expose Redis port publicly
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,6 +40,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-portfolio}
+      - REDIS_URL=redis://redis:6379/1
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
       - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
       - EMAIL_PORT=${EMAIL_PORT:-587}
@@ -43,10 +55,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn portfolio.wsgi:application --bind 0.0.0.0:8000 --reload"
+             gunicorn portfolio.wsgi:application --bind 0.0.0.0:8000"
 
   # React Frontend (Development)
   frontend:

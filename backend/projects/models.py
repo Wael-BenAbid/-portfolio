@@ -25,6 +25,7 @@ class Project(models.Model):
     created_by = models.ForeignKey('api.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects_created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    likes_count = models.IntegerField(default=0, editable=False)
 
     class Meta:
         ordering = ['-created_at']
@@ -61,6 +62,7 @@ class MediaItem(models.Model):
     caption = models.CharField(max_length=200, blank=True)
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    likes_count = models.IntegerField(default=0, editable=False)
 
     class Meta:
         ordering = ['order', 'created_at']

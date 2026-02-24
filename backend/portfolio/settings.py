@@ -1,6 +1,7 @@
 """
 Django settings for portfolio project.
 """
+import sys
 from pathlib import Path
 import os
 from datetime import timedelta
@@ -25,6 +26,53 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 # ALLOWED_HOSTS - Required in production
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# CSRF Configuration
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+
+# Session Configuration
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# ===========================================
+# CACHING SETTINGS
+# ===========================================
+
+if 'test' in sys.argv:
+    # Use in-memory cache for testing
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+# ===========================================
+# SECURITY MIDDLEWARE SETTINGS
+# ===========================================
+
+if not DEBUG:
+    # Security settings for production
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ===========================================
 # APPLICATION DEFINITION
@@ -171,8 +219,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
+        'anon': '1000/hour',
+        'user': '5000/hour',
     },
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',

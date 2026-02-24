@@ -14,7 +14,6 @@ class UserModelTest(TestCase):
     
     def setUp(self):
         self.user_data = {
-            'username': 'testuser',
             'email': 'test@example.com',
             'password': 'testpass123',
             'user_type': 'registered'
@@ -23,7 +22,6 @@ class UserModelTest(TestCase):
     def test_create_user(self):
         """Test creating a regular user"""
         user = User.objects.create_user(**self.user_data)
-        self.assertEqual(user.username, 'testuser')
         self.assertEqual(user.email, 'test@example.com')
         self.assertEqual(user.user_type, 'registered')
         self.assertTrue(user.check_password('testpass123'))
@@ -33,7 +31,7 @@ class UserModelTest(TestCase):
     def test_create_admin_user(self):
         """Test creating an admin user"""
         admin_data = self.user_data.copy()
-        admin_data['username'] = 'admin'
+        admin_data['email'] = 'admin@example.com'
         admin_data['user_type'] = 'admin'
         admin = User.objects.create_user(**admin_data)
         self.assertEqual(admin.user_type, 'admin')
@@ -41,7 +39,7 @@ class UserModelTest(TestCase):
     def test_user_str_representation(self):
         """Test string representation of user"""
         user = User.objects.create_user(**self.user_data)
-        self.assertEqual(str(user), 'testuser')
+        self.assertEqual(str(user), 'test@example.com')
 
 
 class AuthenticationTest(TestCase):
@@ -50,7 +48,6 @@ class AuthenticationTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='registered'
@@ -59,30 +56,28 @@ class AuthenticationTest(TestCase):
     def test_user_registration(self):
         """Test user registration endpoint"""
         data = {
-            'username': 'newuser',
             'email': 'newuser@example.com',
             'password': 'newpass123',
             'password_confirm': 'newpass123'
         }
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('token', response.data)
         self.assertIn('user', response.data)
     
     def test_user_login(self):
         """Test user login endpoint"""
         data = {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass123'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('token', response.data)
+        self.assertIn('user', response.data)
     
     def test_user_login_invalid_credentials(self):
         """Test login with invalid credentials"""
         data = {
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'wrongpassword'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
@@ -93,12 +88,12 @@ class AuthenticationTest(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get('/api/auth/profile/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['username'], 'testuser')
+        self.assertEqual(response.data['email'], 'test@example.com')
     
     def test_unauthenticated_profile_access(self):
         """Test accessing profile without authentication"""
         response = self.client.get('/api/auth/profile/')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class UserUpdateTest(TestCase):
@@ -107,20 +102,11 @@ class UserUpdateTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
             password='testpass123',
             user_type='registered'
         )
         self.client.force_authenticate(user=self.user)
-    
-    def test_update_username(self):
-        """Test updating username"""
-        data = {'username': 'newusername'}
-        response = self.client.patch('/api/auth/profile/update/', data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.username, 'newusername')
     
     def test_update_email(self):
         """Test updating email"""
