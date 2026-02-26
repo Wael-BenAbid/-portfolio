@@ -40,7 +40,7 @@ const Home: React.FC = () => {
 
   // Use settings or defaults
   const heroTitle = settings?.hero_title || 'CREATIVE DEVELOPER';
-  const heroSubtitle = settings?.hero_subtitle || 'CREATIVE DEVELOPER';
+  const heroSubtitle = settings?.hero_subtitle || 'Digital Craftsman';
   const heroTagline = settings?.hero_tagline || 'Digital Experiences & Aerial Visuals';
   const aboutTitle = settings?.about_title || 'THE MIND BEHIND';
   const aboutQuote = settings?.about_quote || '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."';
