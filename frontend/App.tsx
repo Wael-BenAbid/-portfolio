@@ -8,6 +8,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { Scene3D } from './components/Scene3D';
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL } from './constants';
+import { getCookie } from './utils/cookies';
 
 // Types
 interface User {
@@ -111,10 +112,21 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
 
   const logout = async () => {
     try {
+      // Get CSRF token from cookie
+      const csrfToken = getCookie('csrftoken');
+      
+      if (!csrfToken) {
+        console.warn('CSRF token not found, proceeding with logout');
+      }
+      
       // Call backend logout endpoint to properly invalidate the token
       await fetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken || '',
+          'Content-Type': 'application/json'
+        }
       });
     } catch (error) {
       console.error('Logout error:', error);

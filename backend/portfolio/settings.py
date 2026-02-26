@@ -105,6 +105,23 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Content Security Policy (CSP) - Defense against XSS attacks
+    # For better security in production, use nonce-based or hash-based CSP instead of unsafe-inline
+    SECURE_CONTENT_SECURITY_POLICY = {
+        'default-src': ["'self'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'"],
+        'img-src': ["'self'", 'data:', 'https:'],  # Allow data URIs and HTTPS images
+        'font-src': ["'self'", 'data:'],
+        'connect-src': ["'self'"],  # API calls
+        'frame-src': ["'none'"],  # No frames allowed
+        'object-src': ["'none'"],  # No plugins allowed
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+        'frame-ancestors': ["'none'"],
+        'upgrade-insecure-requests': True,
+    }
 
 # ===========================================
 # APPLICATION DEFINITION

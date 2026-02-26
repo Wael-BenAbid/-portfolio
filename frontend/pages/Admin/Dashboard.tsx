@@ -25,6 +25,7 @@ const Dashboard: React.FC = () => {
   const [mediaTypeInput, setMediaTypeInput] = useState<'image' | 'video'>('image');
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<'thumbnail' | 'media' | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -86,16 +87,19 @@ const Dashboard: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
+        setError(null);
         return data.url;
       } else {
         const error = await response.json();
         console.error('Upload error:', error);
-        alert(error.error || 'Failed to upload image');
+        const errorMessage = error.error || error.detail || 'Failed to upload image';
+        setError(errorMessage);
         return null;
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image. Please try again.';
+      setError(errorMessage);
       return null;
     } finally {
       setUploading(false);
@@ -370,10 +374,26 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-16 overflow-y-auto">
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <X className="text-red-500" size={20} />
+              <span className="text-red-400 font-display text-sm">{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-300 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
+        
         <header className="flex justify-between items-center mb-16">
           <h1 className="text-4xl font-display font-bold uppercase">Work Management</h1>
           <button 
-            onClick={() => { setShowAddForm(true); setEditingProject(null); }}
+            onClick={() => { setShowAddForm(true); setEditingProject(null); setError(null); }}
             className="px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
           >
             <Plus size={16} /> New Project

@@ -281,6 +281,15 @@ class ImageUploadSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'url', 'uploaded_at', 'uploaded_by']
         read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
 
+    def validate_image(self, value):
+        """Validate image file size (max size from environment variable)."""
+        import os
+        max_size_mb = int(os.environ.get('MAX_IMAGE_SIZE_MB', 5))
+        max_size = max_size_mb * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(f"Image size cannot exceed {max_size_mb}MB. Current size: {value.size / (1024 * 1024):.2f}MB")
+        return value
+
     def get_url(self, obj):
         """Get the full URL of the uploaded image."""
         request = self.context.get('request')
