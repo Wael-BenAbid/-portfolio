@@ -13,7 +13,7 @@ class Project(models.Model):
     ]
 
     title = models.CharField(max_length=200)
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, blank=True)  # unique=True automatically creates an index
     description = models.TextField()
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='Development')
     thumbnail = models.URLField(max_length=500, blank=True, null=True, help_text="URL to thumbnail image")
@@ -44,11 +44,6 @@ class Project(models.Model):
     def __str__(self):
         return self.title
 
-    @property
-    def likes_count(self):
-        return self.likes.count()
-
-
 class MediaItem(models.Model):
     MEDIA_TYPES = [
         ('image', 'Image'),
@@ -69,10 +64,6 @@ class MediaItem(models.Model):
 
     def __str__(self):
         return f"{self.media_type} - {self.project.title}"
-
-    @property
-    def likes_count(self):
-        return self.likes.count()
 
 
 class Skill(models.Model):

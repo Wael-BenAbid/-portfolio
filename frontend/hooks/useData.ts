@@ -265,6 +265,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   hero_subtitle: 'THEORY',
   hero_tagline: 'Digital Experiences & Aerial Visuals',
   about_title: 'THE MIND BEHIND',
+  nav_work_label: 'Work',
+  nav_about_label: 'About',
+  nav_contact_label: 'Contact',
 };
 
 export function useSettings() {

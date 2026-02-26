@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Save, LayoutDashboard, Globe, Key, Mail, Users, MapPin, Image, Upload, Loader2, Plus, Trash2, Edit2, X, User, Sparkles, Type } from 'lucide-react';
 import { useAuth } from '../../App';
+import { API_BASE_URL } from '../../constants';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = API_BASE_URL;
 
 interface SiteSettings {
   id?: number;
@@ -18,6 +19,15 @@ interface SiteSettings {
   hero_title: string;
   hero_subtitle: string;
   hero_tagline: string;
+  // About Section
+  about_title?: string;
+  about_quote?: string;
+  profile_image?: string;
+  drone_image?: string;
+  // Navigation
+  nav_work_label?: string;
+  nav_about_label?: string;
+  nav_contact_label?: string;
   // Location
   location: string;
   latitude: number;
@@ -45,6 +55,9 @@ interface SiteSettings {
   footer_text: string;
   copyright_year: number;
   version: string;
+  designer_name: string;
+  copyright_text: string;
+  show_location: boolean;
   // SEO
   meta_title: string;
   meta_description: string;
@@ -73,6 +86,13 @@ const DEFAULT_SETTINGS: SiteSettings = {
   hero_title: '',
   hero_subtitle: '',
   hero_tagline: '',
+  about_title: 'THE MIND BEHIND',
+  about_quote: '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."',
+  profile_image: '',
+  drone_image: '',
+  nav_work_label: 'Work',
+  nav_about_label: 'About',
+  nav_contact_label: 'Contact',
   location: '',
   latitude: 0,
   longitude: 0,
@@ -94,6 +114,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   footer_text: '',
   copyright_year: new Date().getFullYear(),
   version: '1.0.0',
+  designer_name: 'ADRIAN',
+  copyright_text: 'Your Name. All rights reserved.',
+  show_location: true,
   meta_title: '',
   meta_description: '',
   meta_keywords: '',
@@ -123,7 +146,7 @@ const Settings: React.FC = () => {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchSettings();
@@ -149,7 +172,7 @@ const Settings: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/auth/admin/users/`, {
-        headers: { 'Authorization': `Token ${token}` }
+        credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
@@ -166,9 +189,9 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(settings)
       });
       if (response.ok) {
@@ -185,9 +208,9 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ user_type: userType })
       });
       if (response.ok) {
@@ -245,9 +268,9 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/auth/admin/users/${editingUser.id}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(dataToSend)
       });
       
@@ -282,9 +305,7 @@ const Settings: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`
-        }
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -312,28 +333,31 @@ const Settings: React.FC = () => {
 
   // Upload image to server
   const uploadImage = async (file: File): Promise<string | null> => {
-    if (!token) return null;
-    
+    if (!isAuthenticated) return null;
+
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('image', file);
-      
+
       const response = await fetch(`${API_URL}/upload/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`
-        },
+        credentials: 'include',
         body: formData
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         return data.url;
       } else {
-        const error = await response.json();
-        console.error('Upload error:', error);
-        alert(error.error || 'Failed to upload image');
+        const errorText = await response.text();
+        console.error('Upload error:', errorText);
+        try {
+          const error = JSON.parse(errorText);
+          alert(error.error || error.detail || 'Failed to upload image');
+        } catch {
+          alert('Failed to upload image');
+        }
         return null;
       }
     } catch (error) {
@@ -433,6 +457,13 @@ const Settings: React.FC = () => {
             <Image size={16} /> Footer
           </button>
           
+          <button 
+            onClick={() => setActiveTab('home')}
+            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'home' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
+          >
+            <LayoutDashboard size={16} /> Config Page Home
+          </button>
+          
           {user?.user_type === 'admin' && (
             <button 
               onClick={() => setActiveTab('users')}
@@ -455,6 +486,7 @@ const Settings: React.FC = () => {
             {activeTab === 'oauth' && 'OAuth Configuration'}
             {activeTab === 'email' && 'Email Configuration'}
             {activeTab === 'footer' && 'Footer Settings'}
+            {activeTab === 'home' && 'Config Page Home'}
             {activeTab === 'users' && 'User Management'}
           </h1>
           {savedStatus && <span className="text-green-500 font-display text-[10px] uppercase tracking-widest">Saved Successfully</span>}
@@ -643,8 +675,11 @@ const Settings: React.FC = () => {
                     <input 
                       type="number"
                       step="0.0001"
-                      value={settings.latitude}
-                      onChange={e => setSettings({...settings, latitude: parseFloat(e.target.value)})}
+                      value={settings.latitude ?? ''}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setSettings({...settings, latitude: isNaN(val) ? 0 : val});
+                      }}
                       className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
                     />
                   </div>
@@ -653,8 +688,11 @@ const Settings: React.FC = () => {
                     <input 
                       type="number"
                       step="0.0001"
-                      value={settings.longitude}
-                      onChange={e => setSettings({...settings, longitude: parseFloat(e.target.value)})}
+                      value={settings.longitude ?? ''}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setSettings({...settings, longitude: isNaN(val) ? 0 : val});
+                      }}
                       className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
                     />
                   </div>
@@ -925,6 +963,194 @@ const Settings: React.FC = () => {
                     placeholder="keyword1, keyword2, keyword3"
                   />
                 </div>
+              </div>
+            </section>
+
+            <button type="submit" className="px-12 py-5 bg-white text-black font-display text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-4">
+              <Save size={16} /> Save Settings
+            </button>
+          </form>
+        )}
+
+        {/* Config Page Home Tab */}
+        {activeTab === 'home' && settings && (
+          <form onSubmit={handleSaveSettings} className="max-w-4xl space-y-12">
+            {/* Navigation Bar Section */}
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Navigation Bar</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Work Label</label>
+                  <input
+                    type="text"
+                    value={settings.nav_work_label || 'Work'}
+                    onChange={e => setSettings({...settings, nav_work_label: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Work"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Label for the Work navigation link</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">About Label</label>
+                  <input
+                    type="text"
+                    value={settings.nav_about_label || 'About'}
+                    onChange={e => setSettings({...settings, nav_about_label: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="About"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Label for the About navigation link</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Contact Label</label>
+                  <input
+                    type="text"
+                    value={settings.nav_contact_label || 'Contact'}
+                    onChange={e => setSettings({...settings, nav_contact_label: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Contact"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Label for the Contact navigation link</p>
+                </div>
+              </div>
+            </section>
+
+            {/* About Section */}
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">About Section</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">About Title</label>
+                  <input
+                    type="text"
+                    value={settings.about_title || 'THE MIND BEHIND'}
+                    onChange={e => setSettings({...settings, about_title: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
+                    placeholder="THE MIND BEHIND"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Title displayed above the about quote</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">About Quote</label>
+                  <textarea
+                    value={settings.about_quote || ''}
+                    onChange={e => setSettings({...settings, about_quote: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-32 text-gray-300"
+                    placeholder='"Technology is the vessel, but storytelling is the destination..."'
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Quote displayed in the about section</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Profile Image URL</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="url"
+                      value={settings.profile_image || ''}
+                      onChange={e => setSettings({...settings, profile_image: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="https://example.com/profile.jpg"
+                    />
+                    <input
+                      type="file"
+                      ref={profileInputRef}
+                      onChange={(e) => handleImageUpload(e, 'profile_image')}
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => profileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {uploadingField === 'profile_image' ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      Upload
+                    </button>
+                  </div>
+                  {settings.profile_image && (
+                    <div className="mt-4">
+                      <p className="text-[10px] font-display uppercase tracking-widest text-gray-500 mb-2">Preview:</p>
+                      <img src={settings.profile_image} alt="Profile" className="w-32 h-32 object-cover rounded-lg" />
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-600 mt-1">Profile image displayed in the about section</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Drone/Work Image URL</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="url"
+                      value={settings.drone_image || ''}
+                      onChange={e => setSettings({...settings, drone_image: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="https://example.com/drone.jpg"
+                    />
+                    <input
+                      type="file"
+                      ref={logoInputRef}
+                      onChange={(e) => handleImageUpload(e, 'drone_image')}
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={uploading}
+                      className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {uploadingField === 'drone_image' ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      Upload
+                    </button>
+                  </div>
+                  {settings.drone_image && (
+                    <div className="mt-4">
+                      <p className="text-[10px] font-display uppercase tracking-widest text-gray-500 mb-2">Preview:</p>
+                      <img src={settings.drone_image} alt="Drone" className="w-full h-48 object-cover rounded-lg" />
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-600 mt-1">Work/drone image displayed in the about section</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Footer Section */}
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Footer Configuration</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Designer Name</label>
+                  <input
+                    type="text"
+                    value={settings.designer_name || ''}
+                    onChange={e => setSettings({...settings, designer_name: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="ADRIAN"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Displayed as "DESIGNED BY [Name]" in the footer</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Copyright Text</label>
+                  <input
+                    type="text"
+                    value={settings.copyright_text || ''}
+                    onChange={e => setSettings({...settings, copyright_text: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Your Name. All rights reserved."
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Displayed as "© [Year] [Copyright Text]" in the footer</p>
+                </div>
+                <div className="flex items-center gap-4 pt-4">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Show Location</label>
+                  <button
+                    type="button"
+                    onClick={() => setSettings({...settings, show_location: !settings.show_location})}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${settings.show_location ? 'bg-blue-500' : 'bg-gray-700'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.show_location ? 'left-7' : 'left-1'}`} />
+                  </button>
+                  <span className="text-xs text-gray-400">{settings.show_location ? 'Visible' : 'Hidden'}</span>
+                </div>
+                <p className="text-[10px] text-gray-600">When enabled, displays your location in the footer (LOC: [Location])</p>
               </div>
             </section>
 

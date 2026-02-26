@@ -73,12 +73,14 @@ const FloatingParticles = () => {
           count={particleCount}
           array={positions}
           itemSize={3}
+          args={[positions, 3]}
         />
         <bufferAttribute
           attach="attributes-color"
           count={particleCount}
           array={colors}
           itemSize={3}
+          args={[colors, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -206,7 +208,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userType, setUserType] = useState<'registered' | 'visitor'>('registered');
   const [error, setError] = useState('');
@@ -225,7 +227,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   useEffect(() => {
     setEmail('');
     setPassword('');
-    setUsername('');
+    setFirstName('');
     setConfirmPassword('');
     setError('');
   }, [activeTab]);
@@ -280,12 +282,13 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        credentials: 'include',  // Include cookies for authentication
       });
       
       const data = await response.json();
       
       if (response.ok) {
-        onLogin(data.user, data.token);
+        onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
         navigate('/');
       } else {
         setError(data.error || data.message || 'Login failed');
@@ -301,7 +304,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
     e.preventDefault();
     setError('');
     
-    if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!firstName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
       setError('Please fill in all fields');
       return;
     }
@@ -311,8 +314,8 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       return;
     }
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     
@@ -322,18 +325,20 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       const response = await fetch(`${API_BASE_URL}/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: username.trim(), 
-          email: email.trim(), 
+        body: JSON.stringify({
+          email: email.trim(),
           password: password.trim(),
-          user_type: userType 
+          password_confirm: password.trim(),
+          first_name: firstName.trim(),
+          last_name: '',
         }),
+        credentials: 'include',  // Include cookies for authentication
       });
       
       const data = await response.json();
       
       if (response.ok) {
-        onLogin(data.user, data.token);
+        onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
         navigate('/');
       } else {
         setError(data.error || data.message || 'Registration failed');
@@ -489,10 +494,10 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
                   onSubmit={handleRegister}
                 >
                   <InputField
-                    label="Username"
+                    label="First Name"
                     type="text"
-                    value={username}
-                    onChange={setUsername}
+                    value={firstName}
+                    onChange={setFirstName}
                     placeholder="Choose a username"
                     icon={UserIcon}
                   />

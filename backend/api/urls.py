@@ -19,4 +19,7 @@ urlpatterns = [
     # Admin User Management
     path('admin/users/', views.AdminUserListView.as_view(), name='admin-users'),
     path('admin/users/<int:pk>/', views.AdminUserUpdateView.as_view(), name='admin-user-update'),
+
+    # Image Upload
+    path('upload/', views.ImageUploadView.as_view(), name='image-upload'),
 ]

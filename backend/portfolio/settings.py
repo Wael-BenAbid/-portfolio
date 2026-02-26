@@ -2,36 +2,57 @@
 Django settings for portfolio project.
 """
 import sys
+import logging
 from pathlib import Path
 import os
 from datetime import timedelta
 import json
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Configure basic logging for settings module
+logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+# Try loading from multiple locations for flexibility
+env_loaded = False
+for env_path in [BASE_DIR.parent / '.env', BASE_DIR / '.env', Path('.env')]:
+    if env_path.exists():
+        load_dotenv(env_path)
+        env_loaded = True
+        break
+if not env_loaded:
+    load_dotenv()  # Fallback to default behavior
 
 # ===========================================
 # SECURITY SETTINGS
 # ===========================================
 
 # SECRET_KEY - Required, no default for security
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-key-change-in-production')
-
 # DEBUG - Default to False for security
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+if DEBUG:
+    logger.warning("DEBUG mode is ON. This should be OFF in production!")
+
+# SECRET_KEY - Required, no default for security
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if 'test' in sys.argv:
+        # Use a static secret key for testing only
+        SECRET_KEY = 'test-secret-key-for-testing-only'
+    else:
+        raise ValueError("DJANGO_SECRET_KEY environment variable is required")
 
 # ALLOWED_HOSTS - Required in production
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend').split(',')
 
 # CSRF Configuration
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
 # Session Configuration
 SESSION_COOKIE_HTTPONLY = True
@@ -42,6 +63,9 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # CACHING SETTINGS
 # ===========================================
 
+# Environment-based cache configuration
+REDIS_URL = os.environ.get('REDIS_URL', '')
+
 if 'test' in sys.argv:
     # Use in-memory cache for testing
     CACHES = {
@@ -49,14 +73,22 @@ if 'test' in sys.argv:
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
         }
     }
-else:
+elif REDIS_URL:
+    # Use Redis in production when REDIS_URL is set
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+            'LOCATION': REDIS_URL,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             }
+        }
+    }
+else:
+    # Fallback to dummy cache for local development without Redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
         }
     }
 
@@ -106,6 +138,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.middleware.PrometheusMetricsMiddleware',
 ]
 
 ROOT_URLCONF = 'portfolio.urls'
@@ -135,14 +168,24 @@ AUTH_USER_MODEL = 'api.CustomUser'
 # DATABASE SETTINGS
 # ===========================================
 
+# DATABASE SETTINGS
+# Validate required database credentials
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
+if not DB_PASSWORD:
+    if 'test' in sys.argv:
+        DB_PASSWORD = ''
+    else:
+        raise ValueError("DB_PASSWORD environment variable is required")
+
+# Database configuration using environment variables
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'PASSWORD': DB_PASSWORD,  # Use validated environment variable
         'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5433'),
+        'PORT': os.environ.get('DB_PORT', '5432'),  # Default to 5432 (Docker/standard PostgreSQL port)
     }
 }
 
@@ -156,6 +199,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -190,15 +236,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS SETTINGS
 # ===========================================
 
-# Get allowed origins from environment
-cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',')]
-
-# Only allow all origins in development
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
+    # Still restrict origins in DEBUG mode for security
+    # Don't use CORS_ALLOW_ALL_ORIGINS = True as it's too permissive
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ]
+    logger.warning(f"CORS restricted to: {CORS_ALLOWED_ORIGINS}")
 else:
     CORS_ALLOW_ALL_ORIGINS = False
+    cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+    if not cors_origins:
+        logger.warning("CORS_ALLOWED_ORIGINS not set. API may have CORS issues in production")
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+
+# Allow credentials (cookies) to be sent cross-origin
+CORS_ALLOW_CREDENTIALS = True
 
 # ===========================================
 # DJANGO REST FRAMEWORK
@@ -206,6 +262,7 @@ else:
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.authentication.CookieTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],

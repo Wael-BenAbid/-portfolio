@@ -225,9 +225,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/settings/upload/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
         body: formData,
       });
 
@@ -248,9 +246,9 @@ const CV: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(settings),
       });
 
@@ -902,9 +900,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/experiences/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -920,9 +916,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/education/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -938,9 +932,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/skills/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -956,9 +948,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/languages/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -974,9 +964,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/certifications/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -992,9 +980,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/projects/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1010,9 +996,7 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/interests/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {

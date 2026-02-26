@@ -6,6 +6,8 @@ import { CustomCursor } from './components/CustomCursor';
 import { Navbar } from './components/Navbar';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Scene3D } from './components/Scene3D';
+import { AlertTriangle, Lock, X } from 'lucide-react';
+import { API_BASE_URL } from './constants';
 
 // Types
 interface User {
@@ -15,6 +17,7 @@ interface User {
   first_name: string;
   last_name: string;
   profile_image: string | null;
+  requires_password_change?: boolean;
 }
 
 interface AuthContextType {
@@ -23,6 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
+  clearPasswordChangeRequired: () => void;
 }
 
 // Auth Context
@@ -31,7 +35,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    return { user: null, token: null, isAuthenticated: false, login: () => {}, logout: () => {} };
+    return { user: null, token: null, isAuthenticated: false, login: () => {}, logout: () => {}, clearPasswordChangeRequired: () => {} };
   }
   return context;
 };
@@ -67,69 +71,71 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  const getAuthTokenFromCookie = (): string | null => {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === 'auth_token') {
-        return value;
-      }
-    }
-    return null;
-  };
-
-  const getUserFromCookie = (): User | null => {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === 'auth_user') {
-        try {
-          return JSON.parse(decodeURIComponent(value));
-        } catch {
-          return null;
-        }
+  const getUserFromSession = (): User | null => {
+    const userJson = sessionStorage.getItem('auth_user');
+    if (userJson) {
+      try {
+        return JSON.parse(userJson);
+      } catch {
+        return null;
       }
     }
     return null;
   };
 
   useEffect(() => {
-    // Check for stored auth on mount using cookies only
-    const cookieToken = getAuthTokenFromCookie();
-    const cookieUser = getUserFromCookie();
+    // Check for stored auth on mount using sessionStorage for user data only
+    // IMPORTANT: Authentication is handled via HttpOnly cookie (set by backend)
+    // We only store user info in sessionStorage, NOT the token
+    const sessionUser = getUserFromSession();
     
-    if (cookieToken && cookieUser) {
-      setToken(cookieToken);
-      setUser(cookieUser);
+    if (sessionUser) {
+      setUser(sessionUser);
+      // Set token to a placeholder to indicate authenticated state
+      // The actual auth is via HttpOnly cookie which JavaScript cannot access
+      setToken('http-only-cookie');
     }
     
-    // Redirect to home if landing on auth page without coming from a link
-    // This handles the case where browser remembers the hash URL
-    const hash = window.location.hash;
-    if (hash === '#/auth' && !sessionStorage.getItem('redirected_to_auth')) {
-      window.location.hash = '#/';
-    }
+
   }, []);
 
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    // Set cookies instead of localStorage
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-    document.cookie = `auth_token=${authToken}; expires=${expires.toUTCString()}; path=/; Secure; HttpOnly; SameSite=Strict`;
-    document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(userData))}; expires=${expires.toUTCString()}; path=/; Secure; SameSite=Strict`;
+    // Store only user info in sessionStorage (non-sensitive data)
+    // IMPORTANT: The auth token is handled via HttpOnly cookie by the backend
+    // We do NOT store the token in sessionStorage to prevent XSS token theft
+    // The token parameter is only used for React state, not persisted
+    sessionStorage.setItem('auth_user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Call backend logout endpoint to properly invalidate the token
+      await fetch(`${API_BASE_URL}/auth/logout/`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with local cleanup even if backend call fails
+    }
     setUser(null);
     setToken(null);
-    // Remove cookies
-    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'auth_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    // Clear sessionStorage (only user info, no token stored)
+    sessionStorage.removeItem('auth_user');
+  };
+
+  const clearPasswordChangeRequired = () => {
+    if (user) {
+      const updatedUser = { ...user, requires_password_change: false };
+      setUser(updatedUser);
+      sessionStorage.setItem('auth_user', JSON.stringify(updatedUser));
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, login, logout, clearPasswordChangeRequired }}>
       {children}
     </AuthContext.Provider>
   );
@@ -141,7 +147,7 @@ const AnimatedRoutes = () => {
   const { login, isAuthenticated } = useAuth();
 
   // Redirect to home if already authenticated and trying to access auth page
-  if (isAuthenticated && location.pathname === '/auth') {
+  if (isAuthenticated && window.location.hash === '#/auth') {
     return <Navigate to="/" replace />;
   }
 
@@ -179,6 +185,161 @@ const AnimatedRoutes = () => {
   );
 };
 
+// Password Change Modal Component
+const PasswordChangeModal: React.FC = () => {
+  const { user, clearPasswordChangeRequired, logout } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use the same API_BASE_URL as login to ensure cookies are sent
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${API_BASE_URL}/auth/password/change/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword
+        }),
+        credentials: 'include',  // Include cookies for authentication
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        clearPasswordChangeRequired();
+        // Logout the user and redirect to login page to login with new password
+        setTimeout(() => {
+          logout();
+          window.location.hash = '#/auth';
+        }, 2000);
+      } else {
+        const data = await response.json();
+        // Handle different error formats
+        const errorMsg = data.error?.message || data.error || data.message || data.detail || 
+          (data.details ? JSON.stringify(data.details) : 'Failed to change password');
+        setError(errorMsg);
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user?.requires_password_change) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="bg-[#1a1a1a] border border-gray-700 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-yellow-500/20 rounded-full">
+            <AlertTriangle className="w-6 h-6 text-yellow-500" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Password Change Required</h2>
+        </div>
+
+        {success ? (
+          <div className="text-center py-4">
+            <div className="p-3 bg-green-500/20 rounded-full w-fit mx-auto mb-4">
+              <Lock className="w-8 h-8 text-green-500" />
+            </div>
+            <p className="text-green-400 font-medium">Password changed successfully!</p>
+            <p className="text-gray-400 text-sm mt-2">Redirecting to login...</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-gray-300 mb-6">
+              For security reasons, you must change your default password before continuing.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Enter current password"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Enter new password"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Confirm new password"
+                  required
+                />
+              </div>
+
+              {error && (
+                <p className="text-red-400 text-sm">{error}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex-1 px-4 py-3 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 const App: React.FC = () => {
   const location = useLocation();
@@ -202,6 +363,9 @@ const App: React.FC = () => {
           <AnimatedRoutes />
         </Suspense>
       </main>
+
+      {/* Password Change Modal */}
+      <PasswordChangeModal />
     </div>
   );
 };

@@ -9,14 +9,33 @@ API Structure:
 - /api/contact/*      - Contact Form
 - /api/like/*         - Likes
 - /api/notifications/* - Notifications
+- /metrics/           - Prometheus Metrics (internal only)
+- /health/            - Health check endpoint
 """
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
+from api.metrics import metrics_view
+
+
+def health_check(request):
+    """Health check endpoint for Docker health checks and load balancers."""
+    return JsonResponse({
+        'status': 'healthy',
+        'service': 'portfolio-backend'
+    })
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # Health check endpoint
+    path('health/', health_check, name='health'),
+    
+    # Prometheus Metrics - Direct view to avoid URL conflicts
+    path('metrics/', metrics_view, name='metrics'),
     
     # API Routes - No overlapping prefixes
     path('api/auth/', include('api.urls')),              # Authentication & User Management

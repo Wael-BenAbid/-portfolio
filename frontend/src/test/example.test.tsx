@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { Spinner, Skeleton } from '../../components/Loading';
+import { ProjectSchema } from '../../services/validations';
 
 // Example test for the API service
 describe('API Service', () => {
@@ -39,8 +41,6 @@ describe('API Service', () => {
 // Example test for validation schemas
 describe('Validation Schemas', () => {
   it('should validate project data', async () => {
-    const { ProjectSchema } = await import('../../services/validations');
-    
     const validProject = {
       id: '1',
       title: 'Test Project',
@@ -52,6 +52,7 @@ describe('Validation Schemas', () => {
       featured: true,
       technologies: ['React', 'TypeScript'],
       media: [],
+      likes_count: 0,
     };
 
     const result = ProjectSchema.safeParse(validProject);
@@ -59,8 +60,6 @@ describe('Validation Schemas', () => {
   });
 
   it('should reject invalid project data', async () => {
-    const { ProjectSchema } = await import('../../services/validations');
-    
     const invalidProject = {
       id: '1',
       title: '', // Empty title should fail
@@ -79,7 +78,6 @@ describe('Validation Schemas', () => {
 // Example component test
 describe('Loading Components', () => {
   it('should render spinner', async () => {
-    const { Spinner } = await import('../../components/Loading');
     render(<Spinner size="md" />);
     
     const spinner = screen.getByRole('status');
@@ -87,7 +85,6 @@ describe('Loading Components', () => {
   });
 
   it('should render skeleton', async () => {
-    const { Skeleton } = await import('../../components/Loading');
     render(<Skeleton className="w-full h-20" />);
     
     const skeleton = document.querySelector('.animate-pulse');

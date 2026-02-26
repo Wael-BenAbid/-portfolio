@@ -1,10 +1,13 @@
 """
 API Serializers - Authentication and User Management
 """
+import logging
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import ImageUpload
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -13,8 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'email', 'user_type', 'profile_image', 'bio', 'phone', 
                   'email_notifications', 'notify_new_projects', 'notify_updates',
-                  'created_at', 'first_name', 'last_name']
-        read_only_fields = ['id', 'user_type', 'created_at']
+                  'created_at', 'first_name', 'last_name', 'requires_password_change']
+        read_only_fields = ['id', 'user_type', 'created_at', 'requires_password_change']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -45,9 +48,116 @@ class SocialAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
     provider = serializers.CharField()  # google, facebook
     provider_id = serializers.CharField()
+    provider_token = serializers.CharField(write_only=True, required=True)  # OAuth access token for verification (REQUIRED)
     first_name = serializers.CharField(required=False, default='')
     last_name = serializers.CharField(required=False, default='')
     profile_image = serializers.URLField(required=False, allow_null=True)
+
+    def validate_provider(self, value):
+        """Validate that the provider is supported"""
+        if value not in ['google', 'facebook']:
+            raise serializers.ValidationError(f"Unsupported provider: {value}")
+        return value
+
+    def validate(self, attrs):
+        """Verify the OAuth token with the provider"""
+        provider = attrs.get('provider')
+        provider_token = attrs.get('provider_token')
+        
+        # provider_token is REQUIRED for security - no bypass allowed
+        if not provider_token:
+            logger.warning(f"OAuth login attempted without provider_token for provider: {provider}")
+            raise serializers.ValidationError("provider_token is required for OAuth authentication.")
+        
+        verified = self._verify_oauth_token(provider, provider_token, attrs.get('provider_id'))
+        if not verified:
+            raise serializers.ValidationError("OAuth token verification failed. Invalid or expired token.")
+        
+        return attrs
+
+    def _verify_oauth_token(self, provider, token, expected_id):
+        """
+        Verify OAuth token with the provider.
+        Returns True if verified, False otherwise.
+        
+        Uses safe URL parameter passing to prevent injection issues.
+        - Google: https://oauth2.googleapis.com/tokeninfo
+        - Facebook: https://graph.facebook.com/debug_token
+        """
+        import requests
+        from django.conf import settings
+        from urllib.parse import quote
+        
+        try:
+            if provider == 'google':
+                # Verify Google ID token
+                # SECURITY: Client ID is REQUIRED - fail closed if not configured
+                client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
+                if not client_id:
+                    logger.error("GOOGLE_OAUTH2_CLIENT_ID not configured - OAuth verification FAILED")
+                    return False
+                
+                # Use params for safe URL encoding instead of f-string interpolation
+                response = requests.get(
+                    'https://oauth2.googleapis.com/tokeninfo',
+                    params={'id_token': token},
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    # Verify the token's audience matches our client ID
+                    if data.get('aud') != client_id:
+                        logger.warning("Google token audience mismatch")
+                        return False
+                    # Verify the user ID matches
+                    if expected_id and data.get('sub') != expected_id:
+                        logger.warning("Google token user ID mismatch")
+                        return False
+                    return True
+                else:
+                    logger.warning(f"Google token verification failed: {response.status_code}")
+                    return False
+                    
+            elif provider == 'facebook':
+                # Verify Facebook access token
+                app_id = getattr(settings, 'FACEBOOK_APP_ID', None)
+                app_secret = getattr(settings, 'FACEBOOK_APP_SECRET', None)
+                
+                if not app_id or not app_secret:
+                    logger.error("Facebook app credentials not configured - OAuth verification FAILED")
+                    # Always fail closed - never bypass OAuth verification
+                    return False
+                
+                # Build app access token safely to prevent logging of secrets
+                # Facebook requires app access token in format: app_id|app_secret
+                app_access_token = f"{app_id}|{app_secret}"
+                
+                # Use params for safe URL encoding
+                response = requests.get(
+                    'https://graph.facebook.com/debug_token',
+                    params={
+                        'input_token': token,
+                        'access_token': app_access_token
+                    },
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json().get('data', {})
+                    if data.get('is_valid', False):
+                        # Verify the user ID matches
+                        if expected_id and str(data.get('user_id')) != str(expected_id):
+                            logger.warning("Facebook token user ID mismatch")
+                            return False
+                        return True
+                logger.warning(f"Facebook token verification failed: {response.status_code}")
+                return False
+                
+        except requests.RequestException as e:
+            logger.error(f"OAuth verification request failed: {e}")
+            # Security: Always fail closed on network errors - never bypass OAuth verification
+            return False
+        
+        return False
 
     def create_or_get_user(self, validated_data):
         provider = validated_data['provider']
@@ -126,17 +236,54 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
 
 
 class PasswordChangeSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True)
+    current_password = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True, required=True)
 
     def validate_current_password(self, value):
         user = self.context['request'].user
+        
+        # Always require current password for security
+        # This prevents session hijacking attacks where an attacker could
+        # change the password without knowing the original
+        if not value:
+            raise serializers.ValidationError("Current password is required.")
         if not user.check_password(value):
             raise serializers.ValidationError("Current password is incorrect.")
         return value
 
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['confirm_password']:
+        new_password = attrs.get('new_password')
+        confirm_password = attrs.get('confirm_password')
+        
+        # Require explicit password confirmation - no default bypass
+        if not confirm_password:
+            raise serializers.ValidationError({'confirm_password': 'Password confirmation is required.'})
+        
+        if new_password != confirm_password:
             raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        
+        # Additional security: ensure new password is different from current
+        user = self.context['request'].user
+        current_password = attrs.get('current_password')
+        if current_password and user.check_password(new_password):
+            raise serializers.ValidationError({'new_password': 'New password must be different from current password.'})
+
         return attrs
+
+
+class ImageUploadSerializer(serializers.ModelSerializer):
+    """Serializer for image uploads."""
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ImageUpload
+        fields = ['id', 'image', 'url', 'uploaded_at', 'uploaded_by']
+        read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
+
+    def get_url(self, obj):
+        """Get the full URL of the uploaded image."""
+        request = self.context.get('request')
+        if request and obj.image:
+            return request.build_absolute_uri(obj.image.url)
+        return None

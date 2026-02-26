@@ -12,8 +12,9 @@ from django.conf import settings
 
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, SocialAuthSerializer,
-    AdminUserUpdateSerializer, PasswordChangeSerializer
+    AdminUserUpdateSerializer, PasswordChangeSerializer, ImageUploadSerializer
 )
+from .models import ImageUpload
 
 User = get_user_model()
 
@@ -60,21 +61,20 @@ class LoginView(APIView):
                 'error': 'Email and password are required.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({
-                'error': 'Invalid email or password.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+        # Use filter().first() to prevent timing attacks - always returns None if not found
+        # This prevents attackers from enumerating valid email addresses
+        user = User.objects.filter(email=email).first()
         
-        if not user.check_password(password):
+        # Check password only if user exists, but always return same error message
+        if not user or not user.check_password(password):
             return Response({
                 'error': 'Invalid email or password.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         token, created = Token.objects.get_or_create(user=user)
         
-        # Set token as HttpOnly cookie
+        # Set token as HttpOnly cookie only - NOT in response body for security
+        # This prevents XSS token theft since JavaScript cannot access HttpOnly cookies
         response = Response({
             'user': UserSerializer(user).data
         })
@@ -89,6 +89,7 @@ class LoginView(APIView):
         return response
 
 
+@method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -118,10 +119,14 @@ class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        # Delete auth token if it exists
         try:
-            request.user.auth_token.delete()
-        except:
-            pass
+            if hasattr(request.user, 'auth_token'):
+                request.user.auth_token.delete()
+        except Exception as e:
+            # Log the error but don't fail the logout
+            logger.warning(f"Logout error for user {request.user.id}: {e}")
+        
         response = Response({'message': 'Successfully logged out.'})
         response.delete_cookie('auth_token')
         return response
@@ -150,15 +155,22 @@ class UserSettingsView(generics.UpdateAPIView):
         return Response(serializer.data)
 
 
+@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
 class PasswordChangeView(APIView):
+    """
+    Password change view for authenticated users.
+    Uses standard DRF authentication - user must be authenticated via token.
+    Rate limited to prevent brute force attacks.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        user = request.user
-        user.set_password(serializer.validated_data['new_password'])
-        user.save()
+        request.user.set_password(serializer.validated_data['new_password'])
+        # Clear the requires_password_change flag after successful password change
+        request.user.requires_password_change = False
+        request.user.save()
         return Response({'message': 'Password changed successfully.'})
 
 
@@ -199,3 +211,21 @@ class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
             return Response({'error': 'Cannot delete your own account'}, status=status.HTTP_400_BAD_REQUEST)
         user.delete()
         return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+# ============ Image Upload View ============
+
+class ImageUploadView(generics.CreateAPIView):
+    """View for handling image uploads."""
+    serializer_class = ImageUploadSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)

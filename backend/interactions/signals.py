@@ -12,10 +12,10 @@ def update_likes_count_on_save(sender, instance, created, **kwargs):
     """Update likes count when a like is saved"""
     if created:
         if instance.content_type == 'project' and instance.project:
-            instance.project.likes_count += 1
+            instance.project.likes_count = Like.objects.filter(project=instance.project).count()
             instance.project.save(update_fields=['likes_count'])
         elif instance.content_type == 'media' and instance.media:
-            instance.media.likes_count += 1
+            instance.media.likes_count = Like.objects.filter(media=instance.media).count()
             instance.media.save(update_fields=['likes_count'])
 
 
@@ -23,8 +23,8 @@ def update_likes_count_on_save(sender, instance, created, **kwargs):
 def update_likes_count_on_delete(sender, instance, **kwargs):
     """Update likes count when a like is deleted"""
     if instance.content_type == 'project' and instance.project:
-        instance.project.likes_count = max(0, instance.project.likes_count - 1)
+        instance.project.likes_count = Like.objects.filter(project=instance.project).count()
         instance.project.save(update_fields=['likes_count'])
     elif instance.content_type == 'media' and instance.media:
-        instance.media.likes_count = max(0, instance.media.likes_count - 1)
+        instance.media.likes_count = Like.objects.filter(media=instance.media).count()
         instance.media.save(update_fields=['likes_count'])

@@ -5,6 +5,7 @@ Provides consistent error responses across all API endpoints
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
+from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ def custom_exception_handler(exc, context):
         "error": {
             "code": "ERROR_CODE",
             "message": "Human readable message",
-            "details": {...}  # Optional additional details
+            "details": {...}  # Optional additional details (DEV only)
         }
     }
     """
@@ -27,12 +28,12 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
     
     if response is not None:
-        # Log the error
+        # Log the error - but don't log sensitive data
         logger.error(
-            f"API Error: {exc.__class__.__name__} - {str(exc)}",
+            f"API Error: {exc.__class__.__name__}",
             extra={
-                'context': context,
-                'status_code': response.status_code
+                'status_code': response.status_code,
+                # ✅ Don't log: request.user, request.data, etc.
             }
         )
         
@@ -41,9 +42,12 @@ def custom_exception_handler(exc, context):
             'error': {
                 'code': get_error_code(response.status_code),
                 'message': get_error_message(response.data),
-                'details': response.data if isinstance(response.data, dict) else None
             }
         }
+        
+        # Only include details in DEBUG mode
+        if settings.DEBUG:
+            error_data['error']['details'] = response.data if isinstance(response.data, dict) else None
         
         response.data = error_data
     

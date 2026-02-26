@@ -31,16 +31,13 @@ interface RequestOptions extends RequestInit {
 }
 
 /**
- * Get auth token from cookies
+ * Check if user is authenticated (has user data in sessionStorage)
+ * Note: The actual authentication is done via HttpOnly cookie set by backend
+ * We do NOT store or retrieve the auth token from sessionStorage for security
  */
 export const getAuthToken = (): string | null => {
-  const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'auth_token') {
-      return value;
-    }
-  }
+  // Token is stored in HttpOnly cookie only - not accessible to JavaScript
+  // Return null to indicate we rely on cookie-based authentication
   return null;
 };
 
@@ -155,6 +152,7 @@ export const api = {
         const response = await fetch(buildURL(endpoint, params), {
           method: 'GET',
           headers: getDefaultHeaders(options?.token),
+          credentials: 'include',  // Include HttpOnly cookies for authentication
           ...options,
         });
         
@@ -181,6 +179,7 @@ export const api = {
         method: 'POST',
         headers: getDefaultHeaders(options?.token),
         body: body ? JSON.stringify(body) : undefined,
+        credentials: 'include',  // Include HttpOnly cookies for authentication
         ...options,
       });
       
@@ -196,6 +195,7 @@ export const api = {
       method: 'PUT',
       headers: getDefaultHeaders(options?.token),
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',  // Include HttpOnly cookies for authentication
       ...options,
     });
     
@@ -210,6 +210,7 @@ export const api = {
       method: 'PATCH',
       headers: getDefaultHeaders(options?.token),
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',  // Include HttpOnly cookies for authentication
       ...options,
     });
     
@@ -223,6 +224,7 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getDefaultHeaders(options?.token),
+      credentials: 'include',  // Include HttpOnly cookies for authentication
       ...options,
     });
     
@@ -243,6 +245,7 @@ export const api = {
       method: 'POST',
       headers,
       body: formData,
+      credentials: 'include',  // Include HttpOnly cookies for authentication
       ...options,
     });
     

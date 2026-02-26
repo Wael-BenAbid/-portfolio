@@ -168,8 +168,8 @@ python manage.py test
 | `DB_USER` | Database user | postgres |
 | `DB_PASSWORD` | Database password | Required |
 | `DB_HOST` | Database host | localhost |
-| `DB_PORT` | Database port | 5433 |
-| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins | http://localhost:5173 |
+| `DB_PORT` | Database port | 5432 |
+| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins | http://localhost:3000 |
 
 ## 📄 License
 

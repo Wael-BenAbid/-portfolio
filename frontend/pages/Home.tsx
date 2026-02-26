@@ -52,9 +52,43 @@ const Home: React.FC = () => {
   const footerText = settings?.footer_text || 'DESIGNED BY ADRIAN';
   const copyrightYear = settings?.copyright_year || 2024;
   const version = settings?.version || '1.0';
+  
+  // Navigation labels from settings
+  const navWorkLabel = settings?.nav_work_label || 'Work';
+  const navAboutLabel = settings?.nav_about_label || 'About';
+  const navContactLabel = settings?.nav_contact_label || 'Contact';
 
   return (
     <div className="relative bg-transparent selection:bg-blue-500">
+      {/* Navigation Bar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-8 md:px-24 py-6 bg-black/20 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <Link to="/" className="text-xl font-display font-bold tracking-tighter uppercase">
+            {heroTitle}
+          </Link>
+          <div className="flex gap-8 md:gap-12">
+            <Link
+              to="/work"
+              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
+            >
+              {navWorkLabel}
+            </Link>
+            <Link
+              to="/about"
+              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
+            >
+              {navAboutLabel}
+            </Link>
+            <Link
+              to="/contact"
+              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
+            >
+              {navContactLabel}
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       {/* 1. HERO SECTION */}
       <section className="relative h-[120vh] flex flex-col items-center justify-center px-8 text-center overflow-hidden">
         <motion.div

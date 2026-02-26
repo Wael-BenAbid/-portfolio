@@ -18,6 +18,17 @@ class SiteSettings(models.Model):
     hero_title = models.CharField(max_length=100, default='Creative Developer')
     hero_subtitle = models.CharField(max_length=200, blank=True)
     hero_tagline = models.CharField(max_length=200, blank=True)
+
+    # About Section
+    about_title = models.CharField(max_length=100, default='THE MIND BEHIND')
+    about_quote = models.TextField(default='"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."')
+    profile_image = models.URLField(max_length=500, blank=True, null=True, help_text="Profile image URL for about section")
+    drone_image = models.URLField(max_length=500, blank=True, null=True, help_text="Drone/work image URL for about section")
+
+    # Navigation Bar
+    nav_work_label = models.CharField(max_length=50, default='Work', help_text="Label for Work navigation link")
+    nav_about_label = models.CharField(max_length=50, default='About', help_text="Label for About navigation link")
+    nav_contact_label = models.CharField(max_length=50, default='Contact', help_text="Label for Contact navigation link")
     
     # CV Personal Info
     cv_full_name = models.CharField(max_length=100, blank=True)
@@ -60,6 +71,9 @@ class SiteSettings(models.Model):
     footer_text = models.TextField(blank=True)
     copyright_year = models.IntegerField(default=2024)
     version = models.CharField(max_length=20, default='1.0.0')
+    designer_name = models.CharField(max_length=100, blank=True, default='ADRIAN')
+    copyright_text = models.CharField(max_length=200, blank=True, default='Your Name. All rights reserved.')
+    show_location = models.BooleanField(default=True)
     
     # SEO
     meta_title = models.CharField(max_length=100, blank=True)

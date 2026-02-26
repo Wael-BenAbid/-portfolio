@@ -4,15 +4,8 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
-import { Project } from '../../types';
+import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
-
-interface MediaItem {
-  id: string;
-  type: 'image' | 'video';
-  url: string;
-  order: number;
-}
 
 const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -35,7 +28,7 @@ const Dashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { token, logout } = useAuth();
+  const { token, logout, isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchProjects();
@@ -43,7 +36,9 @@ const Dashboard: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/`);
+      const response = await fetch(`${API_BASE_URL}/projects/`, {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         const projectsList = data.results || data;
@@ -76,7 +71,7 @@ const Dashboard: React.FC = () => {
 
   // Upload image to server
   const uploadImage = async (file: File): Promise<string | null> => {
-    if (!token) return null;
+    if (!isAuthenticated) return null;
     
     setUploading(true);
     try {
@@ -85,9 +80,7 @@ const Dashboard: React.FC = () => {
       
       const response = await fetch(`${API_BASE_URL}/upload/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`
-        },
+        credentials: 'include',
         body: formData
       });
       
@@ -144,7 +137,8 @@ const Dashboard: React.FC = () => {
         id: `m-${Date.now()}`,
         type: 'image',
         url: url,
-        order: currentMedia.length + 1
+        order: currentMedia.length + 1,
+        likes_count: 0
       };
       setNewProject({
         ...newProject,
@@ -167,7 +161,7 @@ const Dashboard: React.FC = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Token ${token}` }
+        credentials: 'include'
       });
       if (response.ok) {
         setProjects(projects.filter(p => p.id !== id));
@@ -193,9 +187,9 @@ const Dashboard: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ featured: !project.featured })
       });
       if (response.ok) {
@@ -247,7 +241,8 @@ const Dashboard: React.FC = () => {
         id: `m-${Date.now()}`,
         type: mediaTypeInput,
         url: mediaUrlInput.trim(),
-        order: currentMedia.length + 1
+        order: currentMedia.length + 1,
+        likes_count: 0
       };
       setNewProject({
         ...newProject,
@@ -278,16 +273,16 @@ const Dashboard: React.FC = () => {
       createdAt: new Date().toISOString(),
       featured: newProject.featured || false,
       thumbnail: newProject.thumbnail || 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop',
-      media: newProject.media?.length ? newProject.media : [{ id: 'm-new', type: 'image', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop', order: 1 }]
+      media: newProject.media?.length ? newProject.media : [{ id: 'm-new', type: 'image', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop', order: 1, likes_count: 0 }]
     };
 
     try {
       const response = await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(project)
       });
       if (response.ok) {
@@ -318,9 +313,9 @@ const Dashboard: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/projects/${editingProject.id}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(editingProject)
       });
       if (response.ok) {
@@ -726,3 +721,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

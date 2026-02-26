@@ -39,7 +39,7 @@ class CustomUser(AbstractUser):
     ]
     
     username = None  # Remove username field
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, db_index=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPES, default='visitor')
     profile_image = models.URLField(max_length=500, blank=True, null=True, help_text="URL to profile image")
     bio = models.TextField(max_length=500, blank=True)
@@ -54,6 +54,9 @@ class CustomUser(AbstractUser):
     email_notifications = models.BooleanField(default=True)
     notify_new_projects = models.BooleanField(default=True)
     notify_updates = models.BooleanField(default=True)
+    
+    # Security: Track if user needs to change password (for auto-created admin)
+    requires_password_change = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -71,3 +74,22 @@ class CustomUser(AbstractUser):
     
     def is_registered_user(self):
         return self.user_type == 'registered'
+
+
+class ImageUpload(models.Model):
+    """Model for storing uploaded images."""
+    image = models.ImageField(upload_to='uploads/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_images'
+    )
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"Image {self.id} - {self.image.name}"

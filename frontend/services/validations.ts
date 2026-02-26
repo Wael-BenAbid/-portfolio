@@ -14,6 +14,7 @@ export const MediaItemSchema = z.object({
   type: z.enum(['image', 'video']),
   url: z.string().url(),
   order: z.number().int().min(0).default(0),
+  likes_count: z.number().int().min(0).default(0),
 });
 
 export const ProjectSchema = z.object({
@@ -27,6 +28,7 @@ export const ProjectSchema = z.object({
   featured: z.boolean().default(false),
   technologies: z.array(z.string()).default([]),
   media: z.array(MediaItemSchema).default([]),
+  likes_count: z.number().int().min(0).default(0),
 });
 
 export const SkillSchema = z.object({
@@ -74,6 +76,9 @@ export const SiteSettingsSchema = z.object({
   instagram_url: z.string().url().optional().or(z.literal('')),
   linkedin_url: z.string().url().optional().or(z.literal('')),
   github_url: z.string().url().optional().or(z.literal('')),
+  nav_work_label: z.string().default('Work'),
+  nav_about_label: z.string().default('About'),
+  nav_contact_label: z.string().default('Contact'),
 });
 
 // ============================================
