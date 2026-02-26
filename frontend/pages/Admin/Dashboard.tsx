@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await fetch(`${API_BASE_URL}/upload/`, {
+      const response = await fetch(`${API_BASE_URL}/auth/upload/`, {
         method: 'POST',
         credentials: 'include',
         body: formData

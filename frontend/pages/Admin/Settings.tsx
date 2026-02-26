@@ -160,7 +160,13 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/`);
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
+        // Replace null values with empty strings to avoid React warnings
+        const sanitizedData = Object.keys(data).reduce((acc, key) => {
+          const typedKey = key as keyof SiteSettings;
+          acc[typedKey] = data[typedKey] === null ? '' : data[typedKey];
+          return acc;
+        }, {} as SiteSettings);
+        setSettings(sanitizedData);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -340,7 +346,7 @@ const Settings: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`${API_URL}/upload/`, {
+      const response = await fetch(`${API_URL}/auth/upload/`, {
         method: 'POST',
         credentials: 'include',
         body: formData
