@@ -15,7 +15,7 @@ class SiteSettings(models.Model):
     site_description = models.TextField(blank=True)
     
     # Hero Section
-    hero_title = models.CharField(max_length=100, default='Creative Developer')
+    hero_title = models.CharField(max_length=100, default='CREATIVE DEVELOPER')
     hero_subtitle = models.CharField(max_length=200, blank=True)
     hero_tagline = models.CharField(max_length=200, blank=True)
 

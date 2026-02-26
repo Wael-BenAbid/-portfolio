@@ -39,8 +39,8 @@ const Home: React.FC = () => {
   );
 
   // Use settings or defaults
-  const heroTitle = settings?.hero_title || 'ACTIVE';
-  const heroSubtitle = settings?.hero_subtitle || 'THEORY';
+  const heroTitle = settings?.hero_title || 'CREATIVE DEVELOPER';
+  const heroSubtitle = settings?.hero_subtitle || 'CREATIVE DEVELOPER';
   const heroTagline = settings?.hero_tagline || 'Digital Experiences & Aerial Visuals';
   const aboutTitle = settings?.about_title || 'THE MIND BEHIND';
   const aboutQuote = settings?.about_quote || '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."';
@@ -60,34 +60,6 @@ const Home: React.FC = () => {
 
   return (
     <div className="relative bg-transparent selection:bg-blue-500">
-      {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-8 md:px-24 py-6 bg-black/20 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="text-xl font-display font-bold tracking-tighter uppercase">
-            {heroTitle}
-          </Link>
-          <div className="flex gap-8 md:gap-12">
-            <Link
-              to="/work"
-              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
-            >
-              {navWorkLabel}
-            </Link>
-            <Link
-              to="/about"
-              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
-            >
-              {navAboutLabel}
-            </Link>
-            <Link
-              to="/contact"
-              className="text-xs font-display uppercase tracking-[0.3em] text-gray-400 hover:text-white transition-colors"
-            >
-              {navContactLabel}
-            </Link>
-          </div>
-        </div>
-      </nav>
 
       {/* 1. HERO SECTION */}
       <section className="relative h-[120vh] flex flex-col items-center justify-center px-8 text-center overflow-hidden">
