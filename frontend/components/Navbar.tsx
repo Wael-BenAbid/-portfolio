@@ -11,10 +11,10 @@ export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { data: settings } = useSettings();
 
-  // Always show login link for testing
+  // Navigation links - show login only when not authenticated
   const links = [
     { name: 'Work', path: '/work' },
-    { name: 'Login', path: '/auth' },
+    ...(!isAuthenticated ? [{ name: 'Login', path: '/auth' }] : []),
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];

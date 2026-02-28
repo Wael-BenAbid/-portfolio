@@ -20,7 +20,7 @@ class Project(models.Model):
     video_url = models.URLField(blank=True, null=True)
     project_url = models.URLField(blank=True, null=True)
     github_url = models.URLField(blank=True, null=True)
-    is_featured = models.BooleanField(default=False)
+    featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey('api.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects_created')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -52,8 +52,18 @@ class MediaItem(models.Model):
     
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='media')
     media_type = models.CharField(max_length=10, choices=MEDIA_TYPES, default='image')
-    url = models.URLField(max_length=500, help_text="URL to media file")
-    thumbnail = models.URLField(max_length=500, blank=True, null=True, help_text="URL to video thumbnail")
+    file = models.FileField(
+        upload_to='project_media/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text="Upload high-resolution image or video file (max 50MB)"
+    )
+    thumbnail = models.ImageField(
+        upload_to='project_media/thumbnails/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Optional thumbnail for videos"
+    )
     caption = models.CharField(max_length=200, blank=True)
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -64,6 +74,13 @@ class MediaItem(models.Model):
 
     def __str__(self):
         return f"{self.media_type} - {self.project.title}"
+    
+    @property
+    def url(self):
+        """Return the URL of the uploaded file"""
+        if self.file:
+            return self.file.url
+        return None
 
 
 class Skill(models.Model):

@@ -2,13 +2,28 @@
 API Serializers - Authentication and User Management
 """
 import logging
+import os
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import ImageUpload
+from django.core.exceptions import ValidationError
+from django.utils.text import get_valid_filename
+from .models import ImageUpload, Visitor
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+# Allowed image MIME types for upload validation
+ALLOWED_IMAGE_MIME_TYPES = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+]
+
+# Allowed file extensions
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -282,12 +297,73 @@ class ImageUploadSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
 
     def validate_image(self, value):
-        """Validate image file size (max size from environment variable)."""
-        import os
+        """
+        Validate image file with comprehensive security checks:
+        1. File size limit
+        2. MIME type validation
+        3. File extension validation
+        4. Content validation using Pillow
+        """
+        # 1. Validate file size
         max_size_mb = int(os.environ.get('MAX_IMAGE_SIZE_MB', 5))
         max_size = max_size_mb * 1024 * 1024
         if value.size > max_size:
-            raise serializers.ValidationError(f"Image size cannot exceed {max_size_mb}MB. Current size: {value.size / (1024 * 1024):.2f}MB")
+            raise serializers.ValidationError(
+                f"Image size cannot exceed {max_size_mb}MB. "
+                f"Current size: {value.size / (1024 * 1024):.2f}MB"
+            )
+        
+        # 2. Validate MIME type
+        content_type = getattr(value, 'content_type', None)
+        if not content_type or content_type.lower() not in ALLOWED_IMAGE_MIME_TYPES:
+            raise serializers.ValidationError(
+                f"Invalid file type '{content_type}'. "
+                f"Allowed types: {', '.join(ALLOWED_IMAGE_MIME_TYPES)}"
+            )
+        
+        # 3. Validate file extension
+        filename = get_valid_filename(value.name)
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise serializers.ValidationError(
+                f"Invalid file extension '{file_ext}'. "
+                f"Allowed extensions: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}"
+            )
+        
+        # 4. Validate actual image content using Pillow
+        try:
+            from PIL import Image
+            # Open the file to verify it's a valid image
+            img = Image.open(value)
+            img.verify()  # Verify it's actually an image
+            
+            # Re-open for further checks (verify() closes the file)
+            value.seek(0)
+            img = Image.open(value)
+            
+            # Check for potentially malicious image formats
+            if img.format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
+                raise serializers.ValidationError(
+                    f"Invalid image format '{img.format}'. "
+                    f"Allowed formats: JPEG, PNG, WEBP, GIF"
+                )
+            
+            # Check image dimensions (prevent extremely large images)
+            max_dimension = 10000  # 10,000 pixels
+            if img.width > max_dimension or img.height > max_dimension:
+                raise serializers.ValidationError(
+                    f"Image dimensions too large: {img.width}x{img.height}. "
+                    f"Maximum allowed: {max_dimension}x{max_dimension} pixels"
+                )
+            
+        except ImportError:
+            logger.warning("Pillow not installed - skipping image content validation")
+        except Exception as e:
+            logger.error(f"Image validation failed: {str(e)}")
+            raise serializers.ValidationError(
+                "Invalid image file. The file may be corrupted or not a valid image."
+            )
+        
         return value
 
     def get_url(self, obj):
@@ -296,3 +372,29 @@ class ImageUploadSerializer(serializers.ModelSerializer):
         if request and obj.image:
             return request.build_absolute_uri(obj.image.url)
         return None
+
+
+class VisitorSerializer(serializers.ModelSerializer):
+    """Serializer for visitor tracking data."""
+    class Meta:
+        model = Visitor
+        fields = [
+            'id', 'ip_address', 'user_agent', 'referrer', 'path', 
+            'session_key', 'user', 'visit_time', 'is_unique', 
+            'country', 'city', 'device_type', 'browser', 'os'
+        ]
+        read_only_fields = fields
+
+
+class VisitorStatsSerializer(serializers.Serializer):
+    """Serializer for visitor statistics."""
+    total_visitors = serializers.IntegerField()
+    unique_visitors = serializers.IntegerField()
+    page_views = serializers.IntegerField()
+    bounce_rate = serializers.FloatField()
+    average_session_duration = serializers.FloatField()
+    popular_pages = serializers.ListField()
+    device_distribution = serializers.DictField()
+    browser_distribution = serializers.DictField()
+    os_distribution = serializers.DictField()
+    daily_trend = serializers.ListField()

@@ -8,7 +8,19 @@ from .models import SiteSettings, About, ContactMessage, EmailSubscription
 class SiteSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteSettings
-        fields = '__all__'
+        fields = [
+            'site_name', 'site_title', 'logo_url', 'favicon_url', 'site_description',
+            'hero_title', 'hero_subtitle', 'hero_tagline',
+            'about_title', 'about_quote', 'profile_image', 'drone_image',
+            'nav_work_label', 'nav_about_label', 'nav_contact_label',
+            'cv_full_name', 'cv_job_title', 'cv_email', 'cv_phone', 'cv_location', 'cv_profile_image', 'cv_summary',
+            'location', 'latitude', 'longitude',
+            'instagram_url', 'linkedin_url', 'github_url', 'twitter_url',
+            'email_host', 'email_port', 'email_host_user', 'default_from_email',
+            'contact_email', 'contact_phone',
+            'footer_text', 'copyright_year', 'version', 'designer_name', 'copyright_text', 'show_location',
+            'meta_title', 'meta_description', 'meta_keywords'
+        ]
 
 
 class AboutSerializer(serializers.ModelSerializer):

@@ -5,8 +5,11 @@ export interface MediaItem {
   id: string;
   type: 'image' | 'video';
   url: string;
+  thumbnail_url?: string;
+  caption?: string;
   order: number;
   likes_count: number;
+  is_liked?: boolean;
 }
 
 export interface Project {
@@ -18,6 +21,7 @@ export interface Project {
   thumbnail: string;
   createdAt: string;
   featured: boolean;
+  is_active: boolean;
   media: MediaItem[];
   technologies: string[];
   likes_count: number;

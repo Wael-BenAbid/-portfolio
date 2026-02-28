@@ -26,9 +26,22 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
 @method_decorator(cache_page(60 * 15), name='dispatch')  # Cache for 15 minutes
 @method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST'), name='dispatch')
 class ProjectListCreate(generics.ListCreateAPIView):
-    queryset = Project.objects.select_related('created_by')
     serializer_class = ProjectSerializer
     pagination_class = StandardResultsSetPagination
+    
+    def get_queryset(self):
+        # Only return active projects for anonymous users or non-admin users
+        if self.request.user.is_authenticated and self.request.user.user_type == 'admin':
+            return Project.objects.select_related('created_by').prefetch_related('media')
+        return Project.objects.select_related('created_by').prefetch_related('media').filter(is_active=True)
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)
     
     def handle_exception(self, exc):
         if isinstance(exc, Ratelimited):

@@ -261,6 +261,11 @@ export type SiteSettings = z.infer<typeof SiteSettingsSchema>;
 
 // Default settings when API is unavailable
 const DEFAULT_SETTINGS: SiteSettings = {
+  site_name: 'Portfolio',
+  site_title: 'ADRIAN',
+  logo_url: '',
+  favicon_url: '',
+  site_description: '',
   hero_title: 'ACTIVE',
   hero_subtitle: 'THEORY',
   hero_tagline: 'Digital Experiences & Aerial Visuals',
@@ -271,9 +276,28 @@ const DEFAULT_SETTINGS: SiteSettings = {
 };
 
 export function useSettings() {
-  return useQuery<SiteSettings>('/settings/', {
+  const { data, ...rest } = useQuery<SiteSettings>('/settings/', {
     fallbackData: DEFAULT_SETTINGS,
   });
+
+  // Dynamically update browser title and favicon when settings change
+  useEffect(() => {
+    if (data?.site_title) {
+      document.title = data.site_title;
+    }
+
+    if (data?.favicon_url) {
+      let favicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+      if (!favicon) {
+        favicon = document.createElement('link') as HTMLLinkElement;
+        favicon.rel = 'icon';
+        document.head.appendChild(favicon);
+      }
+      favicon.href = data.favicon_url;
+    }
+  }, [data?.site_title, data?.favicon_url]);
+
+  return { data, ...rest };
 }
 
 // ============================================

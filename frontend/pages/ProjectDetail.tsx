@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { useProject, useProjects } from '../hooks/useData';
 import { ProjectDetailSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
@@ -72,10 +73,13 @@ const ProjectDetail: React.FC = () => {
       {/* Hero Section */}
       <section className="relative h-screen w-full overflow-hidden">
         <motion.div style={{ opacity, scale }} className="absolute inset-0">
-          <img 
-            src={project.thumbnail} 
+          <OptimizedImage
+            src={project.thumbnail}
             alt={project.title}
-            loading="eager"
+            width={1920}
+            height={1080}
+            lazy={false}
+            placeholder={false}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent" />
@@ -95,11 +99,11 @@ const ProjectDetail: React.FC = () => {
               {project.title}
             </h1>
             <div className="flex flex-wrap gap-4">
-              {project.technologies.map(tech => (
-                <span key={tech} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-display uppercase tracking-widest">
-                  {tech}
-                </span>
-              ))}
+               {project.technologies?.map(tech => (
+                 <span key={tech} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-display uppercase tracking-widest">
+                   {tech}
+                 </span>
+               ))}
             </div>
           </motion.div>
         </div>
@@ -122,46 +126,67 @@ const ProjectDetail: React.FC = () => {
               "{project.description}"
             </p>
             <div className="mt-8 pt-8 border-t border-gray-800">
-              <p className="text-xs font-display text-gray-500 uppercase tracking-widest mb-2">Date</p>
-              <p className="text-gray-300">
-                {new Date(project.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
+               <p className="text-xs font-display text-gray-500 uppercase tracking-widest mb-2">Date</p>
+               <p className="text-gray-300">
+                 {new Date(project.createdAt).toLocaleDateString('en-US', {
+                   year: 'numeric',
+                   month: 'long',
+                   day: 'numeric'
+                 })}
+               </p>
+             </div>
+
+             {project.is_active && (
+               <div className="mt-8">
+                 <Link
+                   to="/auth"
+                   state={{ from: `/project/${project.slug}` }}
+                   className="inline-block px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
+                 >
+                   Inscription
+                 </Link>
+               </div>
+             )}
           </div>
           <div className="md:col-span-8 flex flex-col gap-24">
-            {project.media.map((item, idx) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                className="relative overflow-hidden group"
-              >
-                {item.type === 'image' ? (
-                  <img 
-                    src={item.url} 
-                    alt={`${project.title} - Media ${idx + 1}`} 
-                    loading="lazy"
-                    className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-1000" 
-                  />
-                ) : (
-                  <video 
-                    src={item.url} 
-                    autoPlay 
-                    muted 
-                    loop 
-                    playsInline
-                    className="w-full h-auto"
-                  />
-                )}
-              </motion.div>
-            ))}
-            
-            {project.media.length === 0 && (
+            {project.media && project.media.length > 0 ? (
+              project.media.map((item, idx) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  className="relative overflow-hidden group"
+                >
+                  {item.type === 'image' ? (
+                    <OptimizedImage
+                      src={item.url}
+                      alt={`${project.title} - Media ${idx + 1}`}
+                      width={1920}
+                      height={1080}
+                      lazy={true}
+                      placeholder={true}
+                      grayscale={true}
+                      hoverEffects={true}
+                      className="w-full h-auto"
+                    />
+                  ) : (
+                    <video
+                      src={item.url}
+                      poster={item.thumbnail_url}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-auto"
+                    />
+                  )}
+                  {item.caption && (
+                    <p className="mt-4 text-sm text-gray-400 italic">{item.caption}</p>
+                  )}
+                </motion.div>
+              ))
+            ) : (
               <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
                 <p className="text-gray-500">No additional media</p>
               </div>

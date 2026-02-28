@@ -1,9 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { Spinner, Skeleton } from '../../components/Loading';
-import { ProjectSchema } from '../../services/validations';
+import { Spinner, Skeleton } from '../components/Loading';
+import { ProjectSchema } from '../services/validations';
 
 // Example test for the API service
 describe('API Service', () => {

@@ -22,8 +22,8 @@ const Home: React.FC = () => {
     error: settingsError 
   } = useSettings();
 
-  // Get featured projects (first 4)
-  const featuredWorks: Project[] = projectsData?.results?.slice(0, 4) || [];
+  // Get featured projects (first 4 active)
+  const featuredWorks: Project[] = projectsData?.results?.filter(p => p.is_active).slice(0, 4) || [];
 
   // Scroll-based image transition for about section
   const { scrollYProgress: aboutScrollProgress } = useScroll({
@@ -158,11 +158,11 @@ const Home: React.FC = () => {
                     <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
                     <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
                     <div className="flex flex-wrap gap-2 md:gap-4">
-                      {project.technologies.slice(0, 3).map(t => (
+                      {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
                         <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
                           {t}
                         </span>
-                      ))}
+                      )) : []}
                     </div>
                   </div>
 

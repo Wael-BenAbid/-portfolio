@@ -161,11 +161,35 @@ const Settings: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         // Replace null values with empty strings to avoid React warnings
-        const sanitizedData = Object.keys(data).reduce((acc, key) => {
+        // Replace null values with appropriate defaults based on type to avoid React warnings
+        const sanitizedData = Object.entries(data).reduce((acc, [key, value]) => {
           const typedKey = key as keyof SiteSettings;
-          acc[typedKey] = data[typedKey] === null ? '' : data[typedKey];
+          
+          if (value === null) {
+            // Use default value from DEFAULT_SETTINGS for null values
+            acc[typedKey] = DEFAULT_SETTINGS[typedKey];
+          } else {
+            // Type check and sanitize values based on default type
+            const defaultValue = DEFAULT_SETTINGS[typedKey];
+            if (typeof defaultValue === 'number' && typeof value !== 'number') {
+              acc[typedKey] = Number(value) || defaultValue;
+            } else if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') {
+              acc[typedKey] = Boolean(value);
+            } else {
+              acc[typedKey] = value;
+            }
+          }
+          
           return acc;
-        }, {} as SiteSettings);
+        }, {} as Record<keyof SiteSettings, any>);
+        
+        // Ensure all required fields are present (fallback to defaults)
+        Object.keys(DEFAULT_SETTINGS).forEach(key => {
+          const typedKey = key as keyof SiteSettings;
+          if (!(typedKey in sanitizedData)) {
+            sanitizedData[typedKey] = DEFAULT_SETTINGS[typedKey];
+          }
+        });
         setSettings(sanitizedData);
       }
     } catch (error) {

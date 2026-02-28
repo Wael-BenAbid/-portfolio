@@ -66,31 +66,81 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # Environment-based cache configuration
 REDIS_URL = os.environ.get('REDIS_URL', '')
 
-if 'test' in sys.argv:
-    # Use in-memory cache for testing
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-        }
-    }
-elif REDIS_URL:
-    # Use Redis in production when REDIS_URL is set
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': REDIS_URL,
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+# Configure cache backend based on environment
+# Priority: Redis (production) -> LocMemCache (development) -> DummyCache (fallback)
+def _get_cache_backend():
+    """
+    Get the appropriate cache backend based on environment and Redis availability.
+    Returns a CACHES dictionary configuration.
+    """
+    if not REDIS_URL:
+        # No Redis URL configured - use LocMemCache for development
+        logger.info("No REDIS_URL configured. Using LocMemCache for development.")
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'unique-snowflake',
+                'OPTIONS': {
+                    'MAX_ENTRIES': 1000,
+                }
             }
         }
-    }
-else:
-    # Fallback to dummy cache for local development without Redis
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+    
+    # Try to use Redis for production environments
+    try:
+        import django_redis
+        # Test Redis connection by attempting to import and configure
+        CACHES = {
+            'default': {
+                'BACKEND': 'django_redis.cache.RedisCache',
+                'LOCATION': REDIS_URL,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                    'CONNECTION_POOL_KWARGS': {
+                        'max_connections': 50,
+                        'retry_on_timeout': True,
+                    },
+                    'SOCKET_CONNECT_TIMEOUT': 5,
+                    'SOCKET_TIMEOUT': 5,
+                },
+                'KEY_PREFIX': 'portfolio',
+                'TIMEOUT': 300,  # 5 minutes default
+            }
         }
-    }
+        logger.info(f"Cache backend set to Redis at {REDIS_URL}")
+        return CACHES
+    except ImportError:
+        # django-redis not installed, fall back to LocMemCache
+        logger.warning(
+            'REDIS_URL is set but django-redis is not installed. '
+            'Falling back to LocMemCache. Install django-redis for production.'
+        )
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'unique-snowflake',
+                'OPTIONS': {
+                    'MAX_ENTRIES': 1000,
+                }
+            }
+        }
+    except Exception as e:
+        # Redis connection failed or other error, fall back to LocMemCache
+        logger.warning(
+            f'Redis connection failed: {e}. '
+            'Falling back to LocMemCache for development.'
+        )
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'unique-snowflake',
+                'OPTIONS': {
+                    'MAX_ENTRIES': 1000,
+                }
+            }
+        }
+
+CACHES = _get_cache_backend()
 
 # ===========================================
 # SECURITY MIDDLEWARE SETTINGS
@@ -105,6 +155,9 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    X_FRAME_OPTIONS = 'DENY'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
     
     # Content Security Policy (CSP) - Defense against XSS attacks
     # For better security in production, use nonce-based or hash-based CSP instead of unsafe-inline
@@ -156,6 +209,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'api.middleware.PrometheusMetricsMiddleware',
+    'api.middleware.VisitorTrackingMiddleware',
 ]
 
 ROOT_URLCONF = 'portfolio.urls'
@@ -247,6 +301,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# File upload settings for high-resolution media
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50MB max upload size
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50MB max file size in memory
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ===========================================
@@ -326,18 +384,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@portfolio.com')
-
-# ===========================================
-# SECURITY HEADERS (Production)
-# ===========================================
-
-if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 
 # ===========================================
 # LOGGING

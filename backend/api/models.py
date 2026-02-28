@@ -2,10 +2,53 @@
 API Models - Main app containing CustomUser for backward compatibility.
 Other models have been separated into microservice apps.
 """
+import uuid
+import os
 from django.db import models
-from django.utils.text import slugify
+from django.utils.text import slugify, get_valid_filename
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
+
+
+def get_image_upload_path(instance, filename):
+    """
+    Generate a secure upload path for images.
+    
+    Security features:
+    - Uses UUID prefix to prevent filename collisions and enumeration
+    - Sanitizes filename to prevent path traversal attacks
+    - Organizes files by date for better management
+    
+    Args:
+        instance: The ImageUpload model instance
+        filename: The original filename from the upload
+        
+    Returns:
+        A secure path like: uploads/2025/02/28/uuid-sanitized-filename.jpg
+    """
+    # Sanitize the filename to prevent path traversal
+    safe_filename = get_valid_filename(filename)
+    
+    # Generate a UUID prefix to prevent filename collisions
+    uuid_prefix = str(uuid.uuid4())[:8]
+    
+    # Get file extension
+    name, ext = os.path.splitext(safe_filename)
+    
+    # Create new filename with UUID prefix
+    new_filename = f"{uuid_prefix}-{name}{ext}"
+    
+    # Organize by year/month for better file management
+    from django.utils import timezone
+    now = timezone.now()
+    upload_path = os.path.join(
+        'uploads',
+        str(now.year),
+        f"{now.month:02d}",
+        f"{now.day:02d}"
+    )
+    
+    return os.path.join(upload_path, new_filename)
 
 
 class CustomUserManager(BaseUserManager):
@@ -77,8 +120,15 @@ class CustomUser(AbstractUser):
 
 
 class ImageUpload(models.Model):
-    """Model for storing uploaded images."""
-    image = models.ImageField(upload_to='uploads/')
+    """
+    Model for storing uploaded images with secure file handling.
+    
+    Security features:
+    - Custom upload_to function with UUID prefix and filename sanitization
+    - Organized by date for better management
+    - Prevents path traversal and filename collisions
+    """
+    image = models.ImageField(upload_to=get_image_upload_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
         CustomUser,
@@ -90,6 +140,48 @@ class ImageUpload(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
+        verbose_name = 'Image Upload'
+        verbose_name_plural = 'Image Uploads'
 
     def __str__(self):
         return f"Image {self.id} - {self.image.name}"
+
+
+class Visitor(models.Model):
+    """Model for tracking website visitors."""
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    referrer = models.URLField(null=True, blank=True, max_length=500)
+    path = models.CharField(max_length=500, null=True, blank=True)
+    session_key = models.CharField(max_length=64, null=True, blank=True)  # Django session key (up to 64 chars)
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='visits'
+    )
+    visit_time = models.DateTimeField(default=timezone.now)
+    is_unique = models.BooleanField(default=True)
+    country = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    device_type = models.CharField(max_length=50, null=True, blank=True)
+    browser = models.CharField(max_length=50, null=True, blank=True)
+    os = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-visit_time']
+        verbose_name = 'Visitor'
+        verbose_name_plural = 'Visitors'
+
+    def __str__(self):
+        return f"Visitor {self.ip_address} at {self.visit_time}"
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save method.
+        Note: Django session keys are already secure and hashed, so we don't
+        need to hash them again. The session_key field stores the Django
+        session ID directly for visitor tracking purposes.
+        """
+        super().save(*args, **kwargs)

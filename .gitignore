@@ -48,6 +48,7 @@ db.sqlite3
 /media/
 /staticfiles/
 backend/staticfiles/
+backend/media/
 
 # Node
 node_modules/
@@ -56,6 +57,12 @@ yarn-error.log
 .next/
 dist/
 build/
+
+# Auto-generated build artifacts (Vitest/Vite)
+*.timestamp-*.mjs
+*.timestamp-*.js
+frontend/vitest.config.timestamp-*.mjs
+frontend/vitest.config.timestamp-*.js
 
 # OS
 Thumbs.db

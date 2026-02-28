@@ -1,22 +1,26 @@
 """
 API Views - Authentication and User Management
 """
+import logging
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from django.db import models
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.conf import settings
 
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, SocialAuthSerializer,
-    AdminUserUpdateSerializer, PasswordChangeSerializer, ImageUploadSerializer
+    AdminUserUpdateSerializer, PasswordChangeSerializer, ImageUploadSerializer,
+    VisitorSerializer, VisitorStatsSerializer
 )
-from .models import ImageUpload
+from .models import ImageUpload, Visitor
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ============ Authentication Views ============
@@ -229,3 +233,116 @@ class ImageUploadView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
+
+
+# ============ Visitor Tracking Views ============
+
+class VisitorStatsView(APIView):
+    """View to get visitor statistics."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Check if user is admin
+        if request.user.user_type != 'admin':
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Calculate statistics
+        total_visitors = Visitor.objects.count()
+        unique_visitors = Visitor.objects.filter(is_unique=True).count()
+        page_views = total_visitors
+        
+        # Calculate bounce rate (simplified: single-page sessions)
+        single_page_sessions = 0
+        session_visits = Visitor.objects.values('session_key').annotate(count=models.Count('id'))
+        for visit in session_visits:
+            if visit['count'] == 1:
+                single_page_sessions += 1
+        
+        bounce_rate = (single_page_sessions / len(session_visits)) * 100 if session_visits else 0
+        
+        # Calculate average session duration (simplified)
+        average_session_duration = 0  # This would need more complex session tracking
+        
+        # Get popular pages
+        popular_pages = list(
+            Visitor.objects.values('path')
+            .annotate(count=models.Count('id'))
+            .order_by('-count')[:10]
+        )
+        
+        # Get device distribution
+        device_distribution = list(
+            Visitor.objects.values('device_type')
+            .annotate(count=models.Count('id'))
+            .order_by('-count')
+        )
+        
+        # Get browser distribution
+        browser_distribution = list(
+            Visitor.objects.values('browser')
+            .annotate(count=models.Count('id'))
+            .order_by('-count')
+        )
+        
+        # Get OS distribution
+        os_distribution = list(
+            Visitor.objects.values('os')
+            .annotate(count=models.Count('id'))
+            .order_by('-count')
+        )
+        
+        # Get daily trend (last 7 days)
+        from django.utils import timezone
+        daily_trend = []
+        today = timezone.now().date()
+        for i in range(7):
+            date = today - timezone.timedelta(days=i)
+            day_visits = Visitor.objects.filter(visit_time__date=date).count()
+            daily_trend.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'visits': day_visits
+            })
+        
+        # Reverse to show oldest to newest
+        daily_trend = list(reversed(daily_trend))
+        
+        # Prepare response
+        stats = {
+            'total_visitors': total_visitors,
+            'unique_visitors': unique_visitors,
+            'page_views': page_views,
+            'bounce_rate': round(bounce_rate, 2),
+            'average_session_duration': average_session_duration,
+            'popular_pages': popular_pages,
+            'device_distribution': {d['device_type']: d['count'] for d in device_distribution},
+            'browser_distribution': {d['browser']: d['count'] for d in browser_distribution},
+            'os_distribution': {d['os']: d['count'] for d in os_distribution},
+            'daily_trend': daily_trend
+        }
+        
+        serializer = VisitorStatsSerializer(stats)
+        return Response(serializer.data)
+
+
+class VisitorListView(generics.ListAPIView):
+    """View to list all visitors (admin only)."""
+    queryset = Visitor.objects.all().order_by('-visit_time')
+    serializer_class = VisitorSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        if self.request.user.user_type != 'admin':
+            return Visitor.objects.none()
+        
+        # Filter by date range if provided
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        queryset = Visitor.objects.all().order_by('-visit_time')
+        
+        if start_date:
+            queryset = queryset.filter(visit_time__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(visit_time__date__lte=end_date)
+        
+        return queryset

@@ -18,7 +18,8 @@ const Dashboard: React.FC = () => {
     technologies: [],
     thumbnail: '',
     media: [],
-    featured: false
+    featured: false,
+    is_active: true
   });
   const [techInput, setTechInput] = useState('');
   const [mediaUrlInput, setMediaUrlInput] = useState('');
@@ -40,33 +41,25 @@ const Dashboard: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/projects/`, {
         credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
         const projectsList = data.results || data;
-        if (projectsList.length > 0) {
-          setProjects(projectsList);
-        } else {
-          // If API returns empty, use empty array
-          setProjects([]);
-        }
+        setProjects(projectsList);
+        setError(null);
       } else {
-        // Fallback to localStorage
-        const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-        if (saved) {
-          setProjects(JSON.parse(saved));
-        } else {
-          setProjects([]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      // Fallback to localStorage
-      const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      if (saved) {
-        setProjects(JSON.parse(saved));
-      } else {
+        // Handle API errors - show error to user instead of silent fallback
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to fetch projects (Status: ${response.status})`;
+        setError(errorMessage);
         setProjects([]);
       }
+    } catch (error) {
+      // Handle network errors - show error to user instead of silent fallback
+      console.error('Error fetching projects:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
+      setProjects([]);
     }
   };
 
@@ -169,17 +162,49 @@ const Dashboard: React.FC = () => {
       });
       if (response.ok) {
         setProjects(projects.filter(p => p.id !== id));
+        setError(null);
       } else {
-        // Fallback to localStorage
-        const updated = projects.filter(p => p.id !== id);
-        setProjects(updated);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+        // Handle API errors - show error to user
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to delete project (Status: ${response.status})`;
+        setError(errorMessage);
       }
     } catch (error) {
+      // Handle network errors - show error to user
       console.error('Error deleting project:', error);
-      const updated = projects.filter(p => p.id !== id);
-      setProjects(updated);
-      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
+    }
+  };
+
+    const toggleActive = async (id: string) => {
+    const project = projects.find(p => p.id === id);
+    if (!project) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_active: !project.is_active })
+      });
+      if (response.ok) {
+        const updated = projects.map(p =>
+          p.id === id ? { ...p, is_active: !p.is_active } : p
+        );
+        setProjects(updated);
+        setError(null);
+      } else {
+        // Handle API errors - show error to user
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to update project status (Status: ${response.status})`;
+        setError(errorMessage);
+      }
+    } catch (error) {
+      // Handle network errors - show error to user
+      console.error('Error updating project status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
     }
   };
 
@@ -190,32 +215,27 @@ const Dashboard: React.FC = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ featured: !project.featured })
       });
       if (response.ok) {
-        const updated = projects.map(p => 
+        const updated = projects.map(p =>
           p.id === id ? { ...p, featured: !p.featured } : p
         );
         setProjects(updated);
+        setError(null);
       } else {
-        // Fallback to localStorage
-        const updated = projects.map(p => 
-          p.id === id ? { ...p, featured: !p.featured } : p
-        );
-        setProjects(updated);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+        // Handle API errors - show error to user
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to update project featured status (Status: ${response.status})`;
+        setError(errorMessage);
       }
     } catch (error) {
-      console.error('Error updating project:', error);
-      const updated = projects.map(p => 
-        p.id === id ? { ...p, featured: !p.featured } : p
-      );
-      setProjects(updated);
-      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+      // Handle network errors - show error to user
+      console.error('Error updating project featured status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
     }
   };
 
@@ -276,6 +296,7 @@ const Dashboard: React.FC = () => {
       slug: newProject.title?.toLowerCase().replace(/\s+/g, '-') || '',
       createdAt: new Date().toISOString(),
       featured: newProject.featured || false,
+      is_active: newProject.is_active || true,
       thumbnail: newProject.thumbnail || 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop',
       media: newProject.media?.length ? newProject.media : [{ id: 'm-new', type: 'image', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop', order: 1, likes_count: 0 }]
     };
@@ -292,21 +313,21 @@ const Dashboard: React.FC = () => {
       if (response.ok) {
         const created = await response.json();
         setProjects([created, ...projects]);
+        setError(null);
+        setShowAddForm(false);
       } else {
-        // Fallback to localStorage
-        const updated = [project, ...projects];
-        setProjects(updated);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+        // Handle API errors - show error to user
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to create project (Status: ${response.status})`;
+        setError(errorMessage);
       }
     } catch (error) {
+      // Handle network errors - show error to user
       console.error('Error creating project:', error);
-      const updated = [project, ...projects];
-      setProjects(updated);
-      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
     }
-    
-    setShowAddForm(false);
-    setNewProject({ title: '', category: 'Development', description: '', technologies: [], media: [], featured: false });
+    setNewProject({ title: '', category: 'Development', description: '', technologies: [], media: [], featured: false, is_active: true });
   };
 
   const updateProject = async (e: React.FormEvent) => {
@@ -325,20 +346,20 @@ const Dashboard: React.FC = () => {
       if (response.ok) {
         const updated = projects.map(p => p.id === editingProject.id ? editingProject : p);
         setProjects(updated);
+        setError(null);
+        setEditingProject(null);
       } else {
-        // Fallback to localStorage
-        const updated = projects.map(p => p.id === editingProject.id ? editingProject : p);
-        setProjects(updated);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+        // Handle API errors - show error to user
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || `Failed to update project (Status: ${response.status})`;
+        setError(errorMessage);
       }
     } catch (error) {
+      // Handle network errors - show error to user
       console.error('Error updating project:', error);
-      const updated = projects.map(p => p.id === editingProject.id ? editingProject : p);
-      setProjects(updated);
-      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
+      setError(errorMessage);
     }
-    
-    setEditingProject(null);
   };
 
   const startEdit = (project: Project) => {
@@ -568,6 +589,17 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <input 
                   type="checkbox" 
+                  id="active"
+                  checked={newProject.is_active}
+                  onChange={e => setNewProject({...newProject, is_active: e.target.checked})}
+                  className="w-4 h-4 bg-transparent border border-gray-800 accent-green-500"
+                />
+                <label htmlFor="active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
                   id="featured"
                   checked={newProject.featured}
                   onChange={e => setNewProject({...newProject, featured: e.target.checked})}
@@ -666,6 +698,17 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <input 
                   type="checkbox" 
+                  id="edit-active"
+                  checked={editingProject.is_active}
+                  onChange={e => setEditingProject({...editingProject, is_active: e.target.checked})}
+                  className="w-4 h-4 bg-transparent border border-gray-800 accent-green-500"
+                />
+                <label htmlFor="edit-active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
                   id="edit-featured"
                   checked={editingProject.featured}
                   onChange={e => setEditingProject({...editingProject, featured: e.target.checked})}
@@ -707,15 +750,22 @@ const Dashboard: React.FC = () => {
                   <p className="text-xs text-gray-600 mt-2 line-clamp-1">{project.description}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => toggleFeatured(project.id)}
-                    className={`transition-colors ${project.featured ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'}`}
-                    title={project.featured ? "Unmark as Featured" : "Mark as Featured"}
-                  >
-                    <Star size={16} fill={project.featured ? "currentColor" : "none"} />
-                  </button>
+               <div className="flex items-center gap-6">
+                 <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button 
+                     onClick={() => toggleActive(project.id)}
+                     className={`transition-colors ${project.is_active ? 'text-green-500' : 'text-gray-500 hover:text-green-500'}`}
+                     title={project.is_active ? "Deactivate" : "Activate"}
+                   >
+                     <div className={`w-4 h-4 rounded-full ${project.is_active ? 'bg-green-500' : 'bg-gray-600'}`} />
+                   </button>
+                   <button 
+                     onClick={() => toggleFeatured(project.id)}
+                     className={`transition-colors ${project.featured ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'}`}
+                     title={project.featured ? "Unmark as Featured" : "Mark as Featured"}
+                   >
+                     <Star size={16} fill={project.featured ? "currentColor" : "none"} />
+                   </button>
                   <button 
                     onClick={() => startEdit(project)} 
                     className="text-gray-500 hover:text-white"

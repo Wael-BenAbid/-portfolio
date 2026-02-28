@@ -27,6 +27,10 @@ class SiteSettingsView(generics.RetrieveUpdateAPIView):
         return [permissions.AllowAny()]
     
     def update(self, request, *args, **kwargs):
+        # Check if user is authenticated first
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        # Then check if user is admin
         if request.user.user_type != 'admin':
             return Response({'error': 'Only admins can update settings'}, status=status.HTTP_403_FORBIDDEN)
         return super().update(request, *args, **kwargs)
@@ -144,16 +148,26 @@ class ImageUploadView(APIView):
         if image.content_type not in allowed_types:
             return Response({'error': 'Invalid image type. Allowed: JPEG, PNG, GIF, WebP'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Generate unique filename
-        ext = image.name.split('.')[-1]
-        filename = f'uploads/{uuid.uuid4()}.{ext}'
+        # Validate file size (max 5MB)
+        max_size = 5 * 1024 * 1024  # 5MB
+        if image.size > max_size:
+            return Response({'error': 'Image too large. Maximum size is 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate unique filename with date-based directory structure
+        from datetime import datetime
+        now = datetime.now()
+        ext = image.name.split('.')[-1].lower()
+        filename = f'uploads/{now.year}/{now.month:02d}/{now.day:02d}/{uuid.uuid4()}.{ext}'
         
         # Save file
         saved_path = default_storage.save(filename, ContentFile(image.read()))
         
         # Return the full URL
         from django.conf import settings
-        image_url = f'http://localhost:8000{settings.MEDIA_URL}{saved_path}'
+        # Use the actual host from the request
+        scheme = request.scheme
+        host = request.get_host()
+        image_url = f'{scheme}://{host}{settings.MEDIA_URL}{saved_path}'
         
         return Response({
             'url': image_url,

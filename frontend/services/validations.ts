@@ -26,6 +26,7 @@ export const ProjectSchema = z.object({
   thumbnail: z.string().url(),
   created_at: z.string().or(z.date()).transform(v => typeof v === 'string' ? v : v.toISOString()),
   featured: z.boolean().default(false),
+  is_active: z.boolean().default(true),
   technologies: z.array(z.string()).default([]),
   media: z.array(MediaItemSchema).default([]),
   likes_count: z.number().int().min(0).default(0),
@@ -60,6 +61,11 @@ export const AboutDataSchema = z.object({
 // ============================================
 
 export const SiteSettingsSchema = z.object({
+  site_name: z.string().optional(),
+  site_title: z.string().optional(),
+  logo_url: z.string().optional(),
+  favicon_url: z.string().optional(),
+  site_description: z.string().optional(),
   hero_title: z.string().default('ACTIVE'),
   hero_subtitle: z.string().default('THEORY'),
   hero_tagline: z.string().default('Digital Experiences & Aerial Visuals'),

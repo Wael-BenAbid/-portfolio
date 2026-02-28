@@ -3,6 +3,7 @@ API URL Configuration - Authentication and User Management
 """
 from django.urls import path
 from . import views
+from . import metrics
 
 urlpatterns = [
     # Authentication
@@ -22,4 +23,11 @@ urlpatterns = [
 
     # Image Upload
     path('upload/', views.ImageUploadView.as_view(), name='image-upload'),
+    
+    # Visitor Tracking
+    path('visitors/stats/', views.VisitorStatsView.as_view(), name='visitor-stats'),
+    path('visitors/', views.VisitorListView.as_view(), name='visitor-list'),
+    
+    # Prometheus Metrics
+    path('metrics/', metrics.metrics_view, name='metrics'),
 ]

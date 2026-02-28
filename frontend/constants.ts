@@ -2,6 +2,7 @@ import { Project, Skill, AboutData } from './types';
 
 // API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+console.log('API_BASE_URL in constants.ts:', API_BASE_URL);
 
 // API Endpoints
 export const API_ENDPOINTS = {

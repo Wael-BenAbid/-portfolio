@@ -9,6 +9,7 @@ import { Scene3D } from './components/Scene3D';
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL } from './constants';
 import { getCookie } from './utils/cookies';
+import { useSettings } from './hooks/useData';
 
 // Types
 interface User {
@@ -357,6 +358,9 @@ const App: React.FC = () => {
   const location = useLocation();
   const hideNavPaths = ['/login', '/register'];
   const isAdminPath = location.pathname.startsWith('/admin');
+  
+  // Fetch site settings
+  const { data: settings } = useSettings();
 
   return (
     <div className="relative min-h-screen bg-[#0f0f0f] text-white selection:bg-blue-500 selection:text-white overflow-x-hidden">

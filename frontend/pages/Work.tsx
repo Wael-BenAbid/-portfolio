@@ -18,7 +18,9 @@ const Work: React.FC = () => {
   // Get projects from API response or empty array
   const projects: Project[] = data?.results || [];
   
-  const filteredProjects = projects.filter(p => filter === 'All' || p.category === filter);
+  const filteredProjects = projects.filter(p => 
+    (p.is_active !== false) && (filter === 'All' || p.category === filter)
+  );
 
   // Loading state
   if (loading) {

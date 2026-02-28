@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Save, LayoutDashboard, Briefcase, GraduationCap, Award, Code, Globe2, Heart, User, Plus, Trash2, Edit2, X, Loader2, MapPin, Upload } from 'lucide-react';
 import { useAuth } from '../../App';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = '/api';  // Use Vite proxy for development
 
 interface SiteSettings {
   id?: number;

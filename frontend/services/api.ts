@@ -44,7 +44,7 @@ export const getAuthToken = (): string | null => {
 /**
  * Build full URL with query parameters
  */
-const buildURL = (endpoint: string, params?: Record<string, string | number>): string => {
+export const buildURL = (endpoint: string, params?: Record<string, string | number>): string => {
   const url = `${API_BASE_URL}${endpoint}`;
   if (!params) return url;
   
