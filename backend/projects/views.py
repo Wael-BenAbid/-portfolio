@@ -9,8 +9,8 @@ from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
 import os
 
-from .models import Project, Skill
-from .serializers import ProjectSerializer, SkillSerializer
+from .models import Project, Skill, MediaItem
+from .serializers import ProjectSerializer, SkillSerializer, MediaItemCreateSerializer
 
 
 # ============ Pagination ============
@@ -42,14 +42,6 @@ class ProjectListCreate(generics.ListCreateAPIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         return super().handle_exception(exc)
-    
-    def handle_exception(self, exc):
-        if isinstance(exc, Ratelimited):
-            return Response(
-                {'detail': 'Rate limit exceeded. Please try again later.'},
-                status=status.HTTP_429_TOO_MANY_REQUESTS
-            )
-        return super().handle_exception(exc)
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -61,7 +53,7 @@ class ProjectListCreate(generics.ListCreateAPIView):
 
 
 class ProjectRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Project.objects.select_related('created_by')
+    queryset = Project.objects.select_related('created_by').prefetch_related('media')
     serializer_class = ProjectSerializer
     lookup_field = 'slug'
 
@@ -93,3 +85,54 @@ class SkillRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:
             return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
+
+
+# ============ Media Item Views ============
+
+@method_decorator(ratelimit(key='user', rate=os.environ.get('MEDIA_UPLOAD_RATE_LIMIT', '50/h'), method='POST'), name='dispatch')
+class MediaItemCreate(generics.CreateAPIView):
+    """View for creating media items for a project"""
+    serializer_class = MediaItemCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)
+    
+    def perform_create(self, serializer):
+        # The serializer already handles the project association
+        serializer.save()
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # Get the saved instance directly from save() method
+        media_item = self.perform_create(serializer)
+        # Return data in format matching MediaItemSerializer
+        from .serializers import MediaItemSerializer
+        response_serializer = MediaItemSerializer(media_item, context={'request': request})
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def perform_create(self, serializer):
+        # Return the saved instance
+        return serializer.save()
+
+
+@method_decorator(ratelimit(key='user', rate=os.environ.get('MEDIA_DELETE_RATE_LIMIT', '50/h'), method='DELETE'), name='dispatch')
+class MediaItemDelete(generics.DestroyAPIView):
+    """View for deleting media items from a project"""
+    queryset = MediaItem.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)

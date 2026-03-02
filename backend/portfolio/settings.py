@@ -67,15 +67,15 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 REDIS_URL = os.environ.get('REDIS_URL', '')
 
 # Configure cache backend based on environment
-# Priority: Redis (production) -> LocMemCache (development) -> DummyCache (fallback)
+# Priority: LocMemCache (development) -> Redis (production) -> DummyCache (fallback)
 def _get_cache_backend():
     """
     Get the appropriate cache backend based on environment and Redis availability.
     Returns a CACHES dictionary configuration.
     """
-    if not REDIS_URL:
-        # No Redis URL configured - use LocMemCache for development
-        logger.info("No REDIS_URL configured. Using LocMemCache for development.")
+    # For local development (DEBUG=True), always use LocMemCache to avoid Redis dependency
+    if DEBUG:
+        logger.info("DEBUG mode enabled. Using LocMemCache for development.")
         return {
             'default': {
                 'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -83,6 +83,15 @@ def _get_cache_backend():
                 'OPTIONS': {
                     'MAX_ENTRIES': 1000,
                 }
+            }
+        }
+    
+    if not REDIS_URL:
+        # No Redis URL configured in production - use DummyCache
+        logger.warning("No REDIS_URL configured in production. Using DummyCache.")
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
             }
         }
     
@@ -110,33 +119,25 @@ def _get_cache_backend():
         logger.info(f"Cache backend set to Redis at {REDIS_URL}")
         return CACHES
     except ImportError:
-        # django-redis not installed, fall back to LocMemCache
+        # django-redis not installed, fall back to DummyCache
         logger.warning(
             'REDIS_URL is set but django-redis is not installed. '
-            'Falling back to LocMemCache. Install django-redis for production.'
+            'Falling back to DummyCache for production.'
         )
         return {
             'default': {
-                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-                'LOCATION': 'unique-snowflake',
-                'OPTIONS': {
-                    'MAX_ENTRIES': 1000,
-                }
+                'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
             }
         }
     except Exception as e:
-        # Redis connection failed or other error, fall back to LocMemCache
+        # Redis connection failed or other error, fall back to DummyCache
         logger.warning(
             f'Redis connection failed: {e}. '
-            'Falling back to LocMemCache for development.'
+            'Falling back to DummyCache for production.'
         )
         return {
             'default': {
-                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-                'LOCATION': 'unique-snowflake',
-                'OPTIONS': {
-                    'MAX_ENTRIES': 1000,
-                }
+                'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
             }
         }
 
@@ -316,6 +317,8 @@ if DEBUG:
     # Don't use CORS_ALLOW_ALL_ORIGINS = True as it's too permissive
     CORS_ALLOWED_ORIGINS = [
         'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
         'http://127.0.0.1:3000',
         'http://localhost:3001',
         'http://127.0.0.1:3001',

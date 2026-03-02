@@ -144,7 +144,7 @@ const Work: React.FC = () => {
                     </h3>
                   </div>
                   <span className="text-gray-500 font-display text-xs">
-                    {new Date(project.createdAt).getFullYear()}
+                    {new Date(project.created_at).getFullYear()}
                   </span>
                 </div>
               </Link>

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils.text import get_valid_filename
-from .models import ImageUpload, Visitor
+from .models import MediaUpload, Visitor
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -22,8 +22,20 @@ ALLOWED_IMAGE_MIME_TYPES = [
     'image/gif',
 ]
 
+# Allowed video MIME types for upload validation
+ALLOWED_VIDEO_MIME_TYPES = [
+    'video/mp4',
+    'video/webm',
+    'video/ogg',
+]
+
 # Allowed file extensions
 ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg']
+
+# Combined allowed types
+ALLOWED_MIME_TYPES = ALLOWED_IMAGE_MIME_TYPES + ALLOWED_VIDEO_MIME_TYPES
+ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS + ALLOWED_VIDEO_EXTENSIONS
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -287,90 +299,96 @@ class PasswordChangeSerializer(serializers.Serializer):
         return attrs
 
 
-class ImageUploadSerializer(serializers.ModelSerializer):
-    """Serializer for image uploads."""
+class MediaUploadSerializer(serializers.ModelSerializer):
+    """Serializer for media uploads (images and videos)."""
     url = serializers.SerializerMethodField()
 
     class Meta:
-        model = ImageUpload
-        fields = ['id', 'image', 'url', 'uploaded_at', 'uploaded_by']
+        model = MediaUpload
+        fields = ['id', 'file', 'url', 'uploaded_at', 'uploaded_by']
         read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
 
-    def validate_image(self, value):
+    def validate_file(self, value):
         """
-        Validate image file with comprehensive security checks:
+        Validate media file with comprehensive security checks:
         1. File size limit
         2. MIME type validation
         3. File extension validation
-        4. Content validation using Pillow
+        4. Content validation using Pillow (for images)
         """
         # 1. Validate file size
-        max_size_mb = int(os.environ.get('MAX_IMAGE_SIZE_MB', 5))
+        max_size_mb = int(os.environ.get('MAX_MEDIA_SIZE_MB', 50))  # Larger limit for videos
         max_size = max_size_mb * 1024 * 1024
         if value.size > max_size:
             raise serializers.ValidationError(
-                f"Image size cannot exceed {max_size_mb}MB. "
+                f"File size cannot exceed {max_size_mb}MB. "
                 f"Current size: {value.size / (1024 * 1024):.2f}MB"
             )
         
         # 2. Validate MIME type
         content_type = getattr(value, 'content_type', None)
-        if not content_type or content_type.lower() not in ALLOWED_IMAGE_MIME_TYPES:
+        if not content_type or content_type.lower() not in ALLOWED_MIME_TYPES:
             raise serializers.ValidationError(
                 f"Invalid file type '{content_type}'. "
-                f"Allowed types: {', '.join(ALLOWED_IMAGE_MIME_TYPES)}"
+                f"Allowed types: {', '.join(ALLOWED_MIME_TYPES)}"
             )
         
         # 3. Validate file extension
         filename = get_valid_filename(value.name)
         file_ext = os.path.splitext(filename)[1].lower()
-        if file_ext not in ALLOWED_IMAGE_EXTENSIONS:
+        if file_ext not in ALLOWED_EXTENSIONS:
             raise serializers.ValidationError(
                 f"Invalid file extension '{file_ext}'. "
-                f"Allowed extensions: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}"
+                f"Allowed extensions: {', '.join(ALLOWED_EXTENSIONS)}"
             )
         
-        # 4. Validate actual image content using Pillow
-        try:
-            from PIL import Image
-            # Open the file to verify it's a valid image
-            img = Image.open(value)
-            img.verify()  # Verify it's actually an image
-            
-            # Re-open for further checks (verify() closes the file)
-            value.seek(0)
-            img = Image.open(value)
-            
-            # Check for potentially malicious image formats
-            if img.format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
+        # 4. Validate content based on media type
+        if content_type.lower() in ALLOWED_IMAGE_MIME_TYPES:
+            # Validate image content using Pillow
+            try:
+                from PIL import Image
+                # Open the file to verify it's a valid image
+                img = Image.open(value)
+                img.verify()  # Verify it's actually an image
+                
+                # Re-open for further checks (verify() closes the file)
+                value.seek(0)
+                img = Image.open(value)
+                
+                # Check for potentially malicious image formats
+                if img.format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
+                    raise serializers.ValidationError(
+                        f"Invalid image format '{img.format}'. "
+                        f"Allowed formats: JPEG, PNG, WEBP, GIF"
+                    )
+                
+                # Check image dimensions (prevent extremely large images)
+                max_dimension = 10000  # 10,000 pixels
+                if img.width > max_dimension or img.height > max_dimension:
+                    raise serializers.ValidationError(
+                        f"Image dimensions too large: {img.width}x{img.height}. "
+                        f"Maximum allowed: {max_dimension}x{max_dimension} pixels"
+                    )
+                
+            except ImportError:
+                logger.warning("Pillow not installed - skipping image content validation")
+            except Exception as e:
+                logger.error(f"Image validation failed: {str(e)}")
                 raise serializers.ValidationError(
-                    f"Invalid image format '{img.format}'. "
-                    f"Allowed formats: JPEG, PNG, WEBP, GIF"
+                    "Invalid image file. The file may be corrupted or not a valid image."
                 )
-            
-            # Check image dimensions (prevent extremely large images)
-            max_dimension = 10000  # 10,000 pixels
-            if img.width > max_dimension or img.height > max_dimension:
-                raise serializers.ValidationError(
-                    f"Image dimensions too large: {img.width}x{img.height}. "
-                    f"Maximum allowed: {max_dimension}x{max_dimension} pixels"
-                )
-            
-        except ImportError:
-            logger.warning("Pillow not installed - skipping image content validation")
-        except Exception as e:
-            logger.error(f"Image validation failed: {str(e)}")
-            raise serializers.ValidationError(
-                "Invalid image file. The file may be corrupted or not a valid image."
-            )
+        elif content_type.lower() in ALLOWED_VIDEO_MIME_TYPES:
+            # Video validation - basic checks for now
+            # You could add more advanced video validation here if needed
+            pass
         
         return value
 
     def get_url(self, obj):
-        """Get the full URL of the uploaded image."""
+        """Get the full URL of the uploaded media file."""
         request = self.context.get('request')
-        if request and obj.image:
-            return request.build_absolute_uri(obj.image.url)
+        if request and obj.file:
+            return request.build_absolute_uri(obj.file.url)
         return None
 
 

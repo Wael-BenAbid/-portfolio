@@ -12,7 +12,9 @@ import { z } from 'zod';
 export const MediaItemSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
   type: z.enum(['image', 'video']),
-  url: z.string().url(),
+  url: z.string().url().optional().nullable(),
+  thumbnail_url: z.string().url().optional().nullable(),
+  caption: z.string().optional().nullable(),
   order: z.number().int().min(0).default(0),
   likes_count: z.number().int().min(0).default(0),
 });
@@ -28,7 +30,16 @@ export const ProjectSchema = z.object({
   featured: z.boolean().default(false),
   is_active: z.boolean().default(true),
   technologies: z.array(z.string()).default([]),
-  media: z.array(MediaItemSchema).default([]),
+  media: z.array(MediaItemSchema).transform(items => {
+    const seenIds = new Set();
+    return items.filter(item => {
+      if (seenIds.has(item.id)) {
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
+  }).default([]),
   likes_count: z.number().int().min(0).default(0),
 });
 

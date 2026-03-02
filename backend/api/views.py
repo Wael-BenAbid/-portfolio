@@ -14,10 +14,10 @@ from django.conf import settings
 
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, SocialAuthSerializer,
-    AdminUserUpdateSerializer, PasswordChangeSerializer, ImageUploadSerializer,
+    AdminUserUpdateSerializer, PasswordChangeSerializer, MediaUploadSerializer,
     VisitorSerializer, VisitorStatsSerializer
 )
-from .models import ImageUpload, Visitor
+from .models import MediaUpload, Visitor
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -217,11 +217,11 @@ class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
         return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
 
 
-# ============ Image Upload View ============
+# ============ Media Upload View ============
 
-class ImageUploadView(generics.CreateAPIView):
-    """View for handling image uploads."""
-    serializer_class = ImageUploadSerializer
+class MediaUploadView(generics.CreateAPIView):
+    """View for handling media uploads (images and videos)."""
+    serializer_class = MediaUploadSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):

@@ -13,6 +13,8 @@ interface OptimizedImageProps {
   placeholder?: boolean;
   grayscale?: boolean;
   hoverEffects?: boolean;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -35,6 +37,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   placeholder = true,
   grayscale = false,
   hoverEffects = false,
+  objectFit = 'cover',
+  objectPosition = 'center',
   onLoad,
   onError,
 }) => {
@@ -47,8 +51,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const optimizedSrc = getOptimizedImageUrl(src, width || 800);
   
   // Get WebP version for modern browsers
-  const webpSrc = src.includes('unsplash.com') 
-    ? getOptimizedImageUrl(src, width || 800).replace(/&auto=format/, '&auto=format&fm=webp')
+  const webpSrc = src && src.includes('unsplash.com') && optimizedSrc 
+    ? (optimizedSrc as string).replace(/&auto=format/, '&auto=format&fm=webp')
     : optimizedSrc;
 
   // Intersection Observer for lazy loading
@@ -104,7 +108,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
 
       {/* Actual Image */}
-      {isInView && !hasError && (
+      {isInView && !hasError && optimizedSrc && (
         <motion.img
           src={optimizedSrc}
           alt={alt}
@@ -115,7 +119,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
           className={`
-            w-full h-full object-cover
+            w-full h-full ${objectFit} object-${objectPosition}
             ${grayscale ? 'grayscale' : ''}
             ${hoverEffects ? 'transition-all duration-700 group-hover:scale-105 group-hover:grayscale-0' : ''}
             ${className}

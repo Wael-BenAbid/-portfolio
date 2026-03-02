@@ -31,7 +31,7 @@ class UserModelTest(TestCase):
     def test_create_admin_user(self):
         """Test creating an admin user"""
         admin_data = self.user_data.copy()
-        admin_data['email'] = 'admin@example.com'
+        admin_data['email'] = 'test_admin@example.com'
         admin_data['user_type'] = 'admin'
         admin = User.objects.create_user(**admin_data)
         self.assertEqual(admin.user_type, 'admin')
@@ -93,7 +93,7 @@ class AuthenticationTest(TestCase):
     def test_unauthenticated_profile_access(self):
         """Test accessing profile without authentication"""
         response = self.client.get('/api/auth/profile/')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class UserUpdateTest(TestCase):

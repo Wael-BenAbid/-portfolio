@@ -9,7 +9,11 @@ urlpatterns = [
     path('skills/', views.SkillListCreate.as_view(), name='skill-list-create'),
     path('skills/<int:pk>/', views.SkillRetrieveUpdateDestroy.as_view(), name='skill-detail'),
     
-    # Projects
+    # Media Items
+    path('media/create/', views.MediaItemCreate.as_view(), name='media-item-create'),
+    path('media/delete/<int:pk>/', views.MediaItemDelete.as_view(), name='media-item-delete'),
+    
+    # Projects - Keep at end to avoid URL conflicts
     path('', views.ProjectListCreate.as_view(), name='project-list-create'),
     path('<slug:slug>/', views.ProjectRetrieveUpdateDestroy.as_view(), name='project-detail'),
 ]

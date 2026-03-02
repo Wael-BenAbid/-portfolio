@@ -2,7 +2,7 @@
 Admin configuration for backend app.
 """
 from django.contrib import admin
-from .models import Visitor, ImageUpload
+from .models import Visitor, MediaUpload
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser
 
@@ -22,10 +22,10 @@ class VisitorAdmin(admin.ModelAdmin):
     list_per_page = 25
 
 
-@admin.register(ImageUpload)
-class ImageUploadAdmin(admin.ModelAdmin):
-    """Admin configuration for ImageUpload model."""
-    list_display = ['id', 'image', 'uploaded_at', 'uploaded_by']
+@admin.register(MediaUpload)
+class MediaUploadAdmin(admin.ModelAdmin):
+    """Admin configuration for MediaUpload model."""
+    list_display = ['id', 'file', 'uploaded_at', 'uploaded_by']
     list_filter = ['uploaded_at', 'uploaded_by']
     search_fields = ['uploaded_by__email']
 

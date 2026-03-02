@@ -232,16 +232,24 @@ interface ProjectsResponse {
 // Fallback empty data when API is unavailable
 const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
 
+const ProjectsResponseSchema = z.object({
+  results: z.array(ProjectSchema),
+  count: z.number(),
+});
+
 export function useProjects() {
   return useQuery<ProjectsResponse>('/projects/', {
     fallbackData: EMPTY_PROJECTS_RESPONSE,
+    schema: ProjectsResponseSchema,
   });
 }
 
 export function useProject(slug: string | undefined) {
   return useQuery<Project>(
     slug ? `/projects/${slug}/` : null,
-    {}
+    {
+      schema: ProjectSchema,
+    }
   );
 }
 

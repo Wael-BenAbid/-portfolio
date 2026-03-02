@@ -10,9 +10,9 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
 
 
-def get_image_upload_path(instance, filename):
+def get_media_upload_path(instance, filename):
     """
-    Generate a secure upload path for images.
+    Generate a secure upload path for media files (images and videos).
     
     Security features:
     - Uses UUID prefix to prevent filename collisions and enumeration
@@ -20,7 +20,7 @@ def get_image_upload_path(instance, filename):
     - Organizes files by date for better management
     
     Args:
-        instance: The ImageUpload model instance
+        instance: The MediaUpload model instance
         filename: The original filename from the upload
         
     Returns:
@@ -119,16 +119,16 @@ class CustomUser(AbstractUser):
         return self.user_type == 'registered'
 
 
-class ImageUpload(models.Model):
+class MediaUpload(models.Model):
     """
-    Model for storing uploaded images with secure file handling.
+    Model for storing uploaded media files (images and videos) with secure file handling.
     
     Security features:
     - Custom upload_to function with UUID prefix and filename sanitization
     - Organized by date for better management
     - Prevents path traversal and filename collisions
     """
-    image = models.ImageField(upload_to=get_image_upload_path)
+    file = models.FileField(upload_to=get_media_upload_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
         CustomUser,
@@ -144,7 +144,7 @@ class ImageUpload(models.Model):
         verbose_name_plural = 'Image Uploads'
 
     def __str__(self):
-        return f"Image {self.id} - {self.image.name}"
+        return f"Media {self.id} - {self.file.name}"
 
 
 class Visitor(models.Model):

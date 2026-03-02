@@ -40,7 +40,7 @@ export const Navbar: React.FC = () => {
         </motion.div>
       </Link>
 
-      <div className="flex gap-12 pointer-events-auto items-center">
+      <div className="relative flex gap-12 pointer-events-auto items-center">
         {links.map((link, i) => (
           <motion.div
             key={link.path}

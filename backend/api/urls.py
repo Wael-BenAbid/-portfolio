@@ -22,7 +22,7 @@ urlpatterns = [
     path('admin/users/<int:pk>/', views.AdminUserUpdateView.as_view(), name='admin-user-update'),
 
     # Image Upload
-    path('upload/', views.ImageUploadView.as_view(), name='image-upload'),
+    path('upload/', views.MediaUploadView.as_view(), name='media-upload'),
     
     # Visitor Tracking
     path('visitors/stats/', views.VisitorStatsView.as_view(), name='visitor-stats'),

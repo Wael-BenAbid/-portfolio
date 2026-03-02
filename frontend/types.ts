@@ -4,9 +4,9 @@ export type Category = 'Development' | 'Drone' | 'Mixed';
 export interface MediaItem {
   id: string;
   type: 'image' | 'video';
-  url: string;
-  thumbnail_url?: string;
-  caption?: string;
+  url: string | null | undefined;
+  thumbnail_url?: string | null;
+  caption?: string | null;
   order: number;
   likes_count: number;
   is_liked?: boolean;
@@ -19,7 +19,7 @@ export interface Project {
   description: string;
   category: Category;
   thumbnail: string;
-  createdAt: string;
+  created_at: string;
   featured: boolean;
   is_active: boolean;
   media: MediaItem[];

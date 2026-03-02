@@ -46,7 +46,7 @@ class ProjectModelTest(TestCase):
             'title': 'Test Project',
             'description': 'A test project description',
             'category': 'Development',
-            'is_featured': True
+            'featured': True
         }
     
     def test_create_project(self):
@@ -54,7 +54,7 @@ class ProjectModelTest(TestCase):
         project = Project.objects.create(**self.project_data)
         self.assertEqual(project.title, 'Test Project')
         self.assertEqual(project.description, 'A test project description')
-        self.assertTrue(project.is_featured)
+        self.assertTrue(project.featured)
     
     def test_project_str_representation(self):
         """Test string representation of project"""
@@ -97,7 +97,7 @@ class ProjectAPITest(TestCase):
             'category': 'Development'
         }
         response = self.client.post('/api/projects/', data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
     
     def test_create_project_authenticated(self):
         """Test creating project with authentication"""

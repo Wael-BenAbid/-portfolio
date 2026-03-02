@@ -6,6 +6,32 @@ from .models import Project, MediaItem, Skill
 from interactions.models import Like
 
 
+class MediaItemCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating media items for a project"""
+    project = serializers.SlugRelatedField(
+        slug_field='slug',
+        queryset=Project.objects.all()
+    )
+    
+    class Meta:
+        model = MediaItem
+        fields = ['id', 'project', 'media_type', 'file', 'thumbnail', 'caption', 'order']
+    
+    def validate(self, attrs):
+        """Validate that file or thumbnail is provided based on media type"""
+        media_type = attrs.get('media_type')
+        file = attrs.get('file')
+        thumbnail = attrs.get('thumbnail')
+        
+        if media_type == 'image' and not file:
+            raise serializers.ValidationError({"file": "File is required for image media type"})
+        
+        if media_type == 'video' and not file:
+            raise serializers.ValidationError({"file": "File is required for video media type"})
+        
+        return attrs
+
+
 class MediaItemSerializer(serializers.ModelSerializer):
     likes_count = serializers.ReadOnlyField()
     is_liked = serializers.SerializerMethodField()
@@ -50,6 +76,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = '__all__'
+        extra_kwargs = {
+            'media': {'read_only': True},
+        }
     
     def get_is_liked(self, obj):
         request = self.context.get('request')

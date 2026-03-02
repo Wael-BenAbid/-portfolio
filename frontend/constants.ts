@@ -79,8 +79,8 @@ export const DEFAULT_ABOUT: AboutData = {
 };
 
 // Image optimization helper
-export const getOptimizedImageUrl = (url: string, width: number = 800): string => {
-  if (!url) return '';
+export const getOptimizedImageUrl = (url: string, width: number = 800): string | null => {
+  if (!url || url.trim() === '') return null;
   
   // Handle Unsplash URLs with optimization parameters
   if (url.includes('unsplash.com')) {

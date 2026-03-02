@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='imageupload',
             name='image',
-            field=models.ImageField(upload_to=api.models.get_image_upload_path),
+            field=models.FileField(upload_to=api.models.get_media_upload_path),
         ),
     ]

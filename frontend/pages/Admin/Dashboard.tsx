@@ -70,7 +70,7 @@ const Dashboard: React.FC = () => {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
       
       const response = await fetch(`${API_BASE_URL}/auth/upload/`, {
         method: 'POST',
@@ -120,29 +120,78 @@ const Dashboard: React.FC = () => {
   };
 
   // Handle media file selection
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     setUploadingField('media');
-    const url = await uploadImage(file);
-    setUploadingField(null);
     
-    if (url) {
-      const currentMedia = newProject.media || [];
-      const newMedia: MediaItem = {
-        id: `m-${Date.now()}`,
-        type: 'image',
-        url: url,
-        order: currentMedia.length + 1,
-        likes_count: 0
-      };
-      setNewProject({
-        ...newProject,
-        media: [...currentMedia, newMedia],
-        thumbnail: newProject.thumbnail || url
+    try {
+      const isVideo = file.type.startsWith('video/');
+      const projectSlug = isEdit && editingProject ? editingProject.slug : newProject.slug;
+      
+      if (!projectSlug) {
+        setError('Please save the project first before adding media');
+        setUploadingField(null);
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('project', projectSlug);
+      formData.append('media_type', isVideo ? 'video' : 'image');
+      formData.append('file', file);
+      const mediaLength = isEdit && editingProject ? editingProject.media?.length ?? 0 : newProject.media?.length ?? 0;
+      formData.append('order', String(mediaLength));
+      
+      const response = await fetch(`${API_BASE_URL}/projects/media/create/`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
       });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newMediaItem: MediaItem = {
+          id: data.id,
+          type: data.type,
+          url: data.url,
+          thumbnail_url: data.thumbnail_url,
+          caption: data.caption,
+          order: data.order,
+          likes_count: data.likes_count || 0,
+          is_liked: data.is_liked || false
+        };
+        
+        if (isEdit && editingProject) {
+          const currentMedia = editingProject.media || [];
+          setEditingProject({
+            ...editingProject,
+            media: [...currentMedia, newMediaItem],
+            thumbnail: editingProject.thumbnail || data.url
+          });
+        } else {
+          const currentMedia = newProject.media || [];
+          setNewProject({
+            ...newProject,
+            media: [...currentMedia, newMediaItem],
+            thumbnail: newProject.thumbnail || data.url
+          });
+        }
+        setError(null);
+      } else {
+        const error = await response.json();
+        console.error('Upload error:', error);
+        const errorMessage = error.error || error.detail || 'Failed to upload media';
+        setError(errorMessage);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload media. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setUploadingField(null);
     }
+    
     // Reset file input
     if (mediaFileInputRef.current) mediaFileInputRef.current.value = '';
   };
@@ -156,7 +205,10 @@ const Dashboard: React.FC = () => {
     if (!confirm('Are you sure you want to delete this project?')) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
+      const project = projects.find(p => p.id === id);
+      if (!project) return;
+      
+      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -182,7 +234,7 @@ const Dashboard: React.FC = () => {
     if (!project) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -213,7 +265,7 @@ const Dashboard: React.FC = () => {
     if (!project) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${id}/`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -290,15 +342,17 @@ const Dashboard: React.FC = () => {
 
   const addProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Create project without media field
+    const { media, ...projectWithoutMedia } = newProject as any;
     const project: Project = {
-      ...newProject as Project,
+      ...projectWithoutMedia,
       id: Date.now().toString(),
       slug: newProject.title?.toLowerCase().replace(/\s+/g, '-') || '',
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       featured: newProject.featured || false,
       is_active: newProject.is_active || true,
       thumbnail: newProject.thumbnail || 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop',
-      media: newProject.media?.length ? newProject.media : [{ id: 'm-new', type: 'image', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop', order: 1, likes_count: 0 }]
+      media: [] // Initialize with empty media array - will be added through separate API endpoint
     };
 
     try {
@@ -312,6 +366,13 @@ const Dashboard: React.FC = () => {
       });
       if (response.ok) {
         const created = await response.json();
+        // If there were media items to add, add them through the media endpoint
+        if (media && media.length > 0) {
+          for (const mediaItem of media) {
+            // For new projects, we need to handle media upload differently
+            // This is just a placeholder - you would need to implement actual media upload
+          }
+        }
         setProjects([created, ...projects]);
         setError(null);
         setShowAddForm(false);
@@ -334,18 +395,28 @@ const Dashboard: React.FC = () => {
     e.preventDefault();
     if (!editingProject) return;
 
+    // Create a copy of the project without media field to prevent duplicates
+    const { media, ...projectWithoutMedia } = editingProject;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${editingProject.id}/`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(editingProject)
+        body: JSON.stringify(projectWithoutMedia)
       });
       if (response.ok) {
-        const updated = projects.map(p => p.id === editingProject.id ? editingProject : p);
-        setProjects(updated);
+        // Fetch the updated project from API to get fresh data
+        const getResponse = await fetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
+          credentials: 'include'
+        });
+        if (getResponse.ok) {
+          const updatedProject = await getResponse.json();
+          const updated = projects.map(p => p.id === editingProject.id ? updatedProject : p);
+          setProjects(updated);
+        }
         setError(null);
         setEditingProject(null);
       } else {
@@ -400,7 +471,9 @@ const Dashboard: React.FC = () => {
           <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
               <X className="text-red-500" size={20} />
-              <span className="text-red-400 font-display text-sm">{error}</span>
+              <span className="text-red-400 font-display text-sm">
+                {typeof error === 'string' ? error : JSON.stringify(error)}
+              </span>
             </div>
             <button
               onClick={() => setError(null)}
@@ -531,8 +604,12 @@ const Dashboard: React.FC = () => {
                 <div className="grid grid-cols-4 gap-4 mb-2">
                   {(newProject.media || []).map((media, i) => (
                     <div key={i} className="relative group">
-                      {media.type === 'image' ? (
+                      {media.type === 'image' && media.url ? (
                         <img src={media.url} alt="" className="w-full h-24 object-cover rounded" />
+                      ) : media.type === 'image' ? (
+                        <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
+                          <span className="text-xs font-display uppercase">No Image</span>
+                        </div>
                       ) : (
                         <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
                           <span className="text-xs font-display uppercase">Video</span>
@@ -548,40 +625,94 @@ const Dashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <select 
-                    value={mediaTypeInput}
-                    onChange={e => setMediaTypeInput(e.target.value as 'image' | 'video')}
-                    className="bg-transparent border border-gray-800 px-3 py-2 font-display text-xs uppercase"
-                  >
-                    <option value="image" className="bg-[#111]">Image</option>
-                    <option value="video" className="bg-[#111]">Video</option>
-                  </select>
+                
+                {/* Add Image Button */}
+                <div className="flex gap-2 mb-2">
                   <input 
                     type="url"
                     value={mediaUrlInput}
                     onChange={e => setMediaUrlInput(e.target.value)}
                     className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
-                    placeholder="Media URL..."
+                    placeholder="Image URL..."
                   />
-                  <button type="button" onClick={addMedia} className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors">
-                    Add URL
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setMediaTypeInput('image');
+                      addMedia();
+                    }}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                  >
+                    <ImageIcon size={14} /> Add Image
                   </button>
+                </div>
+                
+                {/* Add Video Button */}
+                <div className="flex gap-2 mb-2">
+                  <input 
+                    type="url"
+                    value={mediaUrlInput}
+                    onChange={e => setMediaUrlInput(e.target.value)}
+                    className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
+                    placeholder="Video URL..."
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setMediaTypeInput('video');
+                      addMedia();
+                    }}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                  >
+                    <ImageIcon size={14} /> Add Video
+                  </button>
+                </div>
+                
+                {/* Upload Image Button */}
+                <div className="flex gap-2 mb-2">
                   <input 
                     type="file"
                     ref={mediaFileInputRef}
                     onChange={handleMediaUpload}
                     accept="image/jpeg,image/png,image/gif,image/webp"
                     className="hidden"
+                    id="image-upload"
                   />
                   <button 
                     type="button"
-                    onClick={() => mediaFileInputRef.current?.click()}
+                    onClick={() => {
+                      const input = document.getElementById('image-upload') as HTMLInputElement;
+                      input?.click();
+                    }}
                     disabled={uploading}
                     className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
-                    {uploadingField === 'media' ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {uploadingField === 'media' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                     Upload Image
+                  </button>
+                </div>
+                
+                {/* Upload Video Button */}
+                <div className="flex gap-2">
+                  <input 
+                    type="file"
+                    ref={mediaFileInputRef}
+                    onChange={handleMediaUpload}
+                    accept="video/mp4,video/webm,video/ogg"
+                    className="hidden"
+                    id="video-upload"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('video-upload') as HTMLInputElement;
+                      input?.click();
+                    }}
+                    disabled={uploading}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {uploadingField === 'media' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                    Upload Video
                   </button>
                 </div>
               </div>
@@ -693,6 +824,191 @@ const Dashboard: React.FC = () => {
                 {editingProject.thumbnail && (
                   <img src={editingProject.thumbnail} alt="Thumbnail" className="mt-2 w-32 h-20 object-cover rounded" />
                 )}
+              </div>
+
+              {/* Media */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Media (Images/Videos)</label>
+                <div className="grid grid-cols-4 gap-4 mb-2">
+                  {(editingProject.media || []).map((media, i) => (
+                    <div key={i} className="relative group">
+                      {media.type === 'image' && media.url ? (
+                        <img src={media.url} alt="" className="w-full h-24 object-cover rounded" />
+                      ) : media.type === 'image' ? (
+                        <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
+                          <span className="text-xs font-display uppercase">No Image</span>
+                        </div>
+                      ) : (
+                        <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
+                          <span className="text-xs font-display uppercase">Video</span>
+                        </div>
+                      )}
+                      <button 
+                        type="button" 
+                        onClick={async () => {
+                          const currentMedia = editingProject.media || [];
+                          const mediaItem = currentMedia[i];
+                          
+
+                          
+                          // Only attempt to delete from backend if it has a real ID that exists in the database
+                          if (mediaItem.id && !String(mediaItem.id).startsWith('m-')) {
+                            try {
+                              const response = await fetch(`${API_BASE_URL}/projects/media/delete/${mediaItem.id}/`, {
+                                method: 'DELETE',
+                                credentials: 'include'
+                              });
+                              
+                              if (!response.ok) {
+                                console.error('Failed to delete media item. Response status:', response.status);
+                                // Continue with local state update even if backend deletion fails
+                              }
+                            } catch (error) {
+                              console.error('Error deleting media item:', error);
+                              // Continue with local state update even if there's an error
+                            }
+                          }
+                          
+                          // Always update local state to remove the media item from the UI
+                          const updated = currentMedia.filter((_, idx) => idx !== i);
+                          setEditingProject({
+                            ...editingProject,
+                            media: updated
+                          });
+                        }}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Add Image Button */}
+                <div className="flex gap-2 mb-2">
+                  <input 
+                    type="url"
+                    value={mediaUrlInput}
+                    onChange={e => setMediaUrlInput(e.target.value)}
+                    className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
+                    placeholder="Image URL..."
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (mediaUrlInput.trim()) {
+                        const currentMedia = editingProject.media || [];
+                        const newMediaItem: MediaItem = {
+                          id: `m-${Date.now()}`,
+                          type: 'image',
+                          url: mediaUrlInput.trim(),
+                          order: currentMedia.length + 1,
+                          likes_count: 0
+                        };
+                        setEditingProject({
+                          ...editingProject,
+                          media: [...currentMedia, newMediaItem],
+                          thumbnail: editingProject.thumbnail || mediaUrlInput.trim()
+                        });
+                        setMediaUrlInput('');
+                      }
+                    }}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                  >
+                    <ImageIcon size={14} /> Add Image
+                  </button>
+                </div>
+                
+                {/* Add Video Button */}
+                <div className="flex gap-2 mb-2">
+                  <input 
+                    type="url"
+                    value={mediaUrlInput}
+                    onChange={e => setMediaUrlInput(e.target.value)}
+                    className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
+                    placeholder="Video URL..."
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (mediaUrlInput.trim()) {
+                        const currentMedia = editingProject.media || [];
+                        const newMediaItem: MediaItem = {
+                          id: `m-${Date.now()}`,
+                          type: 'video',
+                          url: mediaUrlInput.trim(),
+                          order: currentMedia.length + 1,
+                          likes_count: 0
+                        };
+                        setEditingProject({
+                          ...editingProject,
+                          media: [...currentMedia, newMediaItem],
+                          thumbnail: editingProject.thumbnail || mediaUrlInput.trim()
+                        });
+                        setMediaUrlInput('');
+                      }
+                    }}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                  >
+                    <ImageIcon size={14} /> Add Video
+                  </button>
+                </div>
+                
+                {/* Upload Image Button */}
+                <div className="flex gap-2 mb-2">
+                  <input 
+                    type="file"
+                    ref={mediaFileInputRef}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleMediaUpload(e, true);
+                      }
+                    }}
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    id="edit-image-upload"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('edit-image-upload') as HTMLInputElement;
+                      input?.click();
+                    }}
+                    disabled={uploading}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {uploadingField === 'media' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                    Upload Image
+                  </button>
+                </div>
+                
+                {/* Upload Video Button */}
+                <div className="flex gap-2">
+                  <input 
+                    type="file"
+                    ref={mediaFileInputRef}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleMediaUpload(e, true);
+                      }
+                    }}
+                    accept="video/mp4,video/webm,video/ogg"
+                    className="hidden"
+                    id="edit-video-upload"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('edit-video-upload') as HTMLInputElement;
+                      input?.click();
+                    }}
+                    disabled={uploading}
+                    className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {uploadingField === 'media' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                    Upload Video
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">

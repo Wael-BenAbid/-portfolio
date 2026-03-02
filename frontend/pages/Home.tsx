@@ -44,13 +44,13 @@ const Home: React.FC = () => {
   const heroTagline = settings?.hero_tagline || 'Digital Experiences & Aerial Visuals';
   const aboutTitle = settings?.about_title || 'THE MIND BEHIND';
   const aboutQuote = settings?.about_quote || '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."';
-  const locationName = settings?.location || 'Casablanca, Morocco';
+  const locationName = settings?.location || 'Bizerte, Tunisia';
   const latitude = settings?.latitude || 33.5731;
   const longitude = settings?.longitude || -7.5898;
   const profileImage = settings?.profile_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';
   const droneImage = settings?.drone_image || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=800&auto=format&fit=crop';
-  const footerText = settings?.footer_text || 'DESIGNED BY ADRIAN';
-  const copyrightYear = settings?.copyright_year || 2024;
+  const footerText = settings?.footer_text || 'DESIGNED BY wael';
+  const copyrightYear = settings?.copyright_year || 2026;
   const version = settings?.version || '1.0';
   
   // Navigation labels from settings

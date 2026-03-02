@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { useProject, useProjects } from '../hooks/useData';
 import { ProjectDetailSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { ImageCarousel } from '../components/ImageCarousel';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
@@ -68,7 +69,7 @@ const ProjectDetail: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="bg-[#0a0a0a]"
+      className="bg-[#0a0a0a] relative"
     >
       {/* Hero Section */}
       <section className="relative h-screen w-full overflow-hidden">
@@ -118,17 +119,19 @@ const ProjectDetail: React.FC = () => {
       </section>
 
       {/* Content Section */}
-      <section className="py-32 px-8 md:px-24">
-        <div className="grid md:grid-cols-12 gap-16">
-          <div className="md:col-span-4">
-            <h3 className="text-xs font-display text-gray-500 uppercase tracking-widest mb-6">Brief</h3>
-            <p className="text-xl text-gray-300 leading-relaxed italic">
-              "{project.description}"
-            </p>
-            <div className="mt-8 pt-8 border-t border-gray-800">
+      <section className="py-24 px-8 md:px-24">
+        <div className="grid md:grid-cols-12 gap-12">
+          <div className="md:col-span-4 space-y-12">
+            <div>
+              <h3 className="text-xs font-display text-gray-500 uppercase tracking-widest mb-6">Brief</h3>
+              <p className="text-xl text-gray-300 leading-relaxed italic">
+                "{project.description}"
+              </p>
+            </div>
+            <div className="pt-8 border-t border-gray-800">
                <p className="text-xs font-display text-gray-500 uppercase tracking-widest mb-2">Date</p>
                <p className="text-gray-300">
-                 {new Date(project.createdAt).toLocaleDateString('en-US', {
+                 {new Date(project.created_at).toLocaleDateString('en-US', {
                    year: 'numeric',
                    month: 'long',
                    day: 'numeric'
@@ -137,7 +140,7 @@ const ProjectDetail: React.FC = () => {
              </div>
 
              {project.is_active && (
-               <div className="mt-8">
+               <div>
                  <Link
                    to="/auth"
                    state={{ from: `/project/${project.slug}` }}
@@ -148,50 +151,16 @@ const ProjectDetail: React.FC = () => {
                </div>
              )}
           </div>
-          <div className="md:col-span-8 flex flex-col gap-24">
-            {project.media && project.media.length > 0 ? (
-              project.media.map((item, idx) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  className="relative overflow-hidden group"
-                >
-                  {item.type === 'image' ? (
-                    <OptimizedImage
-                      src={item.url}
-                      alt={`${project.title} - Media ${idx + 1}`}
-                      width={1920}
-                      height={1080}
-                      lazy={true}
-                      placeholder={true}
-                      grayscale={true}
-                      hoverEffects={true}
-                      className="w-full h-auto"
-                    />
-                  ) : (
-                    <video
-                      src={item.url}
-                      poster={item.thumbnail_url}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-auto"
-                    />
-                  )}
-                  {item.caption && (
-                    <p className="mt-4 text-sm text-gray-400 italic">{item.caption}</p>
-                  )}
-                </motion.div>
-              ))
-            ) : (
-              <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">No additional media</p>
-              </div>
-            )}
-          </div>
+           <div className="md:col-span-8">
+              {project.media && project.media.length > 0 ? (
+                // All media types are displayed in the carousel
+                <ImageCarousel media={project.media} projectTitle={project.title} />
+              ) : (
+                <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                  <p className="text-gray-500">No additional media</p>
+                </div>
+              )}
+           </div>
         </div>
       </section>
 
