@@ -22,6 +22,7 @@ class Project(models.Model):
     github_url = models.URLField(blank=True, null=True)
     featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    show_registration = models.BooleanField(default=True, help_text="Show registration button on project detail page")
     created_by = models.ForeignKey('api.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects_created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

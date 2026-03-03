@@ -20,7 +20,8 @@ const Dashboard: React.FC = () => {
     thumbnail: '',
     media: [],
     featured: false,
-    is_active: true
+    is_active: true,
+    show_registration: true
   });
   const [techInput, setTechInput] = useState('');
   const [mediaUrlInput, setMediaUrlInput] = useState('');
@@ -758,6 +759,24 @@ const Dashboard: React.FC = () => {
                 </div>
                 <label htmlFor="switch-featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
               </div>
+
+              <div className="flex items-center gap-3">
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-show-registration" 
+                    checked={newProject.show_registration}
+                    onChange={e => setNewProject({...newProject, show_registration: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-show-registration">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-show-registration" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Show Registration Button</label>
+              </div>
               
               <div className="flex gap-4">
                 <button type="submit" className="px-10 py-4 bg-white text-black font-display text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2">
@@ -1065,6 +1084,24 @@ const Dashboard: React.FC = () => {
                   </label>
                 </div>
                 <label htmlFor="switch-edit-featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-edit-show-registration" 
+                    checked={editingProject.show_registration}
+                    onChange={e => setEditingProject({...editingProject, show_registration: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-edit-show-registration">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-edit-show-registration" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Show Registration Button</label>
               </div>
               
               <div className="flex gap-4">

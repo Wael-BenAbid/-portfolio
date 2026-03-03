@@ -22,6 +22,7 @@ export interface Project {
   created_at: string;
   featured: boolean;
   is_active: boolean;
+  show_registration: boolean;
   media: MediaItem[];
   technologies: string[];
   likes_count: number;

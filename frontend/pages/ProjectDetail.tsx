@@ -147,17 +147,17 @@ const ProjectDetail: React.FC = () => {
                </p>
              </div>
 
-             {project.is_active && (
-               <div>
-                 <Link
-                   to="/auth"
-                   state={{ from: `/project/${project.slug}` }}
-                   className="inline-block px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
-                 >
-                   Inscription
-                 </Link>
-               </div>
-             )}
+              {project.is_active && project.show_registration && (
+                <div>
+                  <Link
+                    to="/auth"
+                    state={{ from: `/project/${project.slug}` }}
+                    className="inline-block px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
+                  >
+                    Inscription
+                  </Link>
+                </div>
+              )}
           </div>
           
           {/* Media Carousel */}

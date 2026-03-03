@@ -20,7 +20,8 @@ def create_test_project():
             created_at=timezone.now(),
             updated_at=timezone.now(),
             is_active=True,
-            featured=True
+            featured=True,
+            show_registration=True
         )
         print('Project created successfully!')
 
