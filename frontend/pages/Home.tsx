@@ -22,8 +22,8 @@ const Home: React.FC = () => {
     error: settingsError 
   } = useSettings();
 
-  // Get featured projects (first 4 active and featured)
-  const featuredWorks: Project[] = projectsData?.results?.filter(p => p.is_active && p.featured).slice(0, 4) || [];
+  // Get featured projects (first 4 active, or all active if no featured)
+  const featuredWorks: Project[] = projectsData?.results?.filter(p => p.is_active).slice(0, 4) || [];
 
   // Scroll-based image transition for about section
   const { scrollYProgress: aboutScrollProgress } = useScroll({

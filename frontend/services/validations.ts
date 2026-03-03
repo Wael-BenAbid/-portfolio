@@ -29,6 +29,7 @@ export const ProjectSchema = z.object({
   created_at: z.string().or(z.date()).transform(v => typeof v === 'string' ? v : v.toISOString()),
   featured: z.boolean().default(false),
   is_active: z.boolean().default(true),
+  show_registration: z.boolean().default(false),
   technologies: z.array(z.string()).default([]),
   media: z.array(MediaItemSchema).transform(items => {
     const seenIds = new Set();
