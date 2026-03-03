@@ -41,6 +41,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Coverage
+.coverage
+htmlcov/
+
 # Django
 *.log
 local_settings.py
