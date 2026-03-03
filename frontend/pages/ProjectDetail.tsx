@@ -93,9 +93,16 @@ const ProjectDetail: React.FC = () => {
             transition={{ delay: 0.5 }}
             className="max-w-4xl"
           >
-            <p className="text-blue-500 font-display text-sm tracking-[0.4em] uppercase mb-4">
-              {project.category}
-            </p>
+             <div className="flex items-center gap-4 mb-4">
+               <p className="text-blue-500 font-display text-sm tracking-[0.4em] uppercase">
+                 {project.category}
+               </p>
+               {project.featured && (
+                 <span className="text-blue-500 font-display text-sm tracking-[0.4em] uppercase bg-blue-500/10 px-4 py-1 rounded">
+                   Featured
+                 </span>
+               )}
+             </div>
             <h1 className="text-6xl md:text-9xl font-display font-bold uppercase mb-8 leading-none">
               {project.title}
             </h1>
@@ -120,11 +127,12 @@ const ProjectDetail: React.FC = () => {
 
       {/* Content Section */}
       <section className="py-24 px-8 md:px-24">
-        <div className="grid md:grid-cols-12 gap-12">
-          <div className="md:col-span-4 space-y-12">
+        <div className="flex flex-col lg:flex-row gap-16 items-start">
+          {/* Project Information */}
+          <div className="w-full lg:w-1/3 space-y-16">
             <div>
               <h3 className="text-xs font-display text-gray-500 uppercase tracking-widest mb-6">Brief</h3>
-              <p className="text-xl text-gray-300 leading-relaxed italic">
+              <p className="text-xl text-gray-300 leading-loose italic">
                 "{project.description}"
               </p>
             </div>
@@ -151,7 +159,9 @@ const ProjectDetail: React.FC = () => {
                </div>
              )}
           </div>
-           <div className="md:col-span-8">
+          
+          {/* Media Carousel */}
+          <div className="w-full lg:w-2/3">
               {project.media && project.media.length > 0 ? (
                 // All media types are displayed in the carousel
                 <ImageCarousel media={project.media} projectTitle={project.title} />
@@ -160,7 +170,7 @@ const ProjectDetail: React.FC = () => {
                   <p className="text-gray-500">No additional media</p>
                 </div>
               )}
-           </div>
+          </div>
         </div>
       </section>
 

@@ -38,17 +38,10 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ media, projectTitl
             className="absolute inset-0"
           >
             {media[currentIndex].type === 'image' && media[currentIndex].url && (
-              <OptimizedImage
+              <img
                 src={media[currentIndex].url}
                 alt={`${projectTitle} - Media ${currentIndex + 1}`}
-                width={1920}
-                height={1080}
-                lazy={false}
-                placeholder={true}
-                grayscale={false}
-                hoverEffects={false}
-                objectFit="cover"
-                className="w-full h-full"
+                className="w-full h-full object-contain"
               />
             )}
             {media[currentIndex].type === 'video' && media[currentIndex].url && (

@@ -31,7 +31,7 @@ def create_default_admin(apps, schema_editor):
     # Validate that credentials are provided
     if not admin_email or not admin_password:
         print(f"\n{'='*60}")
-        print("⚠️  ADMIN USER CREATION SKIPPED")
+        print("ADMIN USER CREATION SKIPPED")
         print(f"{'='*60}")
         print("To create an admin user, set these environment variables:")
         print("  - INITIAL_ADMIN_EMAIL=your-email@example.com")
@@ -46,7 +46,7 @@ def create_default_admin(apps, schema_editor):
         validate_password(admin_password)
     except ValidationError as e:
         print(f"\n{'='*60}")
-        print("❌ ADMIN USER CREATION FAILED - PASSWORD VALIDATION ERROR")
+        print("ADMIN USER CREATION FAILED - PASSWORD VALIDATION ERROR")
         print(f"{'='*60}")
         print(f"Password does not meet security requirements:")
         for error in e.messages:
@@ -71,7 +71,7 @@ def create_default_admin(apps, schema_editor):
     )
     
     print(f"\n{'='*60}")
-    print("✅ ADMIN USER CREATED SUCCESSFULLY")
+    print("ADMIN USER CREATED SUCCESSFULLY")
     print(f"{'='*60}")
     print(f"   Email: {admin_email}")
     print(f"{'='*60}")

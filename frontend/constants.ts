@@ -79,13 +79,18 @@ export const DEFAULT_ABOUT: AboutData = {
 };
 
 // Image optimization helper
-export const getOptimizedImageUrl = (url: string, width: number = 800): string | null => {
-  if (!url || url.trim() === '') return null;
+export const getOptimizedImageUrl = (url: string | null | undefined, width: number = 800): string | null => {
+  if (!url || typeof url !== 'string' || url.trim() === '') return null;
   
   // Handle Unsplash URLs with optimization parameters
   if (url.includes('unsplash.com')) {
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}w=${width}&q=80&auto=format&fit=crop&fm=webp`;
+  }
+  
+  // Handle picsum.photos URLs (return as is for now)
+  if (url.includes('picsum.photos')) {
+    return url;
   }
   
   // Handle other image sources (could add more optimizers here)

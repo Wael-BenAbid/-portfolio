@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { getOptimizedImageUrl } from '../constants';
 
 interface OptimizedImageProps {
-  src: string;
+  src: string | null | undefined;
   alt: string;
   width?: number;
   height?: number;
@@ -84,7 +84,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onLoad?.();
   };
 
-  const handleError = () => {
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('OptimizedImage error:', e);
     setHasError(true);
     onError?.();
   };
@@ -151,24 +152,51 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   ...props
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  
+  const optimizedSrc = getOptimizedImageUrl(src, 800);
   const optimizedSrcSet = srcSet
-    .map(({ width, descriptor }) => `${getOptimizedImageUrl(src, width)} ${descriptor}`)
+    .map(({ width, descriptor }) => {
+      const optimizedUrl = getOptimizedImageUrl(src, width);
+      return optimizedUrl ? `${optimizedUrl} ${descriptor}` : undefined;
+    })
+    .filter((item): item is string => item !== undefined)
     .join(', ');
+
+  const handleLoad = () => {
+    setIsLoaded(true);
+    props.onLoad?.();
+  };
+
+  const handleError = () => {
+    setHasError(true);
+    props.onError?.();
+  };
 
   return (
     <div className={`relative overflow-hidden ${props.containerClassName || ''}`}>
-      {props.placeholder && !isLoaded && (
+      {props.placeholder && !isLoaded && !hasError && (
         <div className="absolute inset-0 bg-gray-800 animate-pulse" />
       )}
-      <img
-        src={getOptimizedImageUrl(src, 800)}
-        srcSet={optimizedSrcSet}
-        sizes={sizes}
-        alt={alt}
-        loading={props.lazy ? 'lazy' : 'eager'}
-        onLoad={() => setIsLoaded(true)}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${props.className || ''}`}
-      />
+      
+      {hasError && (
+        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+          <span className="text-gray-500 text-sm">Failed to load image</span>
+        </div>
+      )}
+
+      {optimizedSrc && (
+        <img
+          src={optimizedSrc}
+          srcSet={optimizedSrcSet}
+          sizes={sizes}
+          alt={alt}
+          loading={props.lazy ? 'lazy' : 'eager'}
+          onLoad={handleLoad}
+          onError={handleError}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${props.className || ''}`}
+        />
+      )}
     </div>
   );
 };
@@ -195,7 +223,10 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
   parallax = false,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+
+  const optimizedSrc = getOptimizedImageUrl(src, 1920);
 
   useEffect(() => {
     if (!parallax) return;
@@ -205,6 +236,14 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [parallax]);
 
+  const handleLoad = () => {
+    setIsLoaded(true);
+  };
+
+  const handleError = () => {
+    setHasError(true);
+  };
+
   return (
     <div className={`relative ${className}`}>
       <div
@@ -213,17 +252,25 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
           transform: parallax ? `translateY(${scrollY * 0.3}px)` : undefined,
         }}
       >
-        <img
-          src={getOptimizedImageUrl(src, 1920)}
-          alt=""
-          className="w-full h-full object-cover"
-          onLoad={() => setIsLoaded(true)}
-        />
+        {optimizedSrc && (
+          <img
+            src={optimizedSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            onLoad={handleLoad}
+            onError={handleError}
+          />
+        )}
         {overlay && (
           <div
             className="absolute inset-0 bg-black"
             style={{ opacity: overlayOpacity }}
           />
+        )}
+        {hasError && (
+          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+            <span className="text-gray-500 text-sm">Failed to load background image</span>
+          </div>
         )}
       </div>
       <div className="relative z-10">{children}</div>

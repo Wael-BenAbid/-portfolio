@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
@@ -27,6 +28,7 @@ const Dashboard: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<'thumbnail' | 'media' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -202,10 +204,14 @@ const Dashboard: React.FC = () => {
   };
 
   const deleteProject = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    setDeleteProjectId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteProjectId) return;
     
     try {
-      const project = projects.find(p => p.id === id);
+      const project = projects.find(p => p.id === deleteProjectId);
       if (!project) return;
       
       const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
@@ -213,7 +219,7 @@ const Dashboard: React.FC = () => {
         credentials: 'include'
       });
       if (response.ok) {
-        setProjects(projects.filter(p => p.id !== id));
+        setProjects(projects.filter(p => p.id !== deleteProjectId));
         setError(null);
       } else {
         // Handle API errors - show error to user
@@ -718,25 +724,39 @@ const Dashboard: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="active"
-                  checked={newProject.is_active}
-                  onChange={e => setNewProject({...newProject, is_active: e.target.checked})}
-                  className="w-4 h-4 bg-transparent border border-gray-800 accent-green-500"
-                />
-                <label htmlFor="active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-active" 
+                    checked={newProject.is_active}
+                    onChange={e => setNewProject({...newProject, is_active: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-active">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
               </div>
 
               <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="featured"
-                  checked={newProject.featured}
-                  onChange={e => setNewProject({...newProject, featured: e.target.checked})}
-                  className="w-4 h-4 bg-transparent border border-gray-800 accent-blue-500"
-                />
-                <label htmlFor="featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-featured" 
+                    checked={newProject.featured}
+                    onChange={e => setNewProject({...newProject, featured: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-featured">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
               </div>
               
               <div className="flex gap-4">
@@ -1012,25 +1032,39 @@ const Dashboard: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="edit-active"
-                  checked={editingProject.is_active}
-                  onChange={e => setEditingProject({...editingProject, is_active: e.target.checked})}
-                  className="w-4 h-4 bg-transparent border border-gray-800 accent-green-500"
-                />
-                <label htmlFor="edit-active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-edit-active" 
+                    checked={editingProject.is_active}
+                    onChange={e => setEditingProject({...editingProject, is_active: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-edit-active">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-edit-active" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Active</label>
               </div>
 
               <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
-                  id="edit-featured"
-                  checked={editingProject.featured}
-                  onChange={e => setEditingProject({...editingProject, featured: e.target.checked})}
-                  className="w-4 h-4 bg-transparent border border-gray-800 accent-blue-500"
-                />
-                <label htmlFor="edit-featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
+                <div className="onoffswitch">
+                  <input 
+                    type="checkbox" 
+                    name="onoffswitch" 
+                    className="onoffswitch-checkbox" 
+                    id="switch-edit-featured" 
+                    checked={editingProject.featured}
+                    onChange={e => setEditingProject({...editingProject, featured: e.target.checked})}
+                  />
+                  <label className="onoffswitch-label" htmlFor="switch-edit-featured">
+                    <span className="onoffswitch-inner"></span>
+                    <span className="onoffswitch-switch"></span>
+                  </label>
+                </div>
+                <label htmlFor="switch-edit-featured" className="text-[10px] font-display uppercase tracking-widest text-gray-500 cursor-pointer">Mark as Featured</label>
               </div>
               
               <div className="flex gap-4">
@@ -1102,6 +1136,72 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
       </main>
+
+      {/* Delete Project Confirmation Modal */}
+      {deleteProjectId && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-project-title"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setDeleteProjectId(null);
+            }
+          }}
+          onMouseDown={(e) => {
+            const modal = document.querySelector('[role="dialog"]');
+            if (modal && !modal.contains(e.target as Node)) {
+              setDeleteProjectId(null);
+            }
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#111] border border-gray-800 p-8 max-w-md w-full"
+            tabIndex={-1}
+            ref={(el) => {
+              if (el) {
+                el.focus();
+              }
+            }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 id="delete-project-title" className="font-display text-lg font-bold">Delete Project</h3>
+              <button 
+                onClick={() => setDeleteProjectId(null)} 
+                className="hover:text-red-500 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <p className="text-gray-400">
+                Are you sure you want to delete this project? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setDeleteProjectId(null)}
+                  className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs font-display uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-display uppercase tracking-wider transition-colors"
+                  autoFocus
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

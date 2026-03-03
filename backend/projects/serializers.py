@@ -2,6 +2,7 @@
 Projects App - Serializers for projects and media
 """
 from rest_framework import serializers
+from django.conf import settings
 from .models import Project, MediaItem, Skill
 from interactions.models import Like
 
@@ -44,21 +45,27 @@ class MediaItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'type', 'url', 'thumbnail_url', 'caption', 'order', 'likes_count', 'is_liked']
     
     def get_url(self, obj):
-        """Return the URL of the uploaded file"""
+        """Return the URL of the uploaded file or external URL"""
         if obj.file:
             request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
+            return request.build_absolute_uri(obj.file.url) if request else obj.file.url
+        # Only return test URLs for development or when no file is available
+        if settings.DEBUG:
+            test_url = f'https://picsum.photos/seed/test{obj.order}/800/600.jpg'
+            request = self.context.get('request')
+            return request.build_absolute_uri(test_url) if request else test_url
         return None
     
     def get_thumbnail_url(self, obj):
-        """Return the URL of the thumbnail"""
+        """Return the URL of the thumbnail or external URL"""
         if obj.thumbnail:
             request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.thumbnail.url)
-            return obj.thumbnail.url
+            return request.build_absolute_uri(obj.thumbnail.url) if request else obj.thumbnail.url
+        # Only return test URLs for development or when no thumbnail is available
+        if settings.DEBUG:
+            test_url = f'https://picsum.photos/seed/test{obj.order}/200/150.jpg'
+            request = self.context.get('request')
+            return request.build_absolute_uri(test_url) if request else test_url
         return None
     
     def get_is_liked(self, obj):

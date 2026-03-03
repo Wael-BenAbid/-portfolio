@@ -31,7 +31,7 @@ class ProjectListCreate(generics.ListCreateAPIView):
     
     def get_queryset(self):
         # Only return active projects for anonymous users or non-admin users
-        if self.request.user.is_authenticated and self.request.user.user_type == 'admin':
+        if self.request.user.is_authenticated and self.request.user.is_admin():
             return Project.objects.select_related('created_by').prefetch_related('media')
         return Project.objects.select_related('created_by').prefetch_related('media').filter(is_active=True)
     
@@ -53,9 +53,14 @@ class ProjectListCreate(generics.ListCreateAPIView):
 
 
 class ProjectRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Project.objects.select_related('created_by').prefetch_related('media')
     serializer_class = ProjectSerializer
     lookup_field = 'slug'
+
+    def get_queryset(self):
+        # Only return active projects for anonymous users or non-admin users
+        if self.request.user.is_authenticated and self.request.user.is_admin():
+            return Project.objects.select_related('created_by').prefetch_related('media')
+        return Project.objects.select_related('created_by').prefetch_related('media').filter(is_active=True)
 
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:

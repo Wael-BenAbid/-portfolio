@@ -117,22 +117,28 @@ const Work: React.FC = () => {
               transition={{ delay: index * 0.1 }}
               className="group"
             >
-              <Link to={`/project/${project.slug}`} className="block">
-                <div className="relative aspect-[4/5] overflow-hidden bg-gray-900 mb-6 rounded-sm">
-                  <img 
-                    src={project.thumbnail} 
-                    alt={project.title}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale group-hover:grayscale-0"
-                  />
-                  <div className="absolute inset-0 bg-blue-900/0 group-hover:bg-blue-900/10 transition-colors duration-500" />
-                  
-                  <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <span className="px-3 py-1 border border-white/50 rounded-full text-[10px] uppercase font-display backdrop-blur-md">
-                      Explore
-                    </span>
-                  </div>
-                </div>
+               <Link to={`/project/${project.slug}`} className="block">
+                 <div className="relative aspect-[4/5] overflow-hidden bg-gray-900 mb-6 rounded-sm">
+                   <img 
+                     src={project.thumbnail} 
+                     alt={project.title}
+                     loading="lazy"
+                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale group-hover:grayscale-0"
+                   />
+                   <div className="absolute inset-0 bg-blue-900/0 group-hover:bg-blue-900/10 transition-colors duration-500" />
+                   
+                   {project.featured && (
+                     <div className="absolute top-6 left-6 bg-blue-500 text-white text-[10px] uppercase font-display px-3 py-1 rounded-full">
+                       Featured
+                     </div>
+                   )}
+                   
+                   <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                     <span className="px-3 py-1 border border-white/50 rounded-full text-[10px] uppercase font-display backdrop-blur-md">
+                       Explore
+                     </span>
+                   </div>
+                 </div>
                 
                 <div className="flex justify-between items-start">
                   <div>
