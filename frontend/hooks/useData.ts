@@ -3,7 +3,7 @@
  * Provides loading states, error handling, and automatic data validation
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api, APIError } from '../services/api';
 import { z } from 'zod';
 
@@ -17,7 +17,7 @@ interface UseQueryOptions<T> {
   fallbackData?: T | null;
   onSuccess?: (data: T) => void;
   onError?: (error: APIError) => void;
-  schema?: z.ZodSchema<T>;
+  schema?: z.ZodSchema<any>;
   maxRetries?: number;
 }
 
@@ -49,15 +49,26 @@ export function useQuery<T>(
 ): UseQueryResult<T> {
   const { enabled = true, initialData = null, fallbackData = null, onSuccess, onError, schema, maxRetries } = options;
   
-  const [data, setData] = useState<T | null>(initialData);
+  // Memoize validated initial and fallback data to prevent infinite loops
+  const validatedInitialData = React.useMemo(() => {
+    return initialData && schema ? schema.parse(initialData) : initialData;
+  }, [initialData, schema]);
+  
+  const validatedFallbackData = React.useMemo(() => {
+    return fallbackData && schema ? schema.parse(fallbackData) : fallbackData;
+  }, [fallbackData, schema]);
+  
+  const [data, setData] = useState<T | null>(validatedInitialData);
   const [error, setError] = useState<APIError | null>(null);
   const [loading, setLoading] = useState(enabled);
   
   const isMounted = useRef(true);
+  const hasFetched = useRef(false);
 
   const fetchData = useCallback(async () => {
-    if (!endpoint) return;
+    if (!endpoint || hasFetched.current) return;
     
+    hasFetched.current = true;
     setLoading(true);
     setError(null);
     
@@ -78,14 +89,14 @@ export function useQuery<T>(
           : new APIError('An unexpected error occurred', 500, err);
         
         // Don't set error for network failures when we have fallback data
-        if (apiError.status !== 0 || !fallbackData) {
+        if (apiError.status !== 0 || !validatedFallbackData) {
           setError(apiError);
           onError?.(apiError);
         }
         
         // Use fallback data if available when API fails
-        if (fallbackData) {
-          setData(fallbackData);
+        if (validatedFallbackData) {
+          setData(validatedFallbackData);
         }
       }
     } finally {
@@ -93,19 +104,20 @@ export function useQuery<T>(
         setLoading(false);
       }
     }
-  }, [endpoint, schema, onSuccess, onError, fallbackData]);
+  }, [endpoint, schema, onSuccess, onError, validatedFallbackData, maxRetries]);
 
   useEffect(() => {
     isMounted.current = true;
     
-    if (enabled && endpoint) {
+    // Only fetch once on mount
+    if (enabled && endpoint && !hasFetched.current) {
       fetchData();
     }
     
     return () => {
       isMounted.current = false;
     };
-  }, [enabled, endpoint, fetchData]);
+  }, [enabled, endpoint]); // Remove fetchData from dependency array
 
   return {
     data,
@@ -221,21 +233,23 @@ export function useMutation<T, P = void>(
 // useProjects Hook
 // ============================================
 
-import { ProjectSchema, SkillSchema } from '../services/validations';
-import type { Project, Skill } from '../types';
+import { ProjectSchema, SkillSchema, SiteSettingsSchema, MediaItemSchema } from '../services/validations';
 
-interface ProjectsResponse {
-  results: Project[];
-  count: number;
-}
-
-// Fallback empty data when API is unavailable
-const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
+// Infer all types directly from Zod schemas for 100% type consistency
+export type Project = z.infer<typeof ProjectSchema>;
+export type Skill = z.infer<typeof SkillSchema>;
+export type MediaItem = z.infer<typeof MediaItemSchema>;
+export type SiteSettings = z.infer<typeof SiteSettingsSchema>;
 
 const ProjectsResponseSchema = z.object({
   results: z.array(ProjectSchema),
   count: z.number(),
 });
+
+type ProjectsResponse = z.infer<typeof ProjectsResponseSchema>;
+
+// Fallback empty data when API is unavailable
+const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
 
 export function useProjects() {
   return useQuery<ProjectsResponse>('/projects/', {
@@ -259,33 +273,85 @@ export function useSkills() {
   });
 }
 
-// ============================================
-// useSettings Hook
-// ============================================
-
-import { SiteSettingsSchema } from '../services/validations';
-
-export type SiteSettings = z.infer<typeof SiteSettingsSchema>;
-
 // Default settings when API is unavailable
 const DEFAULT_SETTINGS: SiteSettings = {
   site_name: 'Portfolio',
-  site_title: 'ADRIAN',
+  site_title: 'WAEL',
   logo_url: '',
   favicon_url: '',
   site_description: '',
+  
+  // Theme Settings
+  primary_color: '#6366f1',
+  secondary_color: '#8b5cf6',
+  accent_color: '#ec4899',
+  background_color: '#0a0a0a',
+  cursor_theme: 'default',
+  cursor_size: 20,
+  custom_cursor_color: '#6366f1',
+  
   hero_title: 'ACTIVE',
   hero_subtitle: 'THEORY',
   hero_tagline: 'Digital Experiences & Aerial Visuals',
   about_title: 'THE MIND BEHIND',
+  about_quote: '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."',
+  profile_image: '',
+  drone_image: '',
+  location: 'Bizerte, Tunisia',
+  latitude: 33.5731,
+  longitude: -7.5898,
+  footer_text: 'DESIGNED BY wael',
+  copyright_year: 2026,
+  version: '1.0',
+  instagram_url: '',
+  linkedin_url: '',
+  github_url: '',
+  twitter_url: '',
   nav_work_label: 'Work',
   nav_about_label: 'About',
   nav_contact_label: 'Contact',
+  
+  // CV Personal Info
+  cv_full_name: '',
+  cv_job_title: '',
+  cv_email: '',
+  cv_phone: '',
+  cv_location: '',
+  cv_profile_image: '',
+  cv_summary: '',
+  
+  // Email Settings
+  email_host: '',
+  email_port: 587,
+  email_host_user: '',
+  email_host_password: '',
+  default_from_email: '',
+  
+  // Contact
+  contact_email: '',
+  contact_phone: '',
+  
+  // Footer
+  designer_name: 'WAEL',
+  copyright_text: 'Your Name. All rights reserved.',
+  show_location: true,
+  
+  // SEO
+  meta_title: '',
+  meta_description: '',
+  meta_keywords: '',
+  
+  // OAuth Settings
+  google_client_id: '',
+  google_client_secret: '',
+  facebook_app_id: '',
+  facebook_app_secret: '',
 };
 
 export function useSettings() {
   const { data, ...rest } = useQuery<SiteSettings>('/settings/', {
     fallbackData: DEFAULT_SETTINGS,
+    schema: SiteSettingsSchema,
   });
 
   // Dynamically update browser title and favicon when settings change

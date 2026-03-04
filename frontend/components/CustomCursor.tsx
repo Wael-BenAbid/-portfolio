@@ -2,7 +2,19 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useSpring, useMotionValue } from 'framer-motion';
 
-export const CustomCursor: React.FC = () => {
+interface CustomCursorProps {
+  cursorTheme?: string;
+  cursorSize?: number;
+  customCursorColor?: string;
+  primaryColor?: string;
+}
+
+export const CustomCursor: React.FC<CustomCursorProps> = ({
+  cursorTheme = 'default',
+  cursorSize = 20,
+  customCursorColor = '#6366f1',
+  primaryColor = '#6366f1',
+}) => {
   const [isHovering, setIsHovering] = useState(false);
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
@@ -41,27 +53,55 @@ export const CustomCursor: React.FC = () => {
     };
   }, [cursorX, cursorY]);
 
+  // Determine cursor color based on theme
+  const getCursorColor = () => {
+    switch (cursorTheme) {
+      case 'neon':
+        return '#00ff00';
+      case 'minimal':
+        return '#ffffff';
+      case 'custom':
+        return customCursorColor;
+      default:
+        return primaryColor;
+    }
+  };
+
+  // Determine cursor size
+  const getCursorSize = () => {
+    return cursorSize;
+  };
+
+  const cursorColor = getCursorColor();
+  const size = getCursorSize();
+
   return (
     <>
       <motion.div
-        className="fixed top-0 left-0 w-8 h-8 border border-white rounded-full pointer-events-none z-[9999]"
+        className="fixed top-0 left-0 rounded-full pointer-events-none z-[9999]"
         style={{
           x: springX,
           y: springY,
           translateX: '-50%',
           translateY: '-50%',
+          width: size * 2,
+          height: size * 2,
+          border: `1px solid ${cursorColor}`,
           scale: isHovering ? 2.5 : 1,
-          backgroundColor: isHovering ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+          backgroundColor: isHovering ? `${cursorColor}20` : 'transparent',
         }}
         transition={{ type: 'spring', damping: 20, stiffness: 150 }}
       />
       <motion.div
-        className="fixed top-0 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full pointer-events-none z-[9999]"
+        className="fixed top-0 left-0 rounded-full pointer-events-none z-[9999]"
         style={{
           x: cursorX,
           y: cursorY,
           translateX: '-50%',
           translateY: '-50%',
+          width: size / 2,
+          height: size / 2,
+          backgroundColor: cursorColor,
         }}
       />
     </>

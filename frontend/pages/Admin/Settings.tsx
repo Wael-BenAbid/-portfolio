@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useToast } from '../../contexts/ToastContext';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Save, LayoutDashboard, Globe, Key, Mail, Users, MapPin, Image, Upload, Loader2, Plus, Trash2, Edit2, X, User, Sparkles, Type } from 'lucide-react';
@@ -15,6 +16,14 @@ interface SiteSettings {
   logo_url: string;
   favicon_url: string;
   site_description: string;
+  // Theme Settings
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
+  background_color?: string;
+  cursor_theme?: string;
+  cursor_size?: number;
+  custom_cursor_color?: string;
   // Hero Section
   hero_title: string;
   hero_subtitle: string;
@@ -114,7 +123,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   footer_text: '',
   copyright_year: new Date().getFullYear(),
   version: '1.0.0',
-  designer_name: 'ADRIAN',
+  designer_name: 'WAEL',
   copyright_text: 'Your Name. All rights reserved.',
   show_location: true,
   meta_title: '',
@@ -147,6 +156,7 @@ const Settings: React.FC = () => {
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
   const { user, token, logout, isAuthenticated } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchSettings();
@@ -315,18 +325,18 @@ const Settings: React.FC = () => {
         if (error.email) errorMessages.push(`Email: ${error.email.join(', ')}`);
         if (error.new_password) errorMessages.push(`Password: ${error.new_password.join(', ')}`);
         if (error.non_field_errors) errorMessages.push(error.non_field_errors.join(', '));
-        alert(errorMessages.length > 0 ? errorMessages.join('\n') : (error.error || 'Failed to update user'));
+        showToast(errorMessages.length > 0 ? errorMessages.join('\n') : (error.error || 'Failed to update user'), 'error');
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      alert('Failed to update user');
+      showToast('Failed to update user', 'error');
     }
   };
 
   // Handle user delete
   const handleDeleteUser = async (userId: number) => {
     if (userId === user?.id) {
-      alert('Cannot delete your own account');
+      showToast('Cannot delete your own account', 'error');
       return;
     }
     
@@ -342,11 +352,11 @@ const Settings: React.FC = () => {
         fetchUsers();
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to delete user');
+        showToast(error.error || 'Failed to delete user', 'error');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Failed to delete user');
+      showToast('Failed to delete user', 'error');
     }
   };
 
@@ -384,15 +394,15 @@ const Settings: React.FC = () => {
         console.error('Upload error:', errorText);
         try {
           const error = JSON.parse(errorText);
-          alert(error.error || error.detail || 'Failed to upload image');
+          showToast(error.error || error.detail || 'Failed to upload image', 'error');
         } catch {
-          alert('Failed to upload image');
+          showToast('Failed to upload image', 'error');
         }
         return null;
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image');
+      showToast('Failed to upload image', 'error');
       return null;
     } finally {
       setUploading(false);
@@ -494,6 +504,13 @@ const Settings: React.FC = () => {
             <LayoutDashboard size={16} /> Config Page Home
           </button>
           
+          <button 
+            onClick={() => setActiveTab('theme')}
+            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'theme' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
+          >
+            <Sparkles size={16} /> Theme Settings
+          </button>
+          
           {user?.user_type === 'admin' && (
             <button 
               onClick={() => setActiveTab('users')}
@@ -517,6 +534,7 @@ const Settings: React.FC = () => {
             {activeTab === 'email' && 'Email Configuration'}
             {activeTab === 'footer' && 'Footer Settings'}
             {activeTab === 'home' && 'Config Page Home'}
+            {activeTab === 'theme' && 'Theme Settings'}
             {activeTab === 'users' && 'User Management'}
           </h1>
           {savedStatus && <span className="text-green-500 font-display text-[10px] uppercase tracking-widest">Saved Successfully</span>}
@@ -535,7 +553,7 @@ const Settings: React.FC = () => {
                     value={settings.site_title}
                     onChange={e => setSettings({...settings, site_title: e.target.value})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase text-2xl"
-                    placeholder="ADRIAN"
+                    placeholder="WAEL"
                   />
                 </div>
                 <div className="space-y-2">
@@ -727,6 +745,144 @@ const Settings: React.FC = () => {
                     />
                   </div>
                 </div>
+              </div>
+            </section>
+
+            <button type="submit" className="px-12 py-5 bg-white text-black font-display text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-4">
+              <Save size={16} /> Save Settings
+            </button>
+          </form>
+        )}
+
+        {/* Theme Tab */}
+        {activeTab === 'theme' && settings && (
+          <form onSubmit={handleSaveSettings} className="max-w-4xl space-y-12">
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Theme Colors</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Primary Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color"
+                      value={settings.primary_color || '#6366f1'}
+                      onChange={e => setSettings({...settings, primary_color: e.target.value})}
+                      className="w-12 h-12 rounded cursor-pointer"
+                    />
+                    <input 
+                      type="text"
+                      value={settings.primary_color || '#6366f1'}
+                      onChange={e => setSettings({...settings, primary_color: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="#6366f1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Secondary Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color"
+                      value={settings.secondary_color || '#8b5cf6'}
+                      onChange={e => setSettings({...settings, secondary_color: e.target.value})}
+                      className="w-12 h-12 rounded cursor-pointer"
+                    />
+                    <input 
+                      type="text"
+                      value={settings.secondary_color || '#8b5cf6'}
+                      onChange={e => setSettings({...settings, secondary_color: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="#8b5cf6"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Accent Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color"
+                      value={settings.accent_color || '#ec4899'}
+                      onChange={e => setSettings({...settings, accent_color: e.target.value})}
+                      className="w-12 h-12 rounded cursor-pointer"
+                    />
+                    <input 
+                      type="text"
+                      value={settings.accent_color || '#ec4899'}
+                      onChange={e => setSettings({...settings, accent_color: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="#ec4899"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Background Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color"
+                      value={settings.background_color || '#0a0a0a'}
+                      onChange={e => setSettings({...settings, background_color: e.target.value})}
+                      className="w-12 h-12 rounded cursor-pointer"
+                    />
+                    <input 
+                      type="text"
+                      value={settings.background_color || '#0a0a0a'}
+                      onChange={e => setSettings({...settings, background_color: e.target.value})}
+                      className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                      placeholder="#0a0a0a"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Cursor Theme</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Cursor Type</label>
+                  <select 
+                    value={settings.cursor_theme || 'default'}
+                    onChange={e => setSettings({...settings, cursor_theme: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
+                  >
+                    <option value="default">Default</option>
+                    <option value="neon">Neon</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Cursor Size</label>
+                  <input 
+                    type="number"
+                    min="10"
+                    max="50"
+                    value={settings.cursor_size || 20}
+                    onChange={e => setSettings({...settings, cursor_size: parseInt(e.target.value)})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="20"
+                  />
+                </div>
+                {settings.cursor_theme === 'custom' && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Custom Cursor Color</label>
+                    <div className="flex gap-2 items-center">
+                      <input 
+                        type="color"
+                        value={settings.custom_cursor_color || '#6366f1'}
+                        onChange={e => setSettings({...settings, custom_cursor_color: e.target.value})}
+                        className="w-12 h-12 rounded cursor-pointer"
+                      />
+                      <input 
+                        type="text"
+                        value={settings.custom_cursor_color || '#6366f1'}
+                        onChange={e => setSettings({...settings, custom_cursor_color: e.target.value})}
+                        className="flex-1 bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                        placeholder="#6366f1"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -935,7 +1091,7 @@ const Settings: React.FC = () => {
                     value={settings.footer_text}
                     onChange={e => setSettings({...settings, footer_text: e.target.value})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                    placeholder="DESIGNED BY ADRIAN"
+                    placeholder="DESIGNED BY WAEL"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-8">
@@ -1154,7 +1310,7 @@ const Settings: React.FC = () => {
                     value={settings.designer_name || ''}
                     onChange={e => setSettings({...settings, designer_name: e.target.value})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
-                    placeholder="ADRIAN"
+                    placeholder="WAEL"
                   />
                   <p className="text-[10px] text-gray-600 mt-1">Displayed as "DESIGNED BY [Name]" in the footer</p>
                 </div>

@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useToast } from '../../contexts/ToastContext';
 import { motion } from 'framer-motion';
 import { Save, LayoutDashboard, Briefcase, GraduationCap, Award, Code, Globe2, Heart, User, Plus, Trash2, Edit2, X, Loader2, MapPin, Upload } from 'lucide-react';
 import { useAuth } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { BackButton } from '../../components/BackButton';
 
-const API_URL = '/api';  // Use Vite proxy for development
+const API_URL = 'http://localhost:8000/api';
 
 interface SiteSettings {
   id?: number;
@@ -146,6 +149,7 @@ const CV: React.FC = () => {
 
   const profileInputRef = useRef<HTMLInputElement>(null);
   const { user, token, logout } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchSettings();
@@ -216,7 +220,7 @@ const CV: React.FC = () => {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image', file);
     formData.append('field', field);
 
     setUploading(true);
@@ -225,7 +229,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/settings/upload/`, {
         method: 'POST',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
         body: formData,
       });
 
@@ -246,16 +252,16 @@ const CV: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
         },
-        credentials: 'include',
         body: JSON.stringify(settings),
       });
 
       if (response.ok) {
         const updatedSettings = await response.json();
         setSettings(updatedSettings);
-        alert('Settings saved successfully!');
+        showToast('Settings saved successfully!', 'success');
       } else {
         console.error('Failed to save settings');
       }
@@ -427,6 +433,65 @@ const CV: React.FC = () => {
     </div>
   );
 
+  const handleSaveExperience = async () => {
+    if (!editingExperience) return;
+    try {
+      const method = editingExperience.id ? 'PUT' : 'POST';
+      const url = editingExperience.id 
+        ? `${API_URL}/cv/experiences/${editingExperience.id}/`
+        : `${API_URL}/cv/experiences/`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify(editingExperience),
+      });
+
+      if (response.ok) {
+        const savedExperience = await response.json();
+        if (editingExperience.id) {
+          setExperiences(prev => prev.map(exp => exp.id === savedExperience.id ? savedExperience : exp));
+        } else {
+          setExperiences(prev => [...prev, savedExperience]);
+        }
+        setEditingExperience(null);
+        showToast('Experience saved successfully!', 'success');
+      } else {
+        console.error('Failed to save experience');
+        showToast('Failed to save experience', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving experience:', error);
+      showToast('Error saving experience', 'error');
+    }
+  };
+
+  const handleDeleteExperience = async (id: number | undefined) => {
+    if (!id) return;
+    try {
+      const response = await fetch(`${API_URL}/cv/experiences/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setExperiences(prev => prev.filter(exp => exp.id !== id));
+        showToast('Experience deleted successfully!', 'success');
+      } else {
+        console.error('Failed to delete experience');
+        showToast('Failed to delete experience', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting experience:', error);
+      showToast('Error deleting experience', 'error');
+    }
+  };
+
   const renderExperienceTab = () => (
     <div className="space-y-6">
       <div className="bg-gray-800 rounded-lg p-6">
@@ -487,6 +552,111 @@ const CV: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Experience Modal */}
+      {editingExperience && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {editingExperience.id ? 'Edit Experience' : 'Add Experience'}
+              </h3>
+              <button
+                onClick={() => setEditingExperience(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Job Title</label>
+                <input
+                  type="text"
+                  value={editingExperience.title}
+                  onChange={(e) => setEditingExperience({ ...editingExperience, title: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
+                <input
+                  type="text"
+                  value={editingExperience.company}
+                  onChange={(e) => setEditingExperience({ ...editingExperience, company: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g. Tech Company Inc."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={editingExperience.location}
+                  onChange={(e) => setEditingExperience({ ...editingExperience, location: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g. San Francisco, CA"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={editingExperience.start_date}
+                    onChange={(e) => setEditingExperience({ ...editingExperience, start_date: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={editingExperience.end_date || ''}
+                    onChange={(e) => setEditingExperience({ ...editingExperience, end_date: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={editingExperience.is_current}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingExperience.is_current}
+                  onChange={(e) => setEditingExperience({ ...editingExperience, is_current: e.target.checked, end_date: e.target.checked ? null : editingExperience.end_date })}
+                  className="w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-500 focus:ring-blue-500"
+                />
+                <label className="text-sm font-medium text-gray-300">I'm currently working here</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <textarea
+                  value={editingExperience.description}
+                  onChange={(e) => setEditingExperience({ ...editingExperience, description: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Describe your responsibilities and achievements..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setEditingExperience(null)}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveExperience}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -895,28 +1065,14 @@ const CV: React.FC = () => {
     </div>
   );
 
-  const handleDeleteExperience = async (id: number | undefined) => {
-    if (!id) return;
-    try {
-      const response = await fetch(`${API_URL}/cv/experiences/${id}/`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        setExperiences(prev => prev.filter(exp => exp.id !== id));
-      }
-    } catch (error) {
-      console.error('Error deleting experience:', error);
-    }
-  };
-
   const handleDeleteEducation = async (id: number | undefined) => {
     if (!id) return;
     try {
       const response = await fetch(`${API_URL}/cv/education/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -932,7 +1088,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/skills/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -948,7 +1106,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/languages/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -964,7 +1124,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/certifications/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -980,7 +1142,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/projects/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -996,7 +1160,9 @@ const CV: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/cv/interests/${id}/`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -1033,6 +1199,10 @@ const CV: React.FC = () => {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="flex h-screen">
         <aside className="w-64 bg-[#1a1a1a] border-r border-gray-700 p-6 flex flex-col">
+          {/* Back Button */}
+          <div className="mb-6">
+            <BackButton className="w-full" />
+          </div>
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-2">Settings</h2>
             <p className="text-sm text-gray-400">CV Management</p>

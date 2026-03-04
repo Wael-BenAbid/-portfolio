@@ -12,7 +12,7 @@ export const LoadingScreen: React.FC = () => {
           transition={{ duration: 0.8, ease: "circOut" }}
           className="text-2xl font-display font-bold tracking-[0.5em] uppercase"
         >
-          ADRIAN
+          WAEL
         </motion.h2>
       </div>
       <div className="w-32 h-px bg-gray-800 relative overflow-hidden">

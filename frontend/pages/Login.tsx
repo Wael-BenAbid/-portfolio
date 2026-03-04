@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Chrome, Facebook } from 'lucide-react';
 import { API_BASE_URL } from '../constants';
+import { BackButton } from '../components/BackButton';
 
 interface LoginProps {
   onLogin: (user: any, token: string) => void;
@@ -61,13 +62,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md"
       >
+        <div className="mb-6">
+          <BackButton />
+        </div>
         <div className="text-center mb-10">
           <h1 className="font-display text-3xl font-bold tracking-widest mb-2 uppercase">Welcome Back</h1>
           <p className="text-gray-500 text-xs uppercase tracking-widest">Sign in to your account</p>
         </div>
 
         <div className="p-10 bg-[#111] border border-gray-800 rounded-2xl shadow-2xl">
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6" autoComplete="off">
             <div className="space-y-2">
               <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Email</label>
               <div className="relative">
@@ -79,6 +83,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   className="w-full bg-transparent border border-gray-800 py-4 pl-12 pr-4 focus:border-blue-500 outline-none font-display transition-colors"
                   placeholder="your@email.com"
                   required
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -94,6 +99,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   className="w-full bg-transparent border border-gray-800 py-4 pl-12 pr-12 focus:border-blue-500 outline-none font-display transition-colors"
                   placeholder="••••••••"
                   required
+                  autoComplete="off"
                 />
                 <button 
                   type="button"

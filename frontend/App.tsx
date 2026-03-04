@@ -1,5 +1,7 @@
 
 import React, { Suspense, lazy, useEffect, useState, createContext, useContext } from 'react';
+import { ToastProvider } from './contexts/ToastContext';
+import { ToastContainer } from './components/Toast';
 import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { CustomCursor } from './components/CustomCursor';
@@ -7,7 +9,7 @@ import { Navbar } from './components/Navbar';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Scene3D } from './components/Scene3D';
 import { AlertTriangle, Lock, X } from 'lucide-react';
-import { API_BASE_URL } from './constants';
+import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
 import { useSettings } from './hooks/useData';
 
@@ -55,10 +57,18 @@ const AdminCV = lazy(() => import('./pages/Admin/CV'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren<{ adminOnly?: boolean }>) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
+  const location = useLocation();
+  
+  // Check if we're still initializing authentication state
+  // This prevents flash of unauthenticated state on initial render
+  const isInitializing = token === null;
+  if (isInitializing) {
+    return <LoadingScreen />;
+  }
   
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={`/auth?from=${encodeURIComponent(location.pathname)}`} replace />;
   }
   
   if (adminOnly && user?.user_type !== 'admin') {
@@ -70,9 +80,7 @@ const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren
 
 // Auth Provider Component
 const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-
+  // Initialize state directly from sessionStorage to avoid delay
   const getUserFromSession = (): User | null => {
     const userJson = sessionStorage.getItem('auth_user');
     if (userJson) {
@@ -85,20 +93,13 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
     return null;
   };
 
-  useEffect(() => {
-    // Check for stored auth on mount using sessionStorage for user data only
-    // IMPORTANT: Authentication is handled via HttpOnly cookie (set by backend)
-    // We only store user info in sessionStorage, NOT the token
-    const sessionUser = getUserFromSession();
-    
-    if (sessionUser) {
-      setUser(sessionUser);
-      // Set token to a placeholder to indicate authenticated state
-      // The actual auth is via HttpOnly cookie which JavaScript cannot access
-      setToken('http-only-cookie');
-    }
-    
+  const initialUser = getUserFromSession();
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [token, setToken] = useState<string | null>(initialUser ? 'http-only-cookie' : null);
 
+  useEffect(() => {
+    // This effect is now redundant since we initialize state directly
+    // but kept for consistency in case of future changes
   }, []);
 
   const login = (userData: User, authToken: string) => {
@@ -220,8 +221,7 @@ const PasswordChangeModal: React.FC = () => {
     setLoading(true);
     try {
       // Use the same API_BASE_URL as login to ensure cookies are sent
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-      const response = await fetch(`${API_BASE_URL}/auth/password/change/`, {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PASSWORD_CHANGE}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -363,8 +363,16 @@ const App: React.FC = () => {
   const { data: settings } = useSettings();
 
   return (
-    <div className="relative min-h-screen bg-[#0f0f0f] text-white selection:bg-blue-500 selection:text-white overflow-x-hidden">
-      <CustomCursor />
+    <div 
+      className={`relative min-h-screen text-white selection:${settings?.primary_color || '#6366f1'} selection:text-white overflow-x-hidden`}
+      style={{ backgroundColor: settings?.background_color || '#0f0f0f' }}
+    >
+      <CustomCursor 
+        cursorTheme={settings?.cursor_theme}
+        cursorSize={settings?.cursor_size}
+        customCursorColor={settings?.custom_cursor_color}
+        primaryColor={settings?.primary_color}
+      />
       {!hideNavPaths.includes(location.pathname) && !isAdminPath && <Navbar />}
       
       {/* Only show 3D background on public pages */}
@@ -390,7 +398,10 @@ const App: React.FC = () => {
 const Root = () => (
   <HashRouter>
     <AuthProvider>
-      <App />
+      <ToastProvider>
+        <App />
+        <ToastContainer />
+      </ToastProvider>
     </AuthProvider>
   </HashRouter>
 );

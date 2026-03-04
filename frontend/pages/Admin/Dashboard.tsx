@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<'thumbnail' | 'media' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
+  const [deleteProjectId, setDeleteProjectId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -204,7 +204,7 @@ const Dashboard: React.FC = () => {
     navigate('/auth');
   };
 
-  const deleteProject = async (id: string) => {
+  const deleteProject = async (id: number) => {
     setDeleteProjectId(id);
   };
 
@@ -236,7 +236,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-    const toggleActive = async (id: string) => {
+    const toggleActive = async (id: string | number) => {
     const project = projects.find(p => p.id === id);
     if (!project) return;
 
@@ -267,7 +267,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const toggleFeatured = async (id: string) => {
+  const toggleFeatured = async (id: string | number) => {
     const project = projects.find(p => p.id === id);
     if (!project) return;
     

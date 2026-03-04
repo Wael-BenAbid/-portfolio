@@ -99,7 +99,7 @@ const Contact: React.FC = () => {
       </div>
 
       <footer className="pt-24 flex justify-between items-center text-[10px] font-display uppercase tracking-[0.4em] text-gray-600">
-        <p>© 2024 ADRIAN. ALL RIGHTS RESERVED.</p>
+        <p>© 2024 WAEL. ALL RIGHTS RESERVED.</p>
         <p>COORDINATES: {about.coordinates.lat}, {about.coordinates.lng}</p>
       </footer>
     </motion.div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, Chrome, Facebook } from 'lucide-react';
 import { API_BASE_URL } from '../constants';
+import { BackButton } from '../components/BackButton';
 
 interface RegisterProps {
   onLogin: (user: any, token: string) => void;
@@ -77,6 +78,9 @@ const Register: React.FC<RegisterProps> = ({ onLogin }) => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md"
       >
+        <div className="mb-6">
+          <BackButton />
+        </div>
         <div className="text-center mb-10">
           <h1 className="font-display text-3xl font-bold tracking-widest mb-2 uppercase">Create Account</h1>
           <p className="text-gray-500 text-xs uppercase tracking-widest">Join our community</p>

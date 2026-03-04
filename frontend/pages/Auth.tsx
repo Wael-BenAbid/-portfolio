@@ -5,6 +5,7 @@ import { Float, MeshDistortMaterial, Sphere, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../constants';
+import { BackButton } from '../components/BackButton';
 
 // Types
 interface AuthProps {
@@ -289,7 +290,9 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       
       if (response.ok) {
         onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
-        navigate('/');
+        // Check if user was trying to access admin page before login
+        const from = new URLSearchParams(window.location.search).get('from') || '/';
+        navigate(from);
       } else {
         setError(data.error || data.message || 'Login failed');
       }
@@ -373,6 +376,11 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
         className="relative z-20 min-h-screen flex items-center justify-center px-4 py-20"
       >
         <div className="w-full max-w-md">
+          {/* Back Button */}
+          <div className="mb-6 text-left">
+            <BackButton />
+          </div>
+          
           {/* Logo/Title */}
           <motion.div
             initial={{ opacity: 0, y: -30 }}

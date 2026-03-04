@@ -214,7 +214,7 @@ const Home: React.FC = () => {
               {aboutQuote}
             </h2>
             <Link to="/about" className="group flex items-center gap-4 text-xs font-display tracking-[0.3em] uppercase">
-              Meet Adrian <div className="p-4 border border-gray-800 rounded-full group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16}/></div>
+              Meet WAEL <div className="p-4 border border-gray-800 rounded-full group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16}/></div>
             </Link>
           </motion.div>
           

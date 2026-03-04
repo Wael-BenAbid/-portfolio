@@ -6,10 +6,15 @@ from .models import SiteSettings, About, ContactMessage, EmailSubscription
 
 
 class SiteSettingsSerializer(serializers.ModelSerializer):
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    
     class Meta:
         model = SiteSettings
         fields = [
             'site_name', 'site_title', 'logo_url', 'favicon_url', 'site_description',
+            'primary_color', 'secondary_color', 'accent_color', 'background_color',
+            'cursor_theme', 'cursor_size', 'custom_cursor_color',
             'hero_title', 'hero_subtitle', 'hero_tagline',
             'about_title', 'about_quote', 'profile_image', 'drone_image',
             'nav_work_label', 'nav_about_label', 'nav_contact_label',

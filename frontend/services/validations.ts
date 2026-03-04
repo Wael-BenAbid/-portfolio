@@ -20,7 +20,7 @@ export const MediaItemSchema = z.object({
 });
 
 export const ProjectSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
+  id: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseInt(v, 10) : v),
   title: z.string().min(1),
   slug: z.string().min(1),
   description: z.string(),
@@ -78,6 +78,16 @@ export const SiteSettingsSchema = z.object({
   logo_url: z.string().optional(),
   favicon_url: z.string().optional(),
   site_description: z.string().optional(),
+  
+  // Theme Settings
+  primary_color: z.string().default('#6366f1'),
+  secondary_color: z.string().default('#8b5cf6'),
+  accent_color: z.string().default('#ec4899'),
+  background_color: z.string().default('#0a0a0a'),
+  cursor_theme: z.string().default('default'),
+  cursor_size: z.number().default(20),
+  custom_cursor_color: z.string().default('#6366f1'),
+  
   hero_title: z.string().default('ACTIVE'),
   hero_subtitle: z.string().default('THEORY'),
   hero_tagline: z.string().default('Digital Experiences & Aerial Visuals'),
@@ -86,17 +96,54 @@ export const SiteSettingsSchema = z.object({
   profile_image: z.string().optional(),
   drone_image: z.string().optional(),
   location: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  latitude: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseFloat(v) : v).optional(),
+  longitude: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseFloat(v) : v).optional(),
   footer_text: z.string().optional(),
   copyright_year: z.number().optional(),
   version: z.string().optional(),
   instagram_url: z.string().url().optional().or(z.literal('')),
   linkedin_url: z.string().url().optional().or(z.literal('')),
   github_url: z.string().url().optional().or(z.literal('')),
+  twitter_url: z.string().url().optional().or(z.literal('')),
   nav_work_label: z.string().default('Work'),
   nav_about_label: z.string().default('About'),
   nav_contact_label: z.string().default('Contact'),
+  
+   // CV Personal Info
+  cv_full_name: z.string().optional(),
+  cv_job_title: z.string().optional(),
+  cv_email: z.string().email().optional().or(z.literal('')),
+  cv_phone: z.string().optional(),
+  cv_location: z.string().optional(),
+  cv_profile_image: z.string().optional(),
+  cv_summary: z.string().optional(),
+  
+  // Email Settings
+  email_host: z.string().optional(),
+  email_port: z.number().optional(),
+  email_host_user: z.string().email().optional().or(z.literal('')),
+  email_host_password: z.string().optional(),
+  default_from_email: z.string().email().optional().or(z.literal('')),
+  
+  // Contact
+  contact_email: z.string().email().optional().or(z.literal('')),
+  contact_phone: z.string().optional(),
+  
+  // Footer
+  designer_name: z.string().optional(),
+  copyright_text: z.string().optional(),
+  show_location: z.boolean().default(true),
+  
+  // SEO
+  meta_title: z.string().optional(),
+  meta_description: z.string().optional(),
+  meta_keywords: z.string().optional(),
+  
+  // OAuth Settings
+  google_client_id: z.string().optional(),
+  google_client_secret: z.string().optional(),
+  facebook_app_id: z.string().optional(),
+  facebook_app_secret: z.string().optional(),
 });
 
 // ============================================

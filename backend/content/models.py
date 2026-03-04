@@ -9,10 +9,19 @@ class SiteSettings(models.Model):
     
     # Basic Info
     site_name = models.CharField(max_length=100, default='Portfolio')
-    site_title = models.CharField(max_length=100, default='ADRIAN')
+    site_title = models.CharField(max_length=100, default='WAEL')
     logo_url = models.URLField(max_length=500, blank=True, null=True)
     favicon_url = models.URLField(max_length=500, blank=True, null=True)
     site_description = models.TextField(blank=True)
+    
+    # Theme Settings
+    primary_color = models.CharField(max_length=7, default='#6366f1', help_text="Primary color hex code (e.g., #6366f1)")
+    secondary_color = models.CharField(max_length=7, default='#8b5cf6', help_text="Secondary color hex code (e.g., #8b5cf6)")
+    accent_color = models.CharField(max_length=7, default='#ec4899', help_text="Accent color hex code (e.g., #ec4899)")
+    background_color = models.CharField(max_length=7, default='#0a0a0a', help_text="Background color hex code (e.g., #0a0a0a)")
+    cursor_theme = models.CharField(max_length=20, default='default', help_text="Cursor theme (default, neon, minimal, custom)")
+    cursor_size = models.IntegerField(default=20, help_text="Cursor size in pixels (10-50)")
+    custom_cursor_color = models.CharField(max_length=7, default='#6366f1', help_text="Custom cursor color hex code (only applicable if cursor theme is custom)")
     
     # Hero Section
     hero_title = models.CharField(max_length=100, default='CREATIVE DEVELOPER')
@@ -71,7 +80,7 @@ class SiteSettings(models.Model):
     footer_text = models.TextField(blank=True)
     copyright_year = models.IntegerField(default=2024)
     version = models.CharField(max_length=20, default='1.0.0')
-    designer_name = models.CharField(max_length=100, blank=True, default='ADRIAN')
+    designer_name = models.CharField(max_length=100, blank=True, default='WAEL')
     copyright_text = models.CharField(max_length=200, blank=True, default='Your Name. All rights reserved.')
     show_location = models.BooleanField(default=True)
     

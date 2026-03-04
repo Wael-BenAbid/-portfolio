@@ -1,39 +1,12 @@
 
+import { z } from 'zod';
+import { MediaItemSchema, ProjectSchema, SkillSchema } from './services/validations';
+
+// Infer types directly from Zod schemas for consistency
+export type MediaItem = z.infer<typeof MediaItemSchema>;
+export type Project = z.infer<typeof ProjectSchema>;
+export type Skill = z.infer<typeof SkillSchema>;
 export type Category = 'Development' | 'Drone' | 'Mixed';
-
-export interface MediaItem {
-  id: string;
-  type: 'image' | 'video';
-  url?: string | null | undefined;
-  thumbnail_url?: string | null;
-  caption?: string | null;
-  order: number;
-  likes_count: number;
-  is_liked?: boolean;
-}
-
-export interface Project {
-  id: string | number;
-  title: string;
-  slug: string;
-  description: string;
-  category: Category;
-  thumbnail: string;
-  created_at: string | Date;
-  featured: boolean;
-  is_active: boolean;
-  show_registration: boolean;
-  media: MediaItem[];
-  technologies: string[];
-  likes_count: number;
-}
-
-export interface Skill {
-  id: string;
-  name: string;
-  level: number;
-  category: 'Frontend' | 'Backend' | 'DevOps' | 'Drone' | 'Editing';
-}
 
 export interface AboutData {
   bio: string;
