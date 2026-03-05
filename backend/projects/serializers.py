@@ -30,6 +30,32 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
         if media_type == 'video' and not file:
             raise serializers.ValidationError({"file": "File is required for video media type"})
         
+        # Validate file type based on media type
+        if file:
+            if media_type == 'image':
+                allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+                if file.content_type not in allowed_types:
+                    raise serializers.ValidationError({"file": "Invalid image type. Allowed: JPEG, PNG, GIF, WebP"})
+            elif media_type == 'video':
+                allowed_types = ['video/mp4', 'video/webm', 'video/ogg']
+                if file.content_type not in allowed_types:
+                    raise serializers.ValidationError({"file": "Invalid video type. Allowed: MP4, WebM, OGG"})
+            
+            # Validate file size (max 10MB)
+            max_size = 10 * 1024 * 1024  # 10MB
+            if file.size > max_size:
+                raise serializers.ValidationError({"file": "File too large. Maximum size is 10MB"})
+        
+        # Validate thumbnail type and size
+        if thumbnail:
+            allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+            if thumbnail.content_type not in allowed_types:
+                raise serializers.ValidationError({"thumbnail": "Invalid thumbnail type. Allowed: JPEG, PNG, GIF, WebP"})
+            
+            max_size = 2 * 1024 * 1024  # 2MB
+            if thumbnail.size > max_size:
+                raise serializers.ValidationError({"thumbnail": "Thumbnail too large. Maximum size is 2MB"})
+        
         return attrs
 
 

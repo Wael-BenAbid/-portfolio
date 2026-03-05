@@ -9,7 +9,7 @@ interface ToastComponentProps {
 
 const ToastComponent: React.FC<ToastComponentProps> = ({ toast }) => {
   const { removeToast } = useToast();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any | null>(null);
 
   useEffect(() => {
     if (toast.duration && toast.duration > 0) {

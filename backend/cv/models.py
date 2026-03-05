@@ -62,11 +62,14 @@ class CVSkill(models.Model):
         ('language', 'Language'),
         ('soft', 'Soft Skills'),
         ('tool', 'Tools & Software'),
+        ('backend', 'Backend'),
+        ('frontend', 'Front End'),
+        ('monitoring', 'Monitoring & CI/CD'),
         ('other', 'Other'),
     ]
     name = models.CharField(max_length=50)
     level = models.CharField(max_length=20, choices=SKILL_LEVELS, default='intermediate')
-    category = models.CharField(max_length=20, choices=SKILL_CATEGORIES, default='technical')
+    category = models.CharField(max_length=50, default='technical')
     percentage = models.IntegerField(default=80, help_text="Skill percentage (0-100)")
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -91,6 +94,7 @@ class CVLanguage(models.Model):
     ]
     name = models.CharField(max_length=50)
     level = models.CharField(max_length=20, choices=LANGUAGE_LEVELS, default='intermediate')
+    percentage = models.IntegerField(default=50, help_text="Language proficiency percentage (0-100)")
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     

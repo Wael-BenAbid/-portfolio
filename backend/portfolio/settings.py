@@ -162,7 +162,7 @@ if not DEBUG:
     
     # Content Security Policy (CSP) - Defense against XSS attacks
     # For better security in production, use nonce-based or hash-based CSP instead of unsafe-inline
-    SECURE_CONTENT_SECURITY_POLICY = {
+    CONTENT_SECURITY_POLICY = {
         'default-src': ["'self'"],
         'script-src': ["'self'"],
         'style-src': ["'self'"],

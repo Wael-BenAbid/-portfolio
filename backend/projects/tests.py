@@ -45,7 +45,7 @@ class ProjectModelTest(TestCase):
         self.project_data = {
             'title': 'Test Project',
             'description': 'A test project description',
-            'category': 'Development',
+            'category': 'Développement',
             'featured': True
         }
     
@@ -94,7 +94,7 @@ class ProjectAPITest(TestCase):
         data = {
             'title': 'New Project',
             'description': 'New project description',
-            'category': 'Development'
+            'category': 'Développement'
         }
         response = self.client.post('/api/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -105,7 +105,7 @@ class ProjectAPITest(TestCase):
         data = {
             'title': 'New Project',
             'description': 'New project description',
-            'category': 'Development'
+            'category': 'Développement'
         }
         response = self.client.post('/api/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

@@ -6,7 +6,7 @@ import { MediaItemSchema, ProjectSchema, SkillSchema } from './services/validati
 export type MediaItem = z.infer<typeof MediaItemSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
 export type Skill = z.infer<typeof SkillSchema>;
-export type Category = 'Development' | 'Drone' | 'Mixed';
+export type Category = 'Développement' | 'Drone' | 'Mélangé';
 
 export interface AboutData {
   bio: string;

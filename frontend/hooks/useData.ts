@@ -63,12 +63,9 @@ export function useQuery<T>(
   const [loading, setLoading] = useState(enabled);
   
   const isMounted = useRef(true);
-  const hasFetched = useRef(false);
 
   const fetchData = useCallback(async () => {
-    if (!endpoint || hasFetched.current) return;
-    
-    hasFetched.current = true;
+    if (!endpoint) return;
     setLoading(true);
     setError(null);
     
@@ -110,14 +107,14 @@ export function useQuery<T>(
     isMounted.current = true;
     
     // Only fetch once on mount
-    if (enabled && endpoint && !hasFetched.current) {
+    if (enabled && endpoint) {
       fetchData();
     }
     
     return () => {
       isMounted.current = false;
     };
-  }, [enabled, endpoint]); // Remove fetchData from dependency array
+  }, [enabled, endpoint, fetchData]);
 
   return {
     data,

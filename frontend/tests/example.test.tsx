@@ -45,7 +45,7 @@ describe('Validation Schemas', () => {
       title: 'Test Project',
       slug: 'test-project',
       description: 'A test project',
-      category: 'Development',
+      category: 'Développement',
       thumbnail: 'https://example.com/image.jpg',
       created_at: '2024-01-01',
       featured: true,
@@ -55,6 +55,7 @@ describe('Validation Schemas', () => {
     };
 
     const result = ProjectSchema.safeParse(validProject);
+    console.log('Validation result:', result);
     expect(result.success).toBe(true);
   });
 

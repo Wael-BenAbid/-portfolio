@@ -12,14 +12,14 @@ import { APIError } from '../services/api';
 
 const Work: React.FC = () => {
   const { data, loading, error, refetch } = useProjects();
-  const [filter, setFilter] = useState<Category | 'All'>('All');
-  const categories: (Category | 'All')[] = ['All', 'Development', 'Drone', 'Mixed'];
+  const [filter, setFilter] = useState<Category | 'Tous'>('Tous');
+  const categories: (Category | 'Tous')[] = ['Tous', 'Développement', 'Drone', 'Mélangé'];
 
   // Get projects from API response or empty array
   const projects: Project[] = data?.results || [];
   
   const filteredProjects = projects.filter(p => 
-    (p.is_active !== false) && (filter === 'All' || p.category === filter)
+    (p.is_active !== false) && (filter === 'Tous' || p.category === filter)
   );
 
   // Loading state
@@ -36,7 +36,7 @@ const Work: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
           >
-            Selected <br /> Works
+            Projets <br /> Sélectionnés
           </motion.h1>
 
           <div className="flex flex-wrap gap-8 border-b border-gray-800 pb-8">
@@ -66,29 +66,29 @@ const Work: React.FC = () => {
       >
         <header className="mb-24">
           <h1 className="text-6xl md:text-8xl font-display font-bold uppercase mb-12">
-            Selected <br /> Works
-          </h1>
-        </header>
-        <ErrorDisplay error={error} onRetry={refetch} />
-      </motion.div>
-    );
-  }
+              Projets <br /> Sélectionnés
+            </h1>
+         </header>
+         <ErrorDisplay error={error} onRetry={refetch} />
+       </motion.div>
+     );
+   }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen pt-40 px-8 md:px-24 pb-24"
-    >
-      <header className="mb-24">
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
-        >
-          Selected <br /> Works
-        </motion.h1>
+   return (
+     <motion.div
+       initial={{ opacity: 0 }}
+       animate={{ opacity: 1 }}
+       exit={{ opacity: 0 }}
+       className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+     >
+       <header className="mb-24">
+         <motion.h1 
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
+         >
+           Projets <br /> Sélectionnés
+         </motion.h1>
 
         <div className="flex flex-wrap gap-8 border-b border-gray-800 pb-8">
           {categories.map((cat) => (
@@ -127,17 +127,17 @@ const Work: React.FC = () => {
                    />
                    <div className="absolute inset-0 bg-blue-900/0 group-hover:bg-blue-900/10 transition-colors duration-500" />
                    
-                   {project.featured && (
-                     <div className="absolute top-6 left-6 bg-blue-500 text-white text-[10px] uppercase font-display px-3 py-1 rounded-full">
-                       Featured
-                     </div>
-                   )}
-                   
-                   <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                     <span className="px-3 py-1 border border-white/50 rounded-full text-[10px] uppercase font-display backdrop-blur-md">
-                       Explore
-                     </span>
-                   </div>
+                    {project.featured && (
+                      <div className="absolute top-6 left-6 bg-blue-500 text-white text-[10px] uppercase font-display px-3 py-1 rounded-full">
+                        En vedette
+                      </div>
+                    )}
+                    
+                    <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <span className="px-3 py-1 border border-white/50 rounded-full text-[10px] uppercase font-display backdrop-blur-md">
+                        Explorer
+                      </span>
+                    </div>
                  </div>
                 
                 <div className="flex justify-between items-start">
@@ -161,7 +161,7 @@ const Work: React.FC = () => {
       
       {filteredProjects.length === 0 && (
         <div className="py-24 text-center">
-          <p className="text-gray-500 font-display uppercase tracking-widest">No projects found in this category.</p>
+          <p className="text-gray-500 font-display uppercase tracking-widest">Aucun projet trouvé dans cette catégorie.</p>
         </div>
       )}
     </motion.div>

@@ -5,12 +5,17 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.exceptions import Ratelimited
+import os
 
 from .models import SiteSettings, About, ContactMessage, EmailSubscription
 from .serializers import (
-    SiteSettingsSerializer, AboutSerializer,
-    ContactMessageSerializer, EmailSubscriptionSerializer
+    SiteSettingsSerializer, SiteSettingsPublicSerializer, AboutSerializer,
+    ContactMessageSerializer, EmailSubscriptionSerializer, SubscribeSerializer, UnsubscribeSerializer
 )
+from api.permissions import IsAdminUser, IsAdminOrReadOnly
 
 
 # ============ Site Settings Views ============
@@ -20,10 +25,17 @@ class SiteSettingsView(generics.RetrieveUpdateAPIView):
     
     def get_object(self):
         return SiteSettings.get_settings()
+
+    def get_serializer_class(self):
+        # Admin users can read/update all settings, including sensitive credentials.
+        if self.request.user.is_authenticated and self.request.user.user_type == 'admin':
+            return SiteSettingsSerializer
+        # Public requests must not receive OAuth/SMTP secrets.
+        return SiteSettingsPublicSerializer
     
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH']:
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
     
     def update(self, request, *args, **kwargs):
@@ -41,20 +53,39 @@ class SiteSettingsView(generics.RetrieveUpdateAPIView):
 class AboutListCreate(generics.ListCreateAPIView):
     queryset = About.objects.all()
     serializer_class = AboutSerializer
+    
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminUser()]
+        return [permissions.AllowAny()]
 
 
 class AboutRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = About.objects.all()
     serializer_class = AboutSerializer
+    
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAdminUser()]
+        return [permissions.AllowAny()]
 
 
 # ============ Contact Views ============
 
+@method_decorator(ratelimit(key='ip', rate=os.environ.get('CONTACT_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
 class ContactMessageCreate(generics.CreateAPIView):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
     permission_classes = [permissions.AllowAny]
-
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)
+    
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             serializer.save(user=self.request.user)
@@ -64,17 +95,14 @@ class ContactMessageCreate(generics.CreateAPIView):
 
 class ContactMessageList(generics.ListAPIView):
     serializer_class = ContactMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.user_type == 'admin':
-            return ContactMessage.objects.all()
-        return ContactMessage.objects.filter(user=user)
+        return ContactMessage.objects.all()
 
 
 class ContactMessageReplyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def post(self, request, pk):
         if request.user.user_type != 'admin':
@@ -95,13 +123,25 @@ class ContactMessageReplyView(APIView):
 
 # ============ Email Subscription Views ============
 
+@method_decorator(ratelimit(key='ip', rate=os.environ.get('SUBSCRIPTION_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
 class EmailSubscriptionView(generics.CreateAPIView):
     queryset = EmailSubscription.objects.all()
     serializer_class = EmailSubscriptionSerializer
     permission_classes = [permissions.AllowAny]
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)
 
     def create(self, request, *args, **kwargs):
-        email = request.data.get('email')
+        serializer = SubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        
         subscription, created = EmailSubscription.objects.get_or_create(
             email=email,
             defaults={'is_active': True}
@@ -115,11 +155,23 @@ class EmailSubscriptionView(generics.CreateAPIView):
         return Response({'message': 'Subscribed successfully'}, status=status.HTTP_201_CREATED)
 
 
+@method_decorator(ratelimit(key='ip', rate=os.environ.get('UNSUBSCRIBE_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
 class UnsubscribeView(APIView):
     permission_classes = [permissions.AllowAny]
+    
+    def handle_exception(self, exc):
+        if isinstance(exc, Ratelimited):
+            return Response(
+                {'detail': 'Rate limit exceeded. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return super().handle_exception(exc)
 
     def post(self, request):
-        email = request.data.get('email')
+        serializer = UnsubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        
         try:
             subscription = EmailSubscription.objects.get(email=email)
             subscription.is_active = False
@@ -135,13 +187,21 @@ from django.core.files.base import ContentFile
 import uuid
 
 class ImageUploadView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
     
     def post(self, request):
         if 'image' not in request.FILES:
             return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
         
         image = request.FILES['image']
+        
+        # Validate file type using Pillow to check actual content
+        try:
+            from PIL import Image
+            img = Image.open(image)
+            img.verify()
+        except Exception as e:
+            return Response({'error': 'Invalid image file. Please upload a valid image (JPEG, PNG, GIF, WebP)'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate file type
         allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']

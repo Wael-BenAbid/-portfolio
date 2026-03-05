@@ -7,15 +7,15 @@ from django.utils.text import slugify
 
 class Project(models.Model):
     CATEGORY_CHOICES = [
-        ('Development', 'Development'),
+        ('Développement', 'Développement'),
         ('Drone', 'Drone'),
-        ('Mixed', 'Mixed'),
+        ('Mélangé', 'Mélangé'),
     ]
 
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True, blank=True)  # unique=True automatically creates an index
     description = models.TextField()
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='Development')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='Développement')
     thumbnail = models.URLField(max_length=500, blank=True, null=True, help_text="URL to thumbnail image")
     video_url = models.URLField(blank=True, null=True)
     project_url = models.URLField(blank=True, null=True)

@@ -26,8 +26,9 @@ export interface APIResponse<T> {
 }
 
 // Request options type
-interface RequestOptions extends RequestInit {
+interface RequestOptions {
   token?: string;
+  [key: string]: any;
 }
 
 /**
@@ -59,8 +60,8 @@ export const buildURL = (endpoint: string, params?: Record<string, string | numb
 /**
  * Default headers including auth token if available
  */
-const getDefaultHeaders = (token?: string): HeadersInit => {
-  const headers: HeadersInit = {
+const getDefaultHeaders = (token?: string): any => {
+  const headers: any = {
     'Content-Type': 'application/json',
   };
   
@@ -171,8 +172,8 @@ export const api = {
   /**
    * POST request
    */
-  async post<T>(endpoint: string, body?: unknown, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
-    const maxRetries = options?.maxRetries ?? 3;
+   async post<T>(endpoint: string, body?: unknown, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
+    const maxRetries = options?.maxRetries ?? 0; // Don't retry POST by default to avoid duplicates
     
     return retryWithExponentialBackoff(async () => {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -235,7 +236,7 @@ export const api = {
    * Upload file with multipart/form-data
    */
   async upload<T>(endpoint: string, formData: FormData, options?: RequestOptions): Promise<T> {
-    const headers: HeadersInit = {};
+    const headers: any = {};
     const authToken = options?.token || getAuthToken();
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;

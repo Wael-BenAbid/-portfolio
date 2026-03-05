@@ -291,7 +291,8 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       if (response.ok) {
         onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
         // Check if user was trying to access admin page before login
-        const from = new URLSearchParams(window.location.search).get('from') || '/';
+        const searchParams = new URLSearchParams(window.location.hash.split('?')[1]);
+        const from = searchParams.get('from') || '/';
         navigate(from);
       } else {
         setError(data.error || data.message || 'Login failed');

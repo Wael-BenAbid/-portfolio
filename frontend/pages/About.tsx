@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Code, Globe2, Award, Heart, Mail, Phone, MapPin, Linkedin, Github, ExternalLink, AlertCircle } from 'lucide-react';
 import { useCV } from '../hooks/useData';
 import { AboutSkeleton, ErrorDisplay } from '../components/Loading';
+import RadialProgress from '../components/RadialProgress';
 
 const About: React.FC = () => {
   const { data: cvData, loading, error, refetch } = useCV();
@@ -159,7 +160,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <Briefcase size={16} />
-              Work Experience
+              Expérience Professionnelle
             </h2>
             <div className="grid gap-8">
               {experiences.map((exp, idx) => (
@@ -197,7 +198,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <GraduationCap size={16} />
-              Education
+              Formation
             </h2>
             <div className="grid gap-8">
               {education.map((edu, idx) => (
@@ -237,7 +238,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <Code size={16} />
-              Skills
+              Compétences
             </h2>
             <div className="grid gap-8">
               {Object.entries(skillsByCategory).map(([category, categorySkills]) => (
@@ -291,24 +292,35 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <Globe2 size={16} />
-              Languages
+              Langues
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {languages.map((lang, idx) => (
-                <motion.div
-                  key={lang.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1, duration: 0.5 }}
-                  whileHover={{ y: -5, scale: 1.05 }}
-                  className="bg-gray-900/50 p-6 rounded-lg text-center cursor-pointer"
-                >
-                  <Globe2 className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                  <h4 className="font-display font-bold uppercase">{lang.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{lang.level}</p>
-                </motion.div>
-              ))}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {languages.map((lang, idx) => {
+                const percentage = lang.percentage || 50;
+
+                return (
+                  <motion.div
+                    key={lang.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1, duration: 0.5 }}
+                    whileHover={{ y: -5, scale: 1.05 }}
+                    className="bg-gray-900/50 p-6 rounded-lg text-center cursor-pointer"
+                  >
+                    <RadialProgress 
+                      percentage={percentage}
+                      size={120}
+                      strokeWidth={8}
+                      color="#e74c3c"
+                      backgroundColor="#f0f0f0"
+                      text={lang.name}
+                      subtitle={lang.level}
+                      showPercentage={true}
+                    />
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -338,12 +350,12 @@ const About: React.FC = () => {
                   className="bg-gray-900/50 p-6 rounded-lg flex items-start gap-4"
                 >
                   <Award className="w-8 h-8 text-blue-500 flex-shrink-0" />
-                  <div className="flex-1">
+                   <div className="flex-1">
                     <h4 className="font-display font-bold uppercase">{cert.name}</h4>
-                    <p className="text-sm text-gray-400">{cert.issuer}</p>
+                    <p className="text-sm text-gray-400">{cert.issuing_organization}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       Issued: {formatDate(cert.issue_date)}
-                      {cert.expiry_date && ` | Expires: ${formatDate(cert.expiry_date)}`}
+                      {cert.expiration_date && ` | Expires: ${formatDate(cert.expiration_date)}`}
                     </p>
                     {cert.credential_id && (
                       <p className="text-xs text-gray-500">Credential ID: {cert.credential_id}</p>
@@ -376,7 +388,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <Code size={16} />
-              Projects
+              Projets
             </h2>
             <div className="grid gap-4">
               {projects.map((project, idx) => (
@@ -392,32 +404,34 @@ const About: React.FC = () => {
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-display font-bold uppercase">{project.title}</h4>
                     {project.is_ongoing && (
-                      <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-1 rounded">Ongoing</span>
+                      <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-1 rounded">En cours</span>
                     )}
                   </div>
                   <p className="text-sm text-gray-400 mb-4">{project.description}</p>
-                  <p className="text-xs text-gray-500 mb-4">Technologies: {project.technologies}</p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Technologies: {Array.isArray(project.technologies) ? project.technologies.join(', ') : project.technologies}
+                  </p>
                   <div className="flex gap-4">
-                    {project.url && (
-                      <a 
-                        href={project.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline"
-                      >
-                        Live Demo <ExternalLink size={12} />
-                      </a>
-                    )}
-                    {project.github_url && (
-                      <a 
-                        href={project.github_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
-                      >
-                        <Github size={12} /> Source Code
-                      </a>
-                    )}
+                      {project.live_url && (
+                        <a 
+                          href={project.live_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline"
+                        >
+                          Démonstration <ExternalLink size={12} />
+                        </a>
+                      )}
+                      {project.github_url && (
+                        <a 
+                          href={project.github_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+                        >
+                          <Github size={12} /> Code Source
+                        </a>
+                      )}
                   </div>
                 </motion.div>
               ))}
@@ -435,7 +449,7 @@ const About: React.FC = () => {
           >
             <h2 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
               <Heart size={16} />
-              Interests
+              Intérêts
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {interests.map((interest, idx) => (

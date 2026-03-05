@@ -380,7 +380,7 @@ const Settings: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`${API_URL}/auth/upload/`, {
+      const response = await fetch(`${API_URL}/settings/upload/`, {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -394,7 +394,8 @@ const Settings: React.FC = () => {
         console.error('Upload error:', errorText);
         try {
           const error = JSON.parse(errorText);
-          showToast(error.error || error.detail || 'Failed to upload image', 'error');
+          const errorMessage = error.error?.message || error.error || error.detail || 'Failed to upload image';
+          showToast(errorMessage, 'error');
         } catch {
           showToast('Failed to upload image', 'error');
         }

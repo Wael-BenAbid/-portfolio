@@ -39,9 +39,38 @@ class CVCertificationSerializer(serializers.ModelSerializer):
 
 
 class CVProjectSerializer(serializers.ModelSerializer):
+    technologies = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        write_only=True
+    )
+    
     class Meta:
         model = CVProject
         fields = '__all__'
+        
+    def to_representation(self, instance):
+        # Convert string to list when reading
+        representation = super().to_representation(instance)
+        if instance.technologies:
+            representation['technologies'] = [tech.strip() for tech in instance.technologies.split(',') if tech.strip()]
+        else:
+            representation['technologies'] = []
+        return representation
+        
+    def create(self, validated_data):
+        # Convert list to string when creating
+        if 'technologies' in validated_data:
+            validated_data['technologies'] = ','.join(validated_data['technologies'])
+        else:
+            validated_data['technologies'] = ''
+        return super().create(validated_data)
+        
+    def update(self, instance, validated_data):
+        # Convert list to string when updating
+        if 'technologies' in validated_data:
+            validated_data['technologies'] = ','.join(validated_data['technologies'])
+        return super().update(instance, validated_data)
 
 
 class CVInterestSerializer(serializers.ModelSerializer):

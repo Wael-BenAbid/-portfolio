@@ -24,13 +24,13 @@ export const ProjectSchema = z.object({
   title: z.string().min(1),
   slug: z.string().min(1),
   description: z.string(),
-  category: z.enum(['Development', 'Drone', 'Mixed']),
+  category: z.enum(['Développement', 'Drone', 'Mélangé']),
   thumbnail: z.string().url(),
   created_at: z.string().or(z.date()).transform(v => typeof v === 'string' ? v : v.toISOString()),
   featured: z.boolean().default(false),
-  is_active: z.boolean().default(true),
-  show_registration: z.boolean().default(false),
-  technologies: z.array(z.string()).default([]),
+  is_active: z.boolean().optional().default(true),
+  show_registration: z.boolean().optional().default(false),
+  technologies: z.array(z.string()).optional().default([]),
   media: z.array(MediaItemSchema).transform(items => {
     const seenIds = new Set();
     return items.filter(item => {
@@ -47,8 +47,9 @@ export const ProjectSchema = z.object({
 export const SkillSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
   name: z.string().min(1),
-  level: z.number().int().min(0).max(100),
-  category: z.enum(['Frontend', 'Backend', 'DevOps', 'Drone', 'Editing']),
+  level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
+  category: z.string(),
+  percentage: z.number().int().min(0).max(100),
 });
 
 export const AboutDataSchema = z.object({
@@ -185,14 +186,15 @@ export const LanguageSchema = z.object({
   id: z.number(),
   name: z.string(),
   level: z.string(),
+  percentage: z.number().min(0).max(100),
 });
 
 export const CertificationSchema = z.object({
   id: z.number(),
   name: z.string(),
-  issuer: z.string(),
+  issuing_organization: z.string(),
   issue_date: z.string(),
-  expiry_date: z.string().nullable(),
+  expiration_date: z.string().nullable(),
   credential_id: z.string(),
   credential_url: z.string(),
 });
@@ -201,9 +203,10 @@ export const CVProjectSchema = z.object({
   id: z.number(),
   title: z.string(),
   description: z.string(),
-  technologies: z.string(),
-  url: z.string().optional(),
+  technologies: z.array(z.string()),
   github_url: z.string().optional(),
+  live_url: z.string().optional(),
+  image_url: z.string().optional(),
   is_ongoing: z.boolean(),
 });
 
@@ -251,12 +254,10 @@ export const UserSchema = z.object({
 });
 
 export const LoginResponseSchema = z.object({
-  token: z.string(),
   user: UserSchema,
 });
 
 export const RegisterResponseSchema = z.object({
-  token: z.string(),
   user: UserSchema,
 });
 

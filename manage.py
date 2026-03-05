@@ -6,7 +6,11 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.portfolio.settings')
+    # Add the backend directory to Python path so 'api' module can be found
+    backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend')
+    sys.path.insert(0, backend_dir)
+    
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'portfolio.settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

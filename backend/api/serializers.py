@@ -96,13 +96,18 @@ class SocialAuthSerializer(serializers.Serializer):
             logger.warning(f"OAuth login attempted without provider_token for provider: {provider}")
             raise serializers.ValidationError("provider_token is required for OAuth authentication.")
         
-        verified = self._verify_oauth_token(provider, provider_token, attrs.get('provider_id'))
+        verified = self._verify_oauth_token(
+            provider, 
+            provider_token, 
+            attrs.get('provider_id'), 
+            attrs.get('email')
+        )
         if not verified:
             raise serializers.ValidationError("OAuth token verification failed. Invalid or expired token.")
         
         return attrs
 
-    def _verify_oauth_token(self, provider, token, expected_id):
+    def _verify_oauth_token(self, provider, token, expected_id, expected_email):
         """
         Verify OAuth token with the provider.
         Returns True if verified, False otherwise.
@@ -140,6 +145,10 @@ class SocialAuthSerializer(serializers.Serializer):
                     if expected_id and data.get('sub') != expected_id:
                         logger.warning("Google token user ID mismatch")
                         return False
+                    # Verify the email matches
+                    if expected_email and data.get('email') != expected_email:
+                        logger.warning("Google token email mismatch")
+                        return False
                     return True
                 else:
                     logger.warning(f"Google token verification failed: {response.status_code}")
@@ -174,6 +183,24 @@ class SocialAuthSerializer(serializers.Serializer):
                         # Verify the user ID matches
                         if expected_id and str(data.get('user_id')) != str(expected_id):
                             logger.warning("Facebook token user ID mismatch")
+                            return False
+                        # For Facebook, we need to get the user's email from the graph API
+                        # using the access token
+                        user_response = requests.get(
+                            'https://graph.facebook.com/me',
+                            params={
+                                'fields': 'email',
+                                'access_token': token
+                            },
+                            timeout=5
+                        )
+                        if user_response.status_code == 200:
+                            user_data = user_response.json()
+                            if expected_email and user_data.get('email') != expected_email:
+                                logger.warning("Facebook token email mismatch")
+                                return False
+                        else:
+                            logger.warning(f"Facebook email verification failed: {user_response.status_code}")
                             return False
                         return True
                 logger.warning(f"Facebook token verification failed: {response.status_code}")

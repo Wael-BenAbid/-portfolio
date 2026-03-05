@@ -15,6 +15,7 @@ from .serializers import (
     CVLanguageSerializer, CVCertificationSerializer, CVProjectSerializer,
     CVInterestSerializer
 )
+from api.permissions import IsAdminUser, IsAdminOrReadOnly
 
 
 class CVFullView(APIView):
@@ -54,14 +55,14 @@ class CVExperienceListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVExperienceDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVExperience.objects.all()
     serializer_class = CVExperienceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # Education CRUD
@@ -71,14 +72,14 @@ class CVEducationListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVEducationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVEducation.objects.all()
     serializer_class = CVEducationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # Skill CRUD
@@ -88,14 +89,14 @@ class CVSkillListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVSkillDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVSkill.objects.all()
     serializer_class = CVSkillSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # Language CRUD
@@ -105,14 +106,14 @@ class CVLanguageListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVLanguageDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVLanguage.objects.all()
     serializer_class = CVLanguageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # Certification CRUD
@@ -122,14 +123,14 @@ class CVCertificationListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVCertificationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVCertification.objects.all()
     serializer_class = CVCertificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # CV Project CRUD
@@ -139,14 +140,14 @@ class CVProjectListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVProject.objects.all()
     serializer_class = CVProjectSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 # Interest CRUD
@@ -156,11 +157,11 @@ class CVInterestListCreate(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [IsAdminUser()]
         return [permissions.AllowAny()]
 
 
 class CVInterestDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVInterest.objects.all()
     serializer_class = CVInterestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]

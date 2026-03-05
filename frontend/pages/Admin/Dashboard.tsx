@@ -14,7 +14,7 @@ const Dashboard: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState<Partial<Project>>({
     title: '',
-    category: 'Development',
+    category: 'Développement',
     description: '',
     technologies: [],
     thumbnail: '',
@@ -395,7 +395,7 @@ const Dashboard: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
       setError(errorMessage);
     }
-    setNewProject({ title: '', category: 'Development', description: '', technologies: [], media: [], featured: false, is_active: true });
+    setNewProject({ title: '',    category: 'Développement', description: '', technologies: [], media: [], featured: false, is_active: true });
   };
 
   const updateProject = async (e: React.FormEvent) => {
@@ -528,9 +528,9 @@ const Dashboard: React.FC = () => {
                     onChange={e => setNewProject({...newProject, category: e.target.value as any})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase appearance-none"
                   >
-                    <option value="Development" className="bg-[#111]">Development</option>
+                    <option value="Développement" className="bg-[#111]">Développement</option>
                     <option value="Drone" className="bg-[#111]">Drone</option>
-                    <option value="Mixed" className="bg-[#111]">Mixed</option>
+                    <option value="Mélangé" className="bg-[#111]">Mélangé</option>
                   </select>
                 </div>
               </div>
@@ -817,9 +817,9 @@ const Dashboard: React.FC = () => {
                     onChange={e => setEditingProject({...editingProject, category: e.target.value as any})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase appearance-none"
                   >
-                    <option value="Development" className="bg-[#111]">Development</option>
+                    <option value="Développement" className="bg-[#111]">Développement</option>
                     <option value="Drone" className="bg-[#111]">Drone</option>
-                    <option value="Mixed" className="bg-[#111]">Mixed</option>
+                    <option value="Mélangé" className="bg-[#111]">Mélangé</option>
                   </select>
                 </div>
               </div>

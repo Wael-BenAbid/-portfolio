@@ -28,6 +28,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
   clearPasswordChangeRequired: () => void;
@@ -39,7 +40,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    return { user: null, token: null, isAuthenticated: false, login: () => {}, logout: () => {}, clearPasswordChangeRequired: () => {} };
+    return { 
+      user: null, 
+      token: null, 
+      isAuthenticated: false, 
+      isInitializing: false,
+      login: () => {}, 
+      logout: () => {}, 
+      clearPasswordChangeRequired: () => {} 
+    };
   }
   return context;
 };
@@ -57,12 +66,9 @@ const AdminCV = lazy(() => import('./pages/Admin/CV'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren<{ adminOnly?: boolean }>) => {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, user, isInitializing } = useAuth();
   const location = useLocation();
   
-  // Check if we're still initializing authentication state
-  // This prevents flash of unauthenticated state on initial render
-  const isInitializing = token === null;
   if (isInitializing) {
     return <LoadingScreen />;
   }
@@ -96,10 +102,43 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const initialUser = getUserFromSession();
   const [user, setUser] = useState<User | null>(initialUser);
   const [token, setToken] = useState<string | null>(initialUser ? 'http-only-cookie' : null);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   useEffect(() => {
-    // This effect is now redundant since we initialize state directly
-    // but kept for consistency in case of future changes
+    // Verify authentication with backend on initial load
+    const verifyAuth = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Update user state with fresh data from backend
+          setUser(data);
+          setToken('http-only-cookie'); // Ensure token state is consistent with authenticated user
+          sessionStorage.setItem('auth_user', JSON.stringify(data));
+        } else {
+          // Backend says not authenticated, clear local state
+          setUser(null);
+          setToken(null);
+          sessionStorage.removeItem('auth_user');
+        }
+      } catch (error) {
+        console.error('Auth verification error:', error);
+        // If we can't reach backend, assume not authenticated to avoid stale state
+        setUser(null);
+        setToken(null);
+        sessionStorage.removeItem('auth_user');
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    verifyAuth();
   }, []);
 
   const login = (userData: User, authToken: string) => {
@@ -149,7 +188,15 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, login, logout, clearPasswordChangeRequired }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isAuthenticated: !!token, 
+      isInitializing,
+      login, 
+      logout, 
+      clearPasswordChangeRequired 
+    }}>
       {children}
     </AuthContext.Provider>
   );
