@@ -210,8 +210,14 @@ class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
 # ============ Media Upload View ============
 
+@method_decorator(ratelimit(key='user', rate='10/h', method='POST', block=True), name='dispatch')
 class MediaUploadView(generics.CreateAPIView):
-    """View for handling media uploads (images and videos)."""
+    """
+    View for handling media uploads (images and videos).
+    
+    Rate limited to 10 uploads per hour per user to prevent abuse.
+    Validates file type and size before acceptance.
+    """
     serializer_class = MediaUploadSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -337,3 +343,54 @@ class VisitorListView(generics.ListAPIView):
             queryset = queryset.filter(visit_time__date__lte=end_date)
         
         return queryset
+
+
+# ============ Health Check View ============
+
+class HealthCheckView(APIView):
+    """
+    Health check endpoint for monitoring and load balancers.
+    
+    Returns the application and dependency health status.
+    Used by: - Kubernetes liveness/readiness probes
+    - Load balancers (ELB, ALB)
+    - Monitoring systems (Uptime monitoring)
+    
+    Response: 200 OK if healthy, 503 Service Unavailable if unhealthy
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        """Check health of application and critical dependencies."""
+        health_status = {
+            'status': 'healthy',
+            'checks': {}
+        }
+        
+        # Check database connection
+        try:
+            from django.db import connections
+            connections.databases.get('default').ensure_connection()
+            health_status['checks']['database'] = 'healthy'
+        except Exception as e:
+            health_status['checks']['database'] = 'unhealthy'
+            health_status['status'] = 'unhealthy'
+            logger.error(f"Database health check failed: {str(e)}")
+        
+        # Check Redis cache connection
+        try:
+            from django.core.cache import cache
+            cache.set('health_check', 'ok', 10)
+            if cache.get('health_check') == 'ok':
+                health_status['checks']['cache'] = 'healthy'
+            else:
+                health_status['checks']['cache'] = 'unhealthy'
+                health_status['status'] = 'unhealthy'
+        except Exception as e:
+            health_status['checks']['cache'] = 'unhealthy'
+            # Cache failure is non-critical for health check
+            logger.warning(f"Cache health check failed: {str(e)}")
+        
+        # Return appropriate status code
+        status_code = status.HTTP_200_OK if health_status['status'] == 'healthy' else status.HTTP_503_SERVICE_UNAVAILABLE
+        return Response(health_status, status=status_code)

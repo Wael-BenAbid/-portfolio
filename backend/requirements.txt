@@ -11,6 +11,7 @@ gunicorn>=21.0.0
 prometheus-client>=0.16.0
 django-csp>=4.0
 dj-database-url>=2.0.0
+drf-spectacular>=0.26.0  # OpenAPI/Swagger documentation
 
 # Testing & Code Quality
 pytest>=7.4.0
@@ -24,6 +25,8 @@ flake8>=6.0.0
 isort>=5.12.0
 pre-commit>=3.3.0
 requests-mock>=1.11.0
+bandit>=1.7.5  # Security scanning
+safety>=2.3.0  # Dependency vulnerability check
 
 # Logging & Monitoring
 python-json-logger>=2.0.7

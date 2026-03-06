@@ -4,11 +4,24 @@ Shared fixtures used across all test modules
 """
 import os
 import pytest
+from pathlib import Path
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
 User = get_user_model()
+
+
+@pytest.fixture(scope='session', autouse=True)
+def create_log_directories():
+    """
+    Create necessary log directories for logging handlers.
+    Runs once per test session before any tests.
+    Fixes CI/CD failures when logs/ directory doesn't exist.
+    """
+    log_dir = Path(__file__).parent / 'logs'
+    log_dir.mkdir(exist_ok=True)
+    yield
 
 
 @pytest.fixture(autouse=True)

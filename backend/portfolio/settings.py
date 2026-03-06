@@ -220,6 +220,7 @@ _INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',  # OpenAPI/Swagger schema generation
     'rest_framework.authtoken',
     'corsheaders',
     # Main API app (contains CustomUser for backward compatibility)
@@ -407,11 +408,40 @@ REST_FRAMEWORK = {
         'anon': '1000/hour',
         'user': '5000/hour',
     },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
+}
+
+# ===========================================
+# Spectacular (OpenAPI/Swagger) Settings
+# ===========================================
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Portfolio API',
+    'DESCRIPTION': 'Full-stack portfolio website API with authentication, projects, CV, and interactions.',
+    'VERSION': '1.0.0',
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'AUTHENTICATION_WHITELIST': [
+        'api.authentication.CookieTokenAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'defaultModelsExpandDepth': 1,
+        'defaultModelExpandDepth': 1,
+        'displayOperationId': True,
+        'filter': True,
+        'showExtensions': True,
+    },
+    'EXCLUDE_PATHS': [
+        r'^/health/$',
+        r'^/metrics/$',
+    ],
 }
 
 # ===========================================

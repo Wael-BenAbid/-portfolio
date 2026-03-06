@@ -11,6 +11,8 @@ API Structure:
 - /api/notifications/* - Notifications
 - /metrics/           - Prometheus Metrics (internal only)
 - /health/            - Health check endpoint
+- /api/schema/        - OpenAPI schema (for documentation)
+- /api/docs/          - Swagger UI documentation
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -18,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from api.metrics import metrics_view
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 
 def health_check(request):
@@ -36,6 +39,11 @@ urlpatterns = [
     
     # Prometheus Metrics - Direct view to avoid URL conflicts
     path('metrics/', metrics_view, name='metrics'),
+    
+    # OpenAPI / Swagger Documentation
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     
     # API Routes - No overlapping prefixes
     path('api/auth/', include('api.urls')),              # Authentication & User Management
