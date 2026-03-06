@@ -97,6 +97,10 @@ class MediaItemSerializer(serializers.ModelSerializer):
     def get_is_liked(self, obj):
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user.is_authenticated:
+            # Check if we have already annotated the liked status
+            if hasattr(obj, 'is_liked'):
+                return obj.is_liked
+            # Fallback to query if not annotated (shouldn't happen with our view changes)
             return Like.objects.filter(user=request.user, media=obj).exists()
         return False
 
@@ -104,6 +108,7 @@ class MediaItemSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     media = MediaItemSerializer(many=True, read_only=True)
     likes_count = serializers.ReadOnlyField()
+    views_count = serializers.ReadOnlyField()
     is_liked = serializers.SerializerMethodField()
 
     class Meta:
@@ -116,8 +121,58 @@ class ProjectSerializer(serializers.ModelSerializer):
     def get_is_liked(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
+            # Check if we have already annotated the liked status
+            if hasattr(obj, 'is_liked'):
+                return obj.is_liked
+            # Fallback to query if not annotated (shouldn't happen with our view changes)
             return Like.objects.filter(user=request.user, project=obj).exists()
         return False
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # For media items, we need to handle liked status efficiently
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            from interactions.models import Like
+            
+            # Get all liked media IDs for this user in one query
+            media_ids = [media.id for media in instance.media.all()]
+            liked_media_ids = Like.objects.filter(
+                user=request.user,
+                media_id__in=media_ids,
+                content_type='media'
+            ).values_list('media_id', flat=True)
+            
+            # Update each media item's is_liked field
+            if 'media' in representation:
+                for media in representation['media']:
+                    media['is_liked'] = media['id'] in liked_media_ids
+        
+        # Ensure category is properly encoded when sending to frontend
+        if 'category' in representation:
+            # Ensure category is properly UTF-8 encoded
+            try:
+                representation['category'] = representation['category'].encode('utf-8').decode('utf-8')
+            except:
+                pass
+                
+        return representation
+    
+    def to_internal_value(self, data):
+        """Fix category encoding issue when receiving data from frontend"""
+        if 'category' in data:
+            try:
+                # Fix UTF-8 encoding issue (e.g., "D\u00c3\u00a9veloppement" to "Développement")
+                category = data['category']
+                if isinstance(category, str):
+                    # Try to decode if it contains UTF-8 bytes encoded as Latin-1
+                    decoded_category = category.encode('latin-1').decode('utf-8')
+                    data['category'] = decoded_category
+            except:
+                pass
+                
+        return super().to_internal_value(data)
 
 
 class SkillSerializer(serializers.ModelSerializer):

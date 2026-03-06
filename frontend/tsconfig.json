@@ -29,7 +29,7 @@
     "noEmit": true
   },
   "include": [
-    "src/**/*",
+    "**/*",
     "tests/**/*",
     "**/*.test.ts",
     "**/*.test.tsx",

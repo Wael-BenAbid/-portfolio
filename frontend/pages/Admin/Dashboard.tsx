@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User } from 'lucide-react';
+import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
@@ -325,7 +325,8 @@ const Dashboard: React.FC = () => {
         type: mediaTypeInput,
         url: mediaUrlInput.trim(),
         order: currentMedia.length + 1,
-        likes_count: 0
+        likes_count: 0,
+        is_liked: false
       };
       setNewProject({
         ...newProject,
@@ -361,6 +362,11 @@ const Dashboard: React.FC = () => {
       thumbnail: newProject.thumbnail || 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop',
       media: [] // Initialize with empty media array - will be added through separate API endpoint
     };
+    
+    // Fix category encoding issue
+    if (project.category) {
+      project.category = project.category.normalize('NFC');
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/projects/`, {
@@ -404,6 +410,11 @@ const Dashboard: React.FC = () => {
 
     // Create a copy of the project without media field to prevent duplicates
     const { media, ...projectWithoutMedia } = editingProject;
+    
+    // Fix category encoding issue
+    if (projectWithoutMedia.category) {
+      projectWithoutMedia.category = projectWithoutMedia.category.normalize('NFC') as 'Développement' | 'Drone' | 'Mélangé';
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
@@ -454,6 +465,9 @@ const Dashboard: React.FC = () => {
           <nav className="space-y-8">
             <Link to="/admin" className="flex items-center gap-4 text-white font-display text-xs uppercase tracking-widest">
               <Plus size={16} /> Dashboard
+            </Link>
+            <Link to="/admin/statistics" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
+              <TrendingUp size={16} /> Statistics
             </Link>
             <Link to="/admin/settings" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <SettingsIcon size={16} /> Settings
@@ -559,7 +573,7 @@ const Dashboard: React.FC = () => {
                     type="file"
                     ref={fileInputRef}
                     onChange={(e) => handleThumbnailUpload(e, false)}
-                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg"
                     className="hidden"
                   />
                   <button 
@@ -573,7 +587,20 @@ const Dashboard: React.FC = () => {
                   </button>
                 </div>
                 {newProject.thumbnail && (
-                  <img src={newProject.thumbnail} alt="Thumbnail" className="mt-2 w-32 h-20 object-cover rounded" />
+                  <div className="mt-2 w-32 h-20 object-cover rounded overflow-hidden">
+                    {newProject.thumbnail?.endsWith('.mp4') || newProject.thumbnail?.endsWith('.webm') || newProject.thumbnail?.endsWith('.ogg') ? (
+                      <video
+                        src={newProject.thumbnail}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img src={newProject.thumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -847,7 +874,7 @@ const Dashboard: React.FC = () => {
                     type="file"
                     ref={fileInputRef}
                     onChange={(e) => handleThumbnailUpload(e, true)}
-                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg"
                     className="hidden"
                   />
                   <button 
@@ -861,7 +888,20 @@ const Dashboard: React.FC = () => {
                   </button>
                 </div>
                 {editingProject.thumbnail && (
-                  <img src={editingProject.thumbnail} alt="Thumbnail" className="mt-2 w-32 h-20 object-cover rounded" />
+                  <div className="mt-2 w-32 h-20 object-cover rounded overflow-hidden">
+                    {editingProject.thumbnail?.endsWith('.mp4') || editingProject.thumbnail?.endsWith('.webm') || editingProject.thumbnail?.endsWith('.ogg') ? (
+                      <video
+                        src={editingProject.thumbnail}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img src={editingProject.thumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -942,7 +982,8 @@ const Dashboard: React.FC = () => {
                           type: 'image',
                           url: mediaUrlInput.trim(),
                           order: currentMedia.length + 1,
-                          likes_count: 0
+                          likes_count: 0,
+                          is_liked: false
                         };
                         setEditingProject({
                           ...editingProject,
@@ -977,7 +1018,8 @@ const Dashboard: React.FC = () => {
                           type: 'video',
                           url: mediaUrlInput.trim(),
                           order: currentMedia.length + 1,
-                          likes_count: 0
+                          likes_count: 0,
+                          is_liked: false
                         };
                         setEditingProject({
                           ...editingProject,

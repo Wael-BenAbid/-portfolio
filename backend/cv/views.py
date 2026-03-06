@@ -1,9 +1,13 @@
 """
 CV App - Views for CV data management
+Optimized for performance with caching and pagination
 """
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, pagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
+from django.core.cache import cache
 
 from content.models import SiteSettings
 from .models import (
@@ -18,11 +22,42 @@ from .serializers import (
 from api.permissions import IsAdminUser, IsAdminOrReadOnly
 
 
+# ============ Pagination ============
+
+class CVPagination(pagination.PageNumberPagination):
+    """Pagination for CV list endpoints"""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+# ============ Cache Configuration ============
+
+# Cache keys
+CV_FULL_CACHE_KEY = 'cv:full'
+CV_EXPERIENCES_CACHE_KEY = 'cv:experiences'
+CV_EDUCATION_CACHE_KEY = 'cv:education'
+CV_SKILLS_CACHE_KEY = 'cv:skills'
+CV_LANGUAGES_CACHE_KEY = 'cv:languages'
+CV_CERTIFICATIONS_CACHE_KEY = 'cv:certifications'
+CV_PROJECTS_CACHE_KEY = 'cv:projects'
+CV_INTERESTS_CACHE_KEY = 'cv:interests'
+
+# Cache timeout: 1 day (86400 seconds)
+CV_CACHE_TIMEOUT = 86400
+
+
+@method_decorator(cache_page(CV_CACHE_TIMEOUT), name='get')
 class CVFullView(APIView):
-    """Get full CV data"""
+    """Get full CV data - Cached for 24 hours"""
     permission_classes = [permissions.AllowAny]
     
     def get(self, request):
+        # Try to get from cache first
+        cached_cv = cache.get(CV_FULL_CACHE_KEY)
+        if cached_cv:
+            return Response(cached_cv)
+        
         settings = SiteSettings.get_settings()
         personal_info = {
             'full_name': settings.cv_full_name,
@@ -36,67 +71,154 @@ class CVFullView(APIView):
             'github': settings.github_url,
         }
         
-        return Response({
+        cv_data = {
             'personal_info': personal_info,
-            'experiences': CVExperienceSerializer(CVExperience.objects.all(), many=True).data,
-            'education': CVEducationSerializer(CVEducation.objects.all(), many=True).data,
-            'skills': CVSkillSerializer(CVSkill.objects.all(), many=True).data,
-            'languages': CVLanguageSerializer(CVLanguage.objects.all(), many=True).data,
-            'certifications': CVCertificationSerializer(CVCertification.objects.all(), many=True).data,
-            'projects': CVProjectSerializer(CVProject.objects.all(), many=True).data,
-            'interests': CVInterestSerializer(CVInterest.objects.all(), many=True).data,
-        })
+            # Query optimization: order_by used wisely
+            'experiences': CVExperienceSerializer(
+                CVExperience.objects.all().order_by('-start_date'), 
+                many=True
+            ).data,
+            'education': CVEducationSerializer(
+                CVEducation.objects.all().order_by('-start_date'), 
+                many=True
+            ).data,
+            'skills': CVSkillSerializer(
+                CVSkill.objects.all().order_by('category', 'name'), 
+                many=True
+            ).data,
+            'languages': CVLanguageSerializer(
+                CVLanguage.objects.all().order_by('name'), 
+                many=True
+            ).data,
+            'certifications': CVCertificationSerializer(
+                CVCertification.objects.all().order_by('-issue_date'), 
+                many=True
+            ).data,
+            'projects': CVProjectSerializer(
+                CVProject.objects.all().order_by('-date'), 
+                many=True
+            ).data,
+            'interests': CVInterestSerializer(
+                CVInterest.objects.all().order_by('name'), 
+                many=True
+            ).data,
+        }
+        
+        # Cache the result
+        cache.set(CV_FULL_CACHE_KEY, cv_data, CV_CACHE_TIMEOUT)
+        
+        return Response(cv_data)
 
 
 # Experience CRUD
 class CVExperienceListCreate(generics.ListCreateAPIView):
-    queryset = CVExperience.objects.all()
+    """List CV experiences with pagination"""
+    pagination_class = CVPagination
     serializer_class = CVExperienceSerializer
+    
+    def get_queryset(self):
+        # Order by date, most recent first
+        return CVExperience.objects.all().order_by('-start_date')
     
     def get_permissions(self):
         if self.request.method == 'POST':
             return [IsAdminUser()]
         return [permissions.AllowAny()]
+    
+    def perform_create(self, serializer):
+        # Invalidate cache when creating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_create(serializer)
 
 
 class CVExperienceDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVExperience.objects.all()
     serializer_class = CVExperienceSerializer
     permission_classes = [IsAdminUser]
+    
+    def perform_update(self, serializer):
+        # Invalidate cache when updating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_update(serializer)
+    
+    def perform_destroy(self, instance):
+        # Invalidate cache when deleting
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_destroy(instance)
 
 
 # Education CRUD
 class CVEducationListCreate(generics.ListCreateAPIView):
-    queryset = CVEducation.objects.all()
+    """List CV education with pagination"""
+    pagination_class = CVPagination
     serializer_class = CVEducationSerializer
+    
+    def get_queryset(self):
+        # Order by date, most recent first
+        return CVEducation.objects.all().order_by('-start_date')
     
     def get_permissions(self):
         if self.request.method == 'POST':
             return [IsAdminUser()]
         return [permissions.AllowAny()]
+    
+    def perform_create(self, serializer):
+        # Invalidate cache when creating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_create(serializer)
 
 
 class CVEducationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVEducation.objects.all()
     serializer_class = CVEducationSerializer
     permission_classes = [IsAdminUser]
+    
+    def perform_update(self, serializer):
+        # Invalidate cache when updating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_update(serializer)
+    
+    def perform_destroy(self, instance):
+        # Invalidate cache when deleting
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_destroy(instance)
 
 
 # Skill CRUD
 class CVSkillListCreate(generics.ListCreateAPIView):
-    queryset = CVSkill.objects.all()
+    """List CV skills with pagination"""
+    pagination_class = CVPagination
     serializer_class = CVSkillSerializer
+    
+    def get_queryset(self):
+        # Order by category, then name
+        return CVSkill.objects.all().order_by('category', 'name')
     
     def get_permissions(self):
         if self.request.method == 'POST':
             return [IsAdminUser()]
         return [permissions.AllowAny()]
+    
+    def perform_create(self, serializer):
+        # Invalidate cache when creating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_create(serializer)
 
 
 class CVSkillDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CVSkill.objects.all()
     serializer_class = CVSkillSerializer
     permission_classes = [IsAdminUser]
+    
+    def perform_update(self, serializer):
+        # Invalidate cache when updating
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_update(serializer)
+    
+    def perform_destroy(self, instance):
+        # Invalidate cache when deleting
+        cache.delete(CV_FULL_CACHE_KEY)
+        super().perform_destroy(instance)
 
 
 # Language CRUD

@@ -18,6 +18,7 @@ from .serializers import (
     VisitorSerializer, VisitorStatsSerializer
 )
 from .models import MediaUpload, Visitor
+from api.permissions import IsAdminUser
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -183,24 +184,14 @@ class PasswordChangeView(APIView):
 class AdminUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.user_type != 'admin':
-            return User.objects.none()
-        return User.objects.all()
+    permission_classes = [IsAdminUser]
 
 
 class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = AdminUserUpdateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminUser]
     lookup_field = 'pk'
-
-    def get_queryset(self):
-        if self.request.user.user_type != 'admin':
-            return User.objects.none()
-        return User.objects.all()
     
     def update(self, request, *args, **kwargs):
         user = self.get_object()

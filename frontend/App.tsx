@@ -63,6 +63,7 @@ const AuthPage = lazy(() => import('./pages/Auth'));
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const AdminSettings = lazy(() => import('./pages/Admin/Settings'));
 const AdminCV = lazy(() => import('./pages/Admin/CV'));
+const AdminStatistics = lazy(() => import('./pages/Admin/Statistics'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren<{ adminOnly?: boolean }>) => {
@@ -236,6 +237,11 @@ const AnimatedRoutes = () => {
           <Route path="/admin/cv" element={
             <ProtectedRoute adminOnly>
               <AdminCV />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/statistics" element={
+            <ProtectedRoute adminOnly>
+              <AdminStatistics />
             </ProtectedRoute>
           } />
           

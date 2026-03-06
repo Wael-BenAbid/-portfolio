@@ -33,6 +33,9 @@ interface SiteSettings {
   about_quote?: string;
   profile_image?: string;
   drone_image?: string;
+  drone_video_url?: string;
+  // Footer
+  footer_background_video?: string;
   // Navigation
   nav_work_label?: string;
   nav_about_label?: string;
@@ -99,6 +102,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   about_quote: '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."',
   profile_image: '',
   drone_image: '',
+  drone_video_url: '',
   nav_work_label: 'Work',
   nav_about_label: 'About',
   nav_contact_label: 'Contact',
@@ -126,6 +130,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   designer_name: 'WAEL',
   copyright_text: 'Your Name. All rights reserved.',
   show_location: true,
+  footer_background_video: '',
   meta_title: '',
   meta_description: '',
   meta_keywords: '',
@@ -1297,6 +1302,18 @@ const Settings: React.FC = () => {
                   )}
                   <p className="text-[10px] text-gray-600 mt-1">Work/drone image displayed in the about section</p>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Drone/Work Video URL</label>
+                  <input
+                    type="url"
+                    value={settings.drone_video_url || ''}
+                    onChange={e => setSettings({...settings, drone_video_url: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="https://example.com/drone-video.mp4"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Video URL for the about section (will replace the image if provided)</p>
+                </div>
+
               </div>
             </section>
 
@@ -1338,6 +1355,17 @@ const Settings: React.FC = () => {
                   <span className="text-xs text-gray-400">{settings.show_location ? 'Visible' : 'Hidden'}</span>
                 </div>
                 <p className="text-[10px] text-gray-600">When enabled, displays your location in the footer (LOC: [Location])</p>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Footer Background Video URL</label>
+                  <input
+                    type="url"
+                    value={settings.footer_background_video || ''}
+                    onChange={e => setSettings({...settings, footer_background_video: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="https://example.com/footer-video.mp4"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Video URL for the footer background (will be used instead of solid color if provided)</p>
+                </div>
               </div>
             </section>
 

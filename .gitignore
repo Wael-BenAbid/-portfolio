@@ -44,6 +44,7 @@ wheels/
 # Coverage
 .coverage
 htmlcov/
+frontend/coverage/
 
 # Django
 *.log

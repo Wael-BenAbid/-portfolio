@@ -2,6 +2,7 @@
 Projects App - Project and media management
 """
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 
 
@@ -27,6 +28,7 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     likes_count = models.IntegerField(default=0, editable=False)
+    views_count = models.IntegerField(default=0, editable=False)
 
     class Meta:
         ordering = ['-created_at']
@@ -40,6 +42,15 @@ class Project(models.Model):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+        
+        # Fix category encoding issue
+        if self.category:
+            try:
+                # Fix UTF-8 encoding issue (e.g., "D\xc3\xa9veloppement" to "Développement")
+                self.category = self.category.encode('latin-1').decode('utf-8')
+            except:
+                pass
+                
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -87,7 +98,14 @@ class MediaItem(models.Model):
 class Skill(models.Model):
     name = models.CharField(max_length=50)
     category = models.CharField(max_length=50, blank=True)
-    proficiency = models.IntegerField(default=80, help_text="Skill proficiency (0-100)")
+    proficiency = models.IntegerField(
+        default=80,
+        help_text="Skill proficiency (0-100)",
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ]
+    )
     icon = models.CharField(max_length=50, blank=True, help_text="Icon class or name")
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

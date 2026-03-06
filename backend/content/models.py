@@ -28,11 +28,12 @@ class SiteSettings(models.Model):
     hero_subtitle = models.CharField(max_length=200, blank=True)
     hero_tagline = models.CharField(max_length=200, blank=True)
 
-    # About Section
+     # About Section
     about_title = models.CharField(max_length=100, default='THE MIND BEHIND')
     about_quote = models.TextField(default='"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."')
     profile_image = models.URLField(max_length=500, blank=True, null=True, help_text="Profile image URL for about section")
     drone_image = models.URLField(max_length=500, blank=True, null=True, help_text="Drone/work image URL for about section")
+    drone_video_url = models.URLField(max_length=500, blank=True, null=True, help_text="Drone/work video URL for about section (will be used instead of image if provided)")
 
     # Navigation Bar
     nav_work_label = models.CharField(max_length=50, default='Work', help_text="Label for Work navigation link")
@@ -61,28 +62,59 @@ class SiteSettings(models.Model):
     
     # OAuth Settings
     google_client_id = models.CharField(max_length=200, blank=True)
-    google_client_secret = models.CharField(max_length=200, blank=True)
+    _google_client_secret = models.CharField(max_length=300, blank=True, db_column='google_client_secret')
     facebook_app_id = models.CharField(max_length=200, blank=True)
-    facebook_app_secret = models.CharField(max_length=200, blank=True)
+    _facebook_app_secret = models.CharField(max_length=300, blank=True, db_column='facebook_app_secret')
     
     # Email Settings
     email_host = models.CharField(max_length=100, blank=True)
     email_port = models.IntegerField(default=587)
     email_host_user = models.EmailField(blank=True)
-    email_host_password = models.CharField(max_length=100, blank=True)
+    _email_host_password = models.CharField(max_length=300, blank=True, db_column='email_host_password')
     default_from_email = models.EmailField(blank=True)
+    
+    @property
+    def google_client_secret(self):
+        from api.utils import decrypt
+        return decrypt(self._google_client_secret)
+    
+    @google_client_secret.setter
+    def google_client_secret(self, value):
+        from api.utils import encrypt
+        self._google_client_secret = encrypt(value)
+    
+    @property
+    def facebook_app_secret(self):
+        from api.utils import decrypt
+        return decrypt(self._facebook_app_secret)
+    
+    @facebook_app_secret.setter
+    def facebook_app_secret(self, value):
+        from api.utils import encrypt
+        self._facebook_app_secret = encrypt(value)
+    
+    @property
+    def email_host_password(self):
+        from api.utils import decrypt
+        return decrypt(self._email_host_password)
+    
+    @email_host_password.setter
+    def email_host_password(self, value):
+        from api.utils import encrypt
+        self._email_host_password = encrypt(value)
     
     # Contact
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=20, blank=True)
     
-    # Footer
+     # Footer
     footer_text = models.TextField(blank=True)
     copyright_year = models.IntegerField(default=2024)
     version = models.CharField(max_length=20, default='1.0.0')
     designer_name = models.CharField(max_length=100, blank=True, default='WAEL')
     copyright_text = models.CharField(max_length=200, blank=True, default='Your Name. All rights reserved.')
     show_location = models.BooleanField(default=True)
+    footer_background_video = models.URLField(max_length=500, blank=True, null=True, help_text="Footer background video URL (will be used instead of solid background if provided)")
     
     # SEO
     meta_title = models.CharField(max_length=100, blank=True)

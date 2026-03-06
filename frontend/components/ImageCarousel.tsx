@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { OptimizedImage } from './OptimizedImage';
 import { MediaItem } from '../types';
+import LikeButton from './LikeButton';
 
 interface ImageCarouselProps {
   media: MediaItem[];
@@ -56,11 +57,19 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ media, projectTitl
                 className="w-full h-full object-cover object-center"
               />
             )}
-            {media[currentIndex].caption && (
-              <p className="absolute bottom-6 left-6 text-sm text-white/90 italic backdrop-blur-sm bg-black/30 px-4 py-2 rounded z-10">
-                {media[currentIndex].caption}
-              </p>
-            )}
+             {media[currentIndex].caption && (
+               <p className="absolute bottom-6 left-6 text-sm text-white/90 italic backdrop-blur-sm bg-black/30 px-4 py-2 rounded z-10">
+                 {media[currentIndex].caption}
+               </p>
+             )}
+             <div className="absolute bottom-6 right-6 z-10">
+               <LikeButton
+                 contentId={parseInt(media[currentIndex].id)}
+                 contentType="media"
+                 initialLiked={media[currentIndex].is_liked}
+                 initialLikesCount={media[currentIndex].likes_count}
+               />
+             </div>
           </motion.div>
         </AnimatePresence>
       </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { OptimizedImage } from '../components/OptimizedImage';
+import { OptimizedVideo } from '../components/OptimizedVideo';
 import { Link } from 'react-router-dom';
 import { Category, Project } from '../types';
 import { useProjects } from '../hooks/useData';
@@ -105,7 +107,7 @@ const Work: React.FC = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-12 space-y-12">
         <AnimatePresence mode="popLayout">
           {filteredProjects.map((project, index) => (
             <motion.div
@@ -115,16 +117,33 @@ const Work: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ delay: index * 0.1 }}
-              className="group"
+              className="group break-inside-avoid mb-12"
             >
                <Link to={`/project/${project.slug}`} className="block">
-                 <div className="relative aspect-[4/5] overflow-hidden bg-gray-900 mb-6 rounded-sm">
-                   <img 
-                     src={project.thumbnail} 
-                     alt={project.title}
-                     loading="lazy"
-                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale group-hover:grayscale-0"
-                   />
+                  <div className="relative bg-gray-900 mb-6 rounded-sm">
+                    {/* Affichage conditionnel selon le type de média */}
+                    {/* Check if thumbnail is a video file */}
+                    {project.thumbnail?.endsWith('.mp4') || project.thumbnail?.endsWith('.webm') || project.thumbnail?.endsWith('.ogg') ? (
+                      <OptimizedVideo
+                        src={project.thumbnail}
+                        alt={project.title}
+                        lazy={true}
+                        grayscale={true}
+                        hoverEffects={true}
+                        objectFit="contain"
+                        className="w-full h-auto"
+                      />
+                    ) : (
+                      <OptimizedImage
+                        src={project.thumbnail}
+                        alt={project.title}
+                        lazy={true}
+                        grayscale={true}
+                        hoverEffects={true}
+                        objectFit="contain"
+                        className="w-full h-auto"
+                      />
+                    )}
                    <div className="absolute inset-0 bg-blue-900/0 group-hover:bg-blue-900/10 transition-colors duration-500" />
                    
                     {project.featured && (

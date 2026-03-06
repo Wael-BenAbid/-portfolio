@@ -31,9 +31,28 @@ class ProjectListCreate(generics.ListCreateAPIView):
     
     def get_queryset(self):
         # Only return active projects for anonymous users or non-admin users
-        if self.request.user.is_authenticated and self.request.user.is_admin():
-            return Project.objects.select_related('created_by').prefetch_related('media')
-        return Project.objects.select_related('created_by').prefetch_related('media').filter(is_active=True)
+        queryset = Project.objects.select_related('created_by').prefetch_related('media')
+        
+        # For authenticated users, annotate with liked information to avoid N+1 queries
+        if self.request.user.is_authenticated:
+            from django.db.models import Exists, OuterRef
+            from interactions.models import Like
+            
+            # Annotate projects with is_liked
+            project_likes = Like.objects.filter(
+                user=self.request.user,
+                project=OuterRef('pk'),
+                content_type='project'
+            )
+            queryset = queryset.annotate(is_liked=Exists(project_likes))
+            
+            # For media items, we need to handle it differently since it's a related field
+            # We'll prefetch media items and annotate them in the serializer
+            
+        if not (self.request.user.is_authenticated and self.request.user.is_admin()):
+            queryset = queryset.filter(is_active=True)
+            
+        return queryset
     
     def handle_exception(self, exc):
         if isinstance(exc, Ratelimited):
@@ -52,20 +71,50 @@ class ProjectListCreate(generics.ListCreateAPIView):
         serializer.save(created_by=self.request.user)
 
 
+@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_UPDATE_RATE_LIMIT', '50/h'), method=['PUT', 'PATCH'], block=True), name='dispatch')
+@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_DELETE_RATE_LIMIT', '20/h'), method='DELETE', block=True), name='dispatch')
 class ProjectRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProjectSerializer
     lookup_field = 'slug'
 
     def get_queryset(self):
         # Only return active projects for anonymous users or non-admin users
-        if self.request.user.is_authenticated and self.request.user.is_admin():
-            return Project.objects.select_related('created_by').prefetch_related('media')
-        return Project.objects.select_related('created_by').prefetch_related('media').filter(is_active=True)
+        queryset = Project.objects.select_related('created_by').prefetch_related('media')
+        
+        # For authenticated users, annotate with liked information to avoid N+1 queries
+        if self.request.user.is_authenticated:
+            from django.db.models import Exists, OuterRef
+            from interactions.models import Like
+            
+            # Annotate projects with is_liked
+            project_likes = Like.objects.filter(
+                user=self.request.user,
+                project=OuterRef('pk'),
+                content_type='project'
+            )
+            queryset = queryset.annotate(is_liked=Exists(project_likes))
+            
+            # For media items, we need to handle it differently since it's a related field
+            # We'll prefetch media items and annotate them in the serializer
+            
+        if not (self.request.user.is_authenticated and self.request.user.is_admin()):
+            queryset = queryset.filter(is_active=True)
+            
+        return queryset
 
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:
             return [IsAdminUser()]
         return [permissions.AllowAny()]
+    
+    def retrieve(self, request, *args, **kwargs):
+        # Increment views count
+        instance = self.get_object()
+        instance.views_count += 1
+        instance.save()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 # ============ Skill Views ============

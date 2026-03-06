@@ -33,9 +33,23 @@ class CVLanguageSerializer(serializers.ModelSerializer):
 
 
 class CVCertificationSerializer(serializers.ModelSerializer):
+    issuing_organization = serializers.CharField(source='issuer')
+    expiration_date = serializers.DateField(source='expiry_date')
+
     class Meta:
         model = CVCertification
-        fields = '__all__'
+        fields = [
+            'id', 'name', 'issuing_organization', 'issue_date', 'expiration_date',
+            'credential_id', 'credential_url', 'description', 'order', 'created_at'
+        ]
+    
+    def to_internal_value(self, data):
+        # Map frontend fields to backend fields for deserialization
+        if 'issuing_organization' in data:
+            data['issuer'] = data.pop('issuing_organization')
+        if 'expiration_date' in data:
+            data['expiry_date'] = data.pop('expiration_date')
+        return super().to_internal_value(data)
 
 
 class CVProjectSerializer(serializers.ModelSerializer):
@@ -44,10 +58,14 @@ class CVProjectSerializer(serializers.ModelSerializer):
         required=False,
         write_only=True
     )
-    
+    live_url = serializers.URLField(source='url')
+
     class Meta:
         model = CVProject
-        fields = '__all__'
+        fields = [
+            'id', 'title', 'description', 'technologies', 'github_url', 'live_url',
+            'start_date', 'end_date', 'is_ongoing', 'order', 'created_at'
+        ]
         
     def to_representation(self, instance):
         # Convert string to list when reading
@@ -57,6 +75,12 @@ class CVProjectSerializer(serializers.ModelSerializer):
         else:
             representation['technologies'] = []
         return representation
+    
+    def to_internal_value(self, data):
+        # Map frontend fields to backend fields for deserialization
+        if 'live_url' in data:
+            data['url'] = data.pop('live_url')
+        return super().to_internal_value(data)
         
     def create(self, validated_data):
         # Convert list to string when creating

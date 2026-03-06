@@ -25,6 +25,7 @@ interface OptimizedImageProps {
  * - Blur placeholder while loading
  * - Optimized Unsplash URLs
  * - Error fallback
+ * - Supports image files (jpg, jpeg, png, gif, webp)
  */
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
@@ -50,7 +51,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   // Get optimized URL
   const optimizedSrc = getOptimizedImageUrl(src, width || 800);
   
-  // Get WebP version for modern browsers
+  // Get WebP version for modern browsers (only for images)
   const webpSrc = src && src.includes('unsplash.com') && optimizedSrc 
     ? (optimizedSrc as string).replace(/&auto=format/, '&auto=format&fm=webp')
     : optimizedSrc;
@@ -85,7 +86,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   };
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('OptimizedImage error:', e);
+    const target = e.target as HTMLImageElement;
+    console.error('OptimizedImage error:', target?.src || 'Unknown source');
     setHasError(true);
     onError?.();
   };
@@ -109,8 +111,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
 
       {/* Actual Image */}
-      {isInView && !hasError && optimizedSrc && (
-        <motion.img
+      {isInView && !hasError && optimizedSrc ? (
+         <motion.img
           src={optimizedSrc}
           alt={alt}
           loading={lazy ? 'lazy' : 'eager'}
@@ -119,14 +121,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
+          style={{
+            width: '100%',
+            height: 'auto',
+            objectFit: objectFit,
+            objectPosition: objectPosition
+          }}
           className={`
-            w-full h-full ${objectFit} object-${objectPosition}
-            ${grayscale ? 'grayscale' : ''}
-            ${hoverEffects ? 'transition-all duration-700 group-hover:scale-105 group-hover:grayscale-0' : ''}
-            ${className}
-          `}
+              ${grayscale ? 'grayscale' : ''}
+              ${hoverEffects ? 'transition-all duration-700 group-hover:scale-105 group-hover:grayscale-0' : ''}
+              ${className}
+            `}
         />
-      )}
+      ) : null}
     </div>
   );
 };
@@ -153,8 +160,11 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  // Check if src is a video file
+  const isVideo = src && (src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.ogg'));
   
-  const optimizedSrc = getOptimizedImageUrl(src, 800);
+  const optimizedSrc = isVideo ? src : getOptimizedImageUrl(src, 800);
   const optimizedSrcSet = srcSet
     .map(({ width, descriptor }) => {
       const optimizedUrl = getOptimizedImageUrl(src, width);
@@ -185,7 +195,18 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         </div>
       )}
 
-      {optimizedSrc && (
+      {optimizedSrc && isVideo ? (
+        <video
+          src={optimizedSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onLoadedData={handleLoad}
+          onError={handleError}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${props.className || ''}`}
+        />
+      ) : optimizedSrc ? (
         <img
           src={optimizedSrc}
           srcSet={optimizedSrcSet}
@@ -196,7 +217,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
           onError={handleError}
           className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${props.className || ''}`}
         />
-      )}
+      ) : null}
     </div>
   );
 };
@@ -226,7 +247,10 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const [scrollY, setScrollY] = useState(0);
 
-  const optimizedSrc = getOptimizedImageUrl(src, 1920);
+  // Check if src is a video file
+  const isVideo = src && (src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.ogg'));
+
+  const optimizedSrc = isVideo ? src : getOptimizedImageUrl(src, 1920);
 
   useEffect(() => {
     if (!parallax) return;
@@ -252,15 +276,26 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
           transform: parallax ? `translateY(${scrollY * 0.3}px)` : undefined,
         }}
       >
-        {optimizedSrc && (
-          <img
-            src={optimizedSrc}
-            alt=""
-            className="w-full h-full object-cover"
-            onLoad={handleLoad}
-            onError={handleError}
-          />
-        )}
+        {optimizedSrc && isVideo ? (
+            <video
+              src={optimizedSrc}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+              onLoadedData={handleLoad}
+              onError={handleError}
+            />
+          ) : optimizedSrc ? (
+            <img
+              src={optimizedSrc}
+              alt=""
+              className="w-full h-full object-cover"
+              onLoad={handleLoad}
+              onError={handleError}
+            />
+          ) : null}
         {overlay && (
           <div
             className="absolute inset-0 bg-black"

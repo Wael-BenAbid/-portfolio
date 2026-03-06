@@ -32,7 +32,13 @@ class ToggleLikeView(APIView):
         
         if like:
             like.delete()
-            return Response({'liked': False, 'message': 'Like removed'})
+            # likes_count updated via signal using atomic F expression
+            # Refresh from DB to get latest count
+            if content_type == 'project':
+                content_obj.refresh_from_db(fields=['likes_count'])
+            else:
+                content_obj.refresh_from_db(fields=['likes_count'])
+            return Response({'liked': False, 'message': 'Like removed', 'likes_count': max(0, content_obj.likes_count)})
         else:
             Like.objects.create(
                 user=user,
@@ -40,7 +46,13 @@ class ToggleLikeView(APIView):
                 content_id=content_id,
                 **{'project' if content_type == 'project' else 'media': content_obj}
             )
-            return Response({'liked': True, 'message': 'Liked successfully'})
+            # likes_count updated via signal using atomic F expression
+            # Refresh from DB to get latest count
+            if content_type == 'project':
+                content_obj.refresh_from_db(fields=['likes_count'])
+            else:
+                content_obj.refresh_from_db(fields=['likes_count'])
+            return Response({'liked': True, 'message': 'Liked successfully', 'likes_count': content_obj.likes_count})
 
 
 class UserLikesView(generics.ListAPIView):

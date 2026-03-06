@@ -5,7 +5,9 @@ import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { useProject, useProjects } from '../hooks/useData';
 import { ProjectDetailSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { OptimizedVideo } from '../components/OptimizedVideo';
 import { ImageCarousel } from '../components/ImageCarousel';
+import LikeButton from '../components/LikeButton';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
@@ -74,15 +76,31 @@ const ProjectDetail: React.FC = () => {
       {/* Hero Section */}
       <section className="relative h-screen w-full overflow-hidden">
         <motion.div style={{ opacity, scale }} className="absolute inset-0">
-          <OptimizedImage
-            src={project.thumbnail}
-            alt={project.title}
-            width={1920}
-            height={1080}
-            lazy={false}
-            placeholder={false}
-            className="w-full h-full object-cover"
-          />
+          {project.thumbnail && (
+            (project.thumbnail.endsWith('.mp4') || 
+             project.thumbnail.endsWith('.webm') || 
+             project.thumbnail.endsWith('.ogg')) ? (
+              <OptimizedVideo
+                src={project.thumbnail}
+                alt={project.title}
+                width={1920}
+                height={1080}
+                lazy={false}
+                placeholder={false}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <OptimizedImage
+                src={project.thumbnail}
+                alt={project.title}
+                width={1920}
+                height={1080}
+                lazy={false}
+                placeholder={false}
+                className="w-full h-full object-cover"
+              />
+            )
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent" />
         </motion.div>
 
@@ -106,13 +124,20 @@ const ProjectDetail: React.FC = () => {
             <h1 className="text-6xl md:text-9xl font-display font-bold uppercase mb-8 leading-none">
               {project.title}
             </h1>
-            <div className="flex flex-wrap gap-4">
-               {project.technologies?.map(tech => (
-                 <span key={tech} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-display uppercase tracking-widest">
-                   {tech}
-                 </span>
-               ))}
-            </div>
+             <div className="flex flex-wrap gap-4 items-center">
+                {project.technologies?.map(tech => (
+                  <span key={tech} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-display uppercase tracking-widest">
+                    {tech}
+                  </span>
+                ))}
+                <LikeButton
+                  contentId={project.id}
+                  contentType="project"
+                  initialLiked={project.is_liked}
+                  initialLikesCount={project.likes_count}
+                  className="ml-4"
+                />
+             </div>
           </motion.div>
         </div>
 
@@ -194,3 +219,4 @@ const ProjectDetail: React.FC = () => {
 };
 
 export default ProjectDetail;
+

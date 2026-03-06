@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useProjects, useSettings } from '../hooks/useData';
 import { ProjectCardSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
+import LikeButton from '../components/LikeButton';
+import { OptimizedImage } from '../components/OptimizedImage';
+import { OptimizedVideo } from '../components/OptimizedVideo';
 import type { Project } from '../types';
 
 const Home: React.FC = () => {
@@ -47,9 +50,11 @@ const Home: React.FC = () => {
   const locationName = settings?.location || 'Bizerte, Tunisia';
   const latitude = settings?.latitude || 33.5731;
   const longitude = settings?.longitude || -7.5898;
-  const profileImage = settings?.profile_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';
+   const profileImage = settings?.profile_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';
   const droneImage = settings?.drone_image || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=800&auto=format&fit=crop';
+  const droneVideoUrl = settings?.drone_video_url;
   const footerText = settings?.footer_text || 'DESIGNED BY wael';
+  const footerBackgroundVideo = settings?.footer_background_video;
   const copyrightYear = settings?.copyright_year || 2026;
   const version = settings?.version || '1.0';
   
@@ -143,34 +148,87 @@ const Home: React.FC = () => {
                 transition={{ duration: 0.8, delay: 0.1 }}
                 className="relative group cursor-pointer"
               >
-                <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
-                  <motion.div className="w-full h-full overflow-hidden rounded-2xl">
-                    <img 
-                      src={project.thumbnail} 
-                      alt={project.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[1.5s] ease-out"
-                    />
-                  </motion.div>
-                  
-                  {/* Overlay Info */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 md:p-12 rounded-2xl">
-                    <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
-                    <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
-                    <div className="flex flex-wrap gap-2 md:gap-4">
-                      {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
-                        <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
-                          {t}
-                        </span>
-                      )) : []}
-                    </div>
-                  </div>
+                 <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
+                    {/* Check if thumbnail is a video */}
+                    {project.thumbnail?.endsWith('.mp4') || project.thumbnail?.endsWith('.webm') || project.thumbnail?.endsWith('.ogg') ? (
+                      <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
+                         <motion.div className="w-full h-full overflow-hidden rounded-2xl">
+                           <OptimizedVideo
+                             src={project.thumbnail}
+                             alt={project.title}
+                             lazy={true}
+                             placeholder={true}
+                             grayscale={true}
+                             hoverEffects={true}
+                             objectFit="cover"
+                             className="w-full h-full"
+                           />
+                         </motion.div>
+                        
+                        {/* Overlay Info */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 md:p-12 rounded-2xl">
+                          <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
+                          <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
+                          <div className="flex flex-wrap gap-2 md:gap-4">
+                            {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
+                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
+                                {t}
+                              </span>
+                            )) : []}
+                          </div>
+                        </div>
 
-                  {/* Fixed Project Index */}
-                  <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">
-                     <span className="font-display text-3xl md:text-4xl opacity-50">0{i+1}</span>
+                        {/* Fixed Project Index */}
+                        <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">
+                           <span className="font-display text-3xl md:text-4xl opacity-50">0{i+1}</span>
+                        </div>
+                     </div>
+                   ) : (
+                     /* For images, keep the link */
+                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
+                        <motion.div className="w-full h-full overflow-hidden rounded-2xl">
+                          <OptimizedImage
+                            src={project.thumbnail}
+                            alt={project.title}
+                            lazy={true}
+                            placeholder={true}
+                            grayscale={true}
+                            hoverEffects={true}
+                            objectFit="cover"
+                            className="w-full h-full"
+                          />
+                        </motion.div>
+                        
+                        {/* Overlay Info */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 md:p-12 rounded-2xl">
+                          <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
+                          <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
+                          <div className="flex flex-wrap gap-2 md:gap-4">
+                            {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
+                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
+                                {t}
+                              </span>
+                            )) : []}
+                          </div>
+                        </div>
+
+                        {/* Fixed Project Index */}
+                        <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">
+                           <span className="font-display text-3xl md:text-4xl opacity-50">0{i+1}</span>
+                        </div>
+                    </Link>
+                   )}
+                  
+                  {/* Like Button */}
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 z-20">
+                    <LikeButton 
+                      contentId={project.id} 
+                      contentType="project" 
+                      initialLiked={project.is_liked} 
+                      initialLikesCount={project.likes_count} 
+                    />
                   </div>
-                </Link>
+                </div>
               </motion.div>
             ))}
             
@@ -218,17 +276,28 @@ const Home: React.FC = () => {
             </Link>
           </motion.div>
           
-          <div className="relative">
+           <div className="relative">
             <motion.div 
               style={{ clipPath }}
               className="relative z-10"
             >
-              <img 
-                src={droneImage} 
-                alt="Drone Work" 
-                loading="lazy"
-                className="w-full h-[60vh] object-cover rounded-2xl"
-              />
+              {droneVideoUrl ? (
+                <video
+                  src={droneVideoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-[60vh] object-cover rounded-2xl"
+                />
+              ) : (
+                <img 
+                  src={droneImage} 
+                  alt="Drone Work" 
+                  loading="lazy"
+                  className="w-full h-[60vh] object-cover rounded-2xl"
+                />
+              )}
             </motion.div>
             <div className="absolute -bottom-8 -left-8 w-48 h-48 z-20">
               <img 
@@ -258,8 +327,18 @@ const Home: React.FC = () => {
       </section>
 
       {/* 5. FOOTER */}
-      <footer className="py-24 px-8 md:px-24 border-t border-gray-900">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+      <footer className={`py-24 px-8 md:px-24 border-t border-gray-900 ${footerBackgroundVideo ? 'relative overflow-hidden' : ''}`}>
+        {footerBackgroundVideo && (
+          <video
+            src={footerBackgroundVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover opacity-10"
+          />
+        )}
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
           <div className="text-center md:text-left">
             <p className="text-gray-500 text-sm font-display">© {copyrightYear} VERSION {version}</p>
             <p className="text-gray-600 text-xs font-display uppercase mt-2">{footerText}</p>
@@ -279,3 +358,4 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+

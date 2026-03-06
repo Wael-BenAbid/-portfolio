@@ -52,6 +52,8 @@ describe('Validation Schemas', () => {
       technologies: ['React', 'TypeScript'],
       media: [],
       likes_count: 0,
+      views_count: 0,
+      is_liked: false,
     };
 
     const result = ProjectSchema.safeParse(validProject);

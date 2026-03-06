@@ -17,6 +17,7 @@ export const MediaItemSchema = z.object({
   caption: z.string().optional().nullable(),
   order: z.number().int().min(0).default(0),
   likes_count: z.number().int().min(0).default(0),
+  is_liked: z.boolean().default(false),
 });
 
 export const ProjectSchema = z.object({
@@ -42,6 +43,8 @@ export const ProjectSchema = z.object({
     });
   }).default([]),
   likes_count: z.number().int().min(0).default(0),
+  views_count: z.number().int().min(0).default(0),
+  is_liked: z.boolean().default(false),
 });
 
 export const SkillSchema = z.object({
@@ -96,12 +99,19 @@ export const SiteSettingsSchema = z.object({
   about_quote: z.string().optional(),
   profile_image: z.string().optional(),
   drone_image: z.string().optional(),
+  drone_video_url: z.string().optional().or(z.null()).transform(v => v || ''),
+  
+  // Footer
+  footer_text: z.string().optional(),
+  copyright_year: z.number().default(2024),
+  version: z.string().default('1.0.0'),
+  designer_name: z.string().default('WAEL'),
+  copyright_text: z.string().default('Your Name. All rights reserved.'),
+  show_location: z.boolean().default(true),
+  footer_background_video: z.string().optional().or(z.null()).transform(v => v || ''),
   location: z.string().optional(),
   latitude: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseFloat(v) : v).optional(),
   longitude: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseFloat(v) : v).optional(),
-  footer_text: z.string().optional(),
-  copyright_year: z.number().optional(),
-  version: z.string().optional(),
   instagram_url: z.string().url().optional().or(z.literal('')),
   linkedin_url: z.string().url().optional().or(z.literal('')),
   github_url: z.string().url().optional().or(z.literal('')),
@@ -110,7 +120,7 @@ export const SiteSettingsSchema = z.object({
   nav_about_label: z.string().default('About'),
   nav_contact_label: z.string().default('Contact'),
   
-   // CV Personal Info
+  // CV Personal Info
   cv_full_name: z.string().optional(),
   cv_job_title: z.string().optional(),
   cv_email: z.string().email().optional().or(z.literal('')),
@@ -129,11 +139,6 @@ export const SiteSettingsSchema = z.object({
   // Contact
   contact_email: z.string().email().optional().or(z.literal('')),
   contact_phone: z.string().optional(),
-  
-  // Footer
-  designer_name: z.string().optional(),
-  copyright_text: z.string().optional(),
-  show_location: z.boolean().default(true),
   
   // SEO
   meta_title: z.string().optional(),

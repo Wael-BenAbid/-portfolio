@@ -2,6 +2,7 @@
 CV App - Curriculum Vitae / Resume models
 """
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class CVExperience(models.Model):
@@ -70,7 +71,14 @@ class CVSkill(models.Model):
     name = models.CharField(max_length=50)
     level = models.CharField(max_length=20, choices=SKILL_LEVELS, default='intermediate')
     category = models.CharField(max_length=50, default='technical')
-    percentage = models.IntegerField(default=80, help_text="Skill percentage (0-100)")
+    percentage = models.IntegerField(
+        default=80,
+        help_text="Skill percentage (0-100)",
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ]
+    )
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -94,7 +102,14 @@ class CVLanguage(models.Model):
     ]
     name = models.CharField(max_length=50)
     level = models.CharField(max_length=20, choices=LANGUAGE_LEVELS, default='intermediate')
-    percentage = models.IntegerField(default=50, help_text="Language proficiency percentage (0-100)")
+    percentage = models.IntegerField(
+        default=50,
+        help_text="Language proficiency percentage (0-100)",
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ]
+    )
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     

@@ -9,6 +9,29 @@ from datetime import timedelta
 import json
 from dotenv import load_dotenv
 
+# Try to import optional packages
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    HAS_SENTRY = True
+except ImportError:
+    HAS_SENTRY = False
+
+# Configure Sentry for error tracking (optional)
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+if HAS_SENTRY and SENTRY_DSN and not ('test' in sys.argv):
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+        ],
+        traces_sample_rate=0.1,  # Sample 10% of transactions
+        send_default_pii=False,  # Don't send personally identifiable information
+        traces_sampler=lambda sampling_context: (
+            0.0 if sampling_context["transaction_name"].startswith("/health") else 0.1
+        )
+    )
+
 # Configure basic logging for settings module
 logger = logging.getLogger(__name__)
 
@@ -181,7 +204,15 @@ if not DEBUG:
 # APPLICATION DEFINITION
 # ===========================================
 
-INSTALLED_APPS = [
+# Check if CSP is available
+try:
+    import csp
+    HAS_CSP = True
+except ImportError:
+    HAS_CSP = False
+
+# Build INSTALLED_APPS
+_INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -200,7 +231,14 @@ INSTALLED_APPS = [
     'interactions',
 ]
 
-MIDDLEWARE = [
+# Add CSP if available
+if HAS_CSP:
+    _INSTALLED_APPS.insert(9, 'csp')  # Insert before main apps
+
+INSTALLED_APPS = _INSTALLED_APPS
+
+# Base middleware (always available)
+_MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -212,6 +250,12 @@ MIDDLEWARE = [
     'api.middleware.PrometheusMetricsMiddleware',
     'api.middleware.VisitorTrackingMiddleware',
 ]
+
+# Add CSP middleware if available
+if HAS_CSP:
+    _MIDDLEWARE.insert(7, 'csp.middleware.CSPMiddleware')
+
+MIDDLEWARE = _MIDDLEWARE
 
 ROOT_URLCONF = 'portfolio.urls'
 
@@ -396,33 +440,77 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@portfolio.com
 # LOGGING
 # ===========================================
 
+# Check if python-json-logger is available
+try:
+    import pythonjsonlogger
+    HAS_JSON_LOGGER = True
+except ImportError:
+    HAS_JSON_LOGGER = False
+
+# Base formatters (always available)
+LOGGING_FORMATTERS = {
+    'verbose': {
+        'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+        'style': '{',
+    },
+    'simple': {
+        'format': '{levelname} {message}',
+        'style': '{',
+    },
+}
+
+# Add JSON formatter if available
+if HAS_JSON_LOGGER:
+    LOGGING_FORMATTERS['json'] = {
+        '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+        'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
+    }
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
+    'formatters': LOGGING_FORMATTERS,
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(BASE_DIR / 'logs' / 'django.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'audit_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(BASE_DIR / 'logs' / 'audit.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 20,
+            'formatter': 'verbose',
+        },
+        'security_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(BASE_DIR / 'logs' / 'security.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 20,
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'audit': {
+            'handlers': ['audit_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['security_file'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },

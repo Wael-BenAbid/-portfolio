@@ -118,15 +118,19 @@ class SocialAuthSerializer(serializers.Serializer):
         """
         import requests
         from django.conf import settings
-        from urllib.parse import quote
+        from api.security import OAuthSecurityManager, AuditLogger
         
         try:
             if provider == 'google':
                 # Verify Google ID token
                 # SECURITY: Client ID is REQUIRED - fail closed if not configured
-                client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
+                client_id = OAuthSecurityManager.get_oauth_client_id('google')
                 if not client_id:
-                    logger.error("GOOGLE_OAUTH2_CLIENT_ID not configured - OAuth verification FAILED")
+                    AuditLogger.log_security_event(
+                        'oauth_verification_failed',
+                        'high',
+                        {'provider': 'google', 'reason': 'client_id_not_configured'}
+                    )
                     return False
                 
                 # Use params for safe URL encoding instead of f-string interpolation
