@@ -14,6 +14,34 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def pytest_configure(config):
+    """
+    Pytest hook that runs before test collection.
+    Disables rate limiting globally for all tests.
+    """
+    # Import here to avoid import errors before Django is set up
+    from unittest.mock import patch
+    
+    # Create a mock decorator that does nothing (no-op)
+    def mock_ratelimit(*args, **kwargs):
+        """Mock ratelimit decorator that bypasses rate limiting"""
+        def decorator(func):
+            return func
+        return decorator
+    
+    # Patch django_ratelimit.decorators.ratelimit globally
+    import django_ratelimit.decorators
+    django_ratelimit.decorators.ratelimit = mock_ratelimit
+    
+    # Also patch the imported versions in each module
+    import sys
+    for module_name in list(sys.modules.keys()):
+        if module_name.startswith(('api', 'projects', 'content')):
+            module = sys.modules.get(module_name)
+            if module and hasattr(module, 'ratelimit'):
+                setattr(module, 'ratelimit', mock_ratelimit)
+
+
 @pytest.fixture(scope='session', autouse=True)
 def create_log_directories():
     """
@@ -59,27 +87,6 @@ def disable_ssl_redirect(settings):
     requests to HTTPS, causing tests to fail with 301 instead of expected codes.
     """
     settings.SECURE_SSL_REDIRECT = False
-
-
-@pytest.fixture(autouse=True)
-def disable_rate_limiting(monkeypatch):
-    """
-    Disable rate limiting for all tests using pytest's monkeypatch.
-    This prevents rate limit errors when multiple tests hit the same endpoint.
-    Rate limiting is tested separately; this allows clean integration testing.
-    """
-    # Mock the ratelimit decorator to be a no-op
-    # This prevents it from enforcing rate limits during testing
-    def mock_ratelimit(*args, **kwargs):
-        """Decorator that does nothing - bypasses rate limiting"""
-        def decorator(func):
-            return func
-        return decorator
-    
-    # Patch ratelimit in modules that import it
-    monkeypatch.setattr('api.views.ratelimit', mock_ratelimit)
-    monkeypatch.setattr('projects.views.ratelimit', mock_ratelimit)
-    monkeypatch.setattr('content.views.ratelimit', mock_ratelimit)
 
 
 @pytest.fixture
