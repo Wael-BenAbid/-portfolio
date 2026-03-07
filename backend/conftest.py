@@ -30,6 +30,16 @@ def enable_db_access_for_all_tests(db):
     pass
 
 
+@pytest.fixture(autouse=True)
+def disable_ssl_redirect(settings):
+    """
+    Disable HTTPS redirect in tests to prevent 301 responses.
+    When DEBUG=False, Django's SECURE_SSL_REDIRECT=True redirects all HTTP
+    requests to HTTPS, causing tests to fail with 301 instead of expected codes.
+    """
+    settings.SECURE_SSL_REDIRECT = False
+
+
 @pytest.fixture
 def api_client():
     """
