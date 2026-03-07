@@ -72,6 +72,7 @@ jobs:
         continue-on-error: true
       
       - name: Run pytest with coverage
+        id: pytest_backend
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -84,16 +85,47 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           CSRF_TRUSTED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           REDIS_URL: redis://localhost:6379/0
+        working-directory: backend
         run: |
-          cd backend
-          pytest --cov --cov-report=xml --cov-report=term-missing
+          pytest \
+            --cov=api \
+            --cov=projects \
+            --cov=cv \
+            --cov=content \
+            --cov=interactions \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=70 \
+            --junitxml=test-results.xml \
+            -v
+      
+      - name: Check Test Coverage
+        if: always()
+        working-directory: backend
+        run: |
+          if [ -f coverage.xml ]; then
+            echo "✅ Coverage report generated successfully"
+            grep -o 'lines-valid="[^"]*"' coverage.xml | head -1
+          else
+            echo "⚠️  Coverage report not found"
+          fi
       
       - name: Upload coverage to Codecov
+        if: always()
         uses: codecov/codecov-action@v3
         with:
           files: ./backend/coverage.xml
           flags: backend
           name: backend-coverage
+          fail_ci_if_error: false
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results
+          path: backend/test-results.xml
+          retention-days: 30
 
   # Frontend Testing
   test-frontend:
@@ -111,28 +143,46 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+        working-directory: frontend
+        run: npm ci
       
       - name: Run linting
-        run: |
-          cd frontend
-          npm run lint
+        working-directory: frontend
+        run: npm run lint
         continue-on-error: true
       
-      - name: Run tests
-        run: |
-          cd frontend
-          npm run test:coverage
+      - name: Run tests with coverage
+        id: tests
+        working-directory: frontend
+        run: npm run test:coverage
         continue-on-error: true
+      
+      - name: Check test results
+        working-directory: frontend
+        run: |
+          if [ -d coverage ]; then
+            echo "✅ Coverage report generated successfully"
+            ls -lah coverage/
+          else
+            echo "⚠️  Coverage folder not found at frontend/coverage"
+          fi
       
       - name: Upload coverage to Codecov
+        if: always()
         uses: codecov/codecov-action@v3
         with:
           files: ./frontend/coverage/coverage-final.json
           flags: frontend
           name: frontend-coverage
+          fail_ci_if_error: false
+      
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          retention-days: 30
 
   # Code Quality & Security
   code-quality:
@@ -236,11 +286,24 @@ jobs:
     if: always()
     
     steps:
-      - name: Check test results
+      - name: Check backend test results
         run: |
-          if [ "${{ needs.test-backend.result }}" == "failure" ] || [ "${{ needs.test-frontend.result }}" == "failure" ]; then
-            echo "❌ Tests failed!"
+          if [ "${{ needs.test-backend.result }}" == "failure" ]; then
+            echo "❌ Backend tests failed!"
             exit 1
           else
-            echo "✅ All tests passed!"
+            echo "✅ Backend tests passed!"
           fi
+      
+      - name: Check frontend test results
+        run: |
+          if [ "${{ needs.test-frontend.result }}" == "failure" ]; then
+            echo "❌ Frontend tests failed!"
+            exit 1
+          else
+            echo "✅ Frontend tests passed!"
+          fi
+      
+      - name: Overall status
+        if: success()
+        run: echo "✅ All tests completed successfully!"
