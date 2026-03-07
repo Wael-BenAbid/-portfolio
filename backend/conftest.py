@@ -68,11 +68,18 @@ def disable_rate_limiting(monkeypatch):
     This prevents rate limit errors when multiple tests hit the same endpoint.
     Rate limiting is tested separately; this allows clean integration testing.
     """
-    # Mock the is_rate_limited function to always return False
-    monkeypatch.setattr(
-        'django_ratelimit.decorators.is_rate_limited',
-        lambda *args, **kwargs: False
-    )
+    # Mock the ratelimit decorator to be a no-op
+    # This prevents it from enforcing rate limits during testing
+    def mock_ratelimit(*args, **kwargs):
+        """Decorator that does nothing - bypasses rate limiting"""
+        def decorator(func):
+            return func
+        return decorator
+    
+    # Patch ratelimit in modules that import it
+    monkeypatch.setattr('api.views.ratelimit', mock_ratelimit)
+    monkeypatch.setattr('projects.views.ratelimit', mock_ratelimit)
+    monkeypatch.setattr('content.views.ratelimit', mock_ratelimit)
 
 
 @pytest.fixture
