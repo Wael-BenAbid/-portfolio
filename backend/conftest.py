@@ -61,6 +61,20 @@ def disable_ssl_redirect(settings):
     settings.SECURE_SSL_REDIRECT = False
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limiting(monkeypatch):
+    """
+    Disable rate limiting for all tests using pytest's monkeypatch.
+    This prevents rate limit errors when multiple tests hit the same endpoint.
+    Rate limiting is tested separately; this allows clean integration testing.
+    """
+    # Mock the is_rate_limited function to always return False
+    monkeypatch.setattr(
+        'django_ratelimit.decorators.is_rate_limited',
+        lambda *args, **kwargs: False
+    )
+
+
 @pytest.fixture
 def api_client():
     """
