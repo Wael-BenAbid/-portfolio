@@ -477,6 +477,9 @@ try:
 except ImportError:
     HAS_JSON_LOGGER = False
 
+# Ensure the logs directory exists before configuring file handlers
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
 # Base formatters (always available)
 LOGGING_FORMATTERS = {
     'verbose': {
