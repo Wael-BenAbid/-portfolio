@@ -44,7 +44,7 @@ class TestProjectListCreate:
         )
         
         response = api_client.get('/api/projects/')
-        project_ids = [p['id'] for p in response.data]
+        project_ids = [p['id'] for p in response.data['results']]
         
         assert active.id in project_ids
         assert inactive.id not in project_ids

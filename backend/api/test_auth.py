@@ -187,7 +187,7 @@ class TestPasswordChange:
         data = {
             'current_password': 'password123',
             'new_password': 'NewSecurePass456!',
-            'new_password_confirm': 'NewSecurePass456!'
+            'confirm_password': 'NewSecurePass456!'
         }
         response = authenticated_api_client.post('/api/auth/password/change/', data)
         
@@ -241,7 +241,8 @@ class TestAdminUserManagement:
         response = admin_api_client.get('/api/auth/admin/users/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert isinstance(response.data, list)
+        assert isinstance(response.data['results'], list)
+        assert response.data['count'] >= 1
     
     def test_list_users_as_regular_user(self, authenticated_api_client):
         """Test regular user cannot list users"""

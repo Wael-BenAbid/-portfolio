@@ -328,12 +328,14 @@ def api_exception_handler(exc, context):
     """
     from rest_framework.exceptions import APIException as DRFException
     from rest_framework.response import Response
+    from django.http import Http404
+    from django.core.exceptions import ObjectDoesNotExist
     
     # Handle our custom API exceptions
     if isinstance(exc, APIException):
         return exc.to_response()
     
-    # Handle DRF ValidationError
+    # Handle DRF ValidationError and other DRF exceptions
     if isinstance(exc, DRFException):
         data = {
             'error': {
@@ -342,6 +344,16 @@ def api_exception_handler(exc, context):
             }
         }
         return Response(data, status=exc.status_code)
+    
+    # Handle Django Http404
+    if isinstance(exc, Http404):
+        data = {
+            'error': {
+                'message': 'The requested resource was not found.',
+                'code': 'NOT_FOUND',
+            }
+        }
+        return Response(data, status=status.HTTP_404_NOT_FOUND)
     
     # Handle unexpected exceptions in production
     if not settings.DEBUG:
