@@ -4,12 +4,14 @@ Shared fixtures used across all test modules
 """
 import os
 import pytest
+import logging
 from pathlib import Path
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -19,8 +21,27 @@ def create_log_directories():
     Runs once per test session before any tests.
     Fixes CI/CD failures when logs/ directory doesn't exist.
     """
-    log_dir = Path(__file__).parent / 'logs'
-    log_dir.mkdir(exist_ok=True)
+    # Create logs directory at project root (BASE_DIR / 'logs')
+    # This matches the configuration in settings.py
+    import django
+    django.setup()
+    from django.conf import settings
+    
+    log_dir = Path(settings.BASE_DIR) / 'logs'
+    log_dir.mkdir(exist_ok=True, parents=True)
+    
+    # Ensure all required files are writable
+    log_files = ['django.log', 'audit.log', 'security.log']
+    for log_file in log_files:
+        log_path = log_dir / log_file
+        if log_path.exists():
+            try:
+                # Test if file is writable
+                with open(log_path, 'a'):
+                    pass
+            except PermissionError:
+                logger.warning(f"Cannot write to {log_path}")
+    
     yield
 
 

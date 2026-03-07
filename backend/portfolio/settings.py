@@ -409,11 +409,11 @@ REST_FRAMEWORK = {
         'user': '5000/hour',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
-    'DEFAULT_RENDERER_CLASSES': [
+    'DEFAULT_RENDERERS': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
-    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'api.error_handling.api_exception_handler',
 }
 
 # ===========================================
