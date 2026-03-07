@@ -136,9 +136,16 @@ export const SiteSettingsSchema = z.object({
   email_host_password: z.string().optional(),
   default_from_email: z.string().email().optional().or(z.literal('')),
   
-  // Contact
-  contact_email: z.string().email().optional().or(z.literal('')),
-  contact_phone: z.string().optional(),
+   // Contact
+   contact_email: z.string().email().optional().or(z.literal('')),
+   contact_phone: z.string().optional(),
+   contact_title: z.string().default('Créons Ensemble'),
+   contact_subtitle: z.string().default('Que vous ayez besoin d\'un ingénieur full-stack ou d\'un cinéaste drone, je suis prêt pour le prochain défi.'),
+   contact_form_placeholder_name: z.string().default('Votre Nom'),
+   contact_form_placeholder_email: z.string().default('nom@email.com'),
+   contact_form_placeholder_subject: z.string().default('Sujet'),
+   contact_form_placeholder_message: z.string().default('Parlez-moi de votre vision...'),
+   contact_form_button_text: z.string().default('Envoyer le Message'),
   
   // SEO
   meta_title: z.string().optional(),

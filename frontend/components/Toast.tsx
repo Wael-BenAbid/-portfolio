@@ -57,9 +57,11 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast }) => {
     >
       {getIcon()}
       
-      <div className="flex-1">
-        <p className="text-sm font-medium">{toast.message}</p>
-      </div>
+       <div className="flex-1">
+         <p className="text-sm font-medium">
+           {typeof toast.message === 'string' ? toast.message : JSON.stringify(toast.message)}
+         </p>
+       </div>
 
       <button
         onClick={() => removeToast(toast.id)}

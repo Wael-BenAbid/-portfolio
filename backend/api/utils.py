@@ -8,10 +8,13 @@ from django.conf import settings
 def get_fernet():
     """Get Fernet instance using secret key from settings"""
     secret_key = settings.SECRET_KEY.encode('utf-8')
-    # Fernet requires a 32-byte key, so we'll hash the secret key
+    # Fernet requires a 32-byte url-safe base64-encoded key
     from hashlib import sha256
+    import base64
     key = sha256(secret_key).digest()
-    return Fernet(key[:32])
+    # Base64 encode the key to make it compatible with Fernet
+    url_safe_key = base64.urlsafe_b64encode(key)
+    return Fernet(url_safe_key)
 
 
 def encrypt(value):

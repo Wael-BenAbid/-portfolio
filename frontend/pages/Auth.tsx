@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../constants';
 import { BackButton } from '../components/BackButton';
+import { GoogleLogin } from '@react-oauth/google';
 
 // Types
 interface AuthProps {
@@ -355,6 +356,10 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   };
 
   const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+    if (provider === 'google') {
+      // Google OAuth is handled by the GoogleLogin component
+      return;
+    }
     setError(`${provider} authentication would redirect to OAuth flow`);
   };
 
@@ -601,12 +606,38 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
               </div>
             </div>
             
-            {/* Social Auth Buttons */}
+             {/* Social Auth Buttons */}
             <div className="space-y-3">
-              <SocialButton
-                provider="Google"
-                icon={GoogleIcon}
-                onClick={() => handleSocialAuth('google')}
+              <GoogleLogin
+                onSuccess={async (response) => {
+                  try {
+                    // Send the Google ID token to the backend for verification
+                    const res = await fetch(`${API_BASE_URL}/auth/social/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        provider: 'google',
+                        provider_token: response.credential,
+                      }),
+                      credentials: 'include',
+                    });
+                    
+                    if (res.ok) {
+                      const data = await res.json();
+                      onLogin(data.user, 'http-only-cookie');
+                      navigate('/');
+                    } else {
+                      const errorData = await res.json();
+                      setError(errorData.error || 'Google authentication failed');
+                    }
+                  } catch (err) {
+                    setError('Network error. Please check if the server is running.');
+                  }
+                }}
+                onError={() => {
+                  setError('Google authentication failed');
+                }}
+                useOneTap
               />
               <SocialButton
                 provider="Facebook"

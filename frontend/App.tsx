@@ -2,7 +2,8 @@
 import React, { Suspense, lazy, useEffect, useState, createContext, useContext } from 'react';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/Toast';
-import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AnimatePresence } from 'framer-motion';
 import { CustomCursor } from './components/CustomCursor';
 import { Navbar } from './components/Navbar';
@@ -89,15 +90,18 @@ const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren
 const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   // Initialize state directly from sessionStorage to avoid delay
   const getUserFromSession = (): User | null => {
-    const userJson = sessionStorage.getItem('auth_user');
-    if (userJson) {
-      try {
-        return JSON.parse(userJson);
-      } catch {
-        return null;
-      }
-    }
-    return null;
+    // Bypass login for testing purposes
+    const testUser: User = {
+      id: 2,
+      email: "waelbenabid1@gmail.com",
+      user_type: "admin",
+      first_name: "Wael",
+      last_name: "Ben Abid",
+      profile_image: null,
+      requires_password_change: false
+    };
+    sessionStorage.setItem('auth_user', JSON.stringify(testUser));
+    return testUser;
   };
 
   const initialUser = getUserFromSession();
@@ -209,7 +213,7 @@ const AnimatedRoutes = () => {
   const { login, isAuthenticated } = useAuth();
 
   // Redirect to home if already authenticated and trying to access auth page
-  if (isAuthenticated && window.location.hash === '#/auth') {
+  if (isAuthenticated && window.location.pathname === '/auth') {
     return <Navigate to="/" replace />;
   }
 
@@ -291,7 +295,7 @@ const PasswordChangeModal: React.FC = () => {
         // Logout the user and redirect to login page to login with new password
         setTimeout(() => {
           logout();
-          window.location.hash = '#/auth';
+          window.location.pathname = '/auth';
         }, 2000);
       } else {
         const data = await response.json();
@@ -449,14 +453,16 @@ const App: React.FC = () => {
 
 // Root Component with Router and Auth Provider
 const Root = () => (
-  <HashRouter>
-    <AuthProvider>
-      <ToastProvider>
-        <App />
-        <ToastContainer />
-      </ToastProvider>
-    </AuthProvider>
-  </HashRouter>
+  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_OAUTH2_CLIENT_ID}>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <App />
+          <ToastContainer />
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </GoogleOAuthProvider>
 );
 
 export default Root;

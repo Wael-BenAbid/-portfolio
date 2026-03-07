@@ -60,9 +60,16 @@ interface SiteSettings {
   email_host_user: string;
   email_host_password: string;
   default_from_email: string;
-  // Contact
+   // Contact
   contact_email: string;
   contact_phone: string;
+  contact_title: string;
+  contact_subtitle: string;
+  contact_form_placeholder_name: string;
+  contact_form_placeholder_email: string;
+  contact_form_placeholder_subject: string;
+  contact_form_placeholder_message: string;
+  contact_form_button_text: string;
   // Footer
   footer_text: string;
   copyright_year: number;
@@ -86,6 +93,19 @@ interface User {
   bio?: string;
   phone?: string;
   is_active: boolean;
+  created_at: string;
+}
+
+interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'replied' | 'archived';
+  admin_reply?: string;
+  user?: number | null;
+  replied_at?: string;
   created_at: string;
 }
 
@@ -124,6 +144,13 @@ const DEFAULT_SETTINGS: SiteSettings = {
   default_from_email: '',
   contact_email: '',
   contact_phone: '',
+  contact_title: 'Créons Ensemble',
+  contact_subtitle: 'Que vous ayez besoin d\'un ingénieur full-stack ou d\'un cinéaste drone, je suis prêt pour le prochain défi.',
+  contact_form_placeholder_name: 'Votre Nom',
+  contact_form_placeholder_email: 'nom@email.com',
+  contact_form_placeholder_subject: 'Sujet',
+  contact_form_placeholder_message: 'Parlez-moi de votre vision...',
+  contact_form_button_text: 'Envoyer le Message',
   footer_text: '',
   copyright_year: new Date().getFullYear(),
   version: '1.0.0',
@@ -144,6 +171,9 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+  const [replyText, setReplyText] = useState('');
   
   // User Edit State
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -167,8 +197,23 @@ const Settings: React.FC = () => {
     fetchSettings();
     if (user?.user_type === 'admin') {
       fetchUsers();
+      fetchContactMessages();
     }
   }, [token]);
+
+  const fetchContactMessages = async () => {
+    try {
+      const response = await fetch(`${API_URL}/settings/contact/messages/`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setContactMessages(data.results || data);
+      }
+    } catch (error) {
+      console.error('Error fetching contact messages:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -432,6 +477,35 @@ const Settings: React.FC = () => {
     if (profileInputRef.current) profileInputRef.current.value = '';
   };
 
+  // Handle reply to contact message
+  const handleReply = async () => {
+    if (!selectedMessage) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/settings/contact/${selectedMessage.id}/reply/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reply: replyText })
+      });
+      
+      if (response.ok) {
+        setReplyText('');
+        setSelectedMessage(null);
+        fetchContactMessages();
+        showToast('Reply sent successfully', 'success');
+      } else {
+        const error = await response.json();
+        showToast(error.error || 'Failed to send reply', 'error');
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      showToast('Failed to send reply', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -497,6 +571,20 @@ const Settings: React.FC = () => {
           </button>
           
           <button 
+            onClick={() => setActiveTab('contact')}
+            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'contact' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
+          >
+            <Mail size={16} /> Contact Page
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('contact-messages')}
+            className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'contact-messages' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
+          >
+            <Mail size={16} /> Contact Messages
+          </button>
+          
+          <button 
             onClick={() => setActiveTab('footer')}
             className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors w-full text-left ${activeTab === 'footer' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
           >
@@ -531,13 +619,15 @@ const Settings: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 p-16 overflow-y-auto">
         <header className="flex justify-between items-center mb-16">
-          <h1 className="text-4xl font-display font-bold uppercase">
+           <h1 className="text-4xl font-display font-bold uppercase">
             {activeTab === 'branding' && 'Branding Settings'}
             {activeTab === 'hero' && 'Hero Section'}
             {activeTab === 'location' && 'Location Settings'}
             {activeTab === 'social' && 'Social Media Links'}
             {activeTab === 'oauth' && 'OAuth Configuration'}
             {activeTab === 'email' && 'Email Configuration'}
+            {activeTab === 'contact' && 'Contact Page Settings'}
+            {activeTab === 'contact-messages' && 'Contact Messages'}
             {activeTab === 'footer' && 'Footer Settings'}
             {activeTab === 'home' && 'Config Page Home'}
             {activeTab === 'theme' && 'Theme Settings'}
@@ -545,6 +635,89 @@ const Settings: React.FC = () => {
           </h1>
           {savedStatus && <span className="text-green-500 font-display text-[10px] uppercase tracking-widest">Saved Successfully</span>}
         </header>
+
+         {/* Contact Page Tab */}
+        {activeTab === 'contact' && settings && (
+          <form onSubmit={handleSaveSettings} className="max-w-4xl space-y-12">
+            <section className="space-y-8">
+              <h3 className="text-xs font-display text-blue-500 uppercase tracking-[0.3em]">Contact Page Content</h3>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Contact Page Title</label>
+                  <input 
+                    type="text"
+                    value={settings.contact_title}
+                    onChange={e => setSettings({...settings, contact_title: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase text-2xl"
+                    placeholder="Créons Ensemble"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Contact Page Subtitle</label>
+                  <textarea 
+                    value={settings.contact_subtitle}
+                    onChange={e => setSettings({...settings, contact_subtitle: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24 text-gray-300"
+                    placeholder="Que vous ayez besoin d'un ingénieur full-stack ou d'un cinéaste drone, je suis prêt pour le prochain défi."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Form Placeholder - Name</label>
+                  <input 
+                    type="text"
+                    value={settings.contact_form_placeholder_name}
+                    onChange={e => setSettings({...settings, contact_form_placeholder_name: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Votre Nom"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Form Placeholder - Email</label>
+                  <input 
+                    type="email"
+                    value={settings.contact_form_placeholder_email}
+                    onChange={e => setSettings({...settings, contact_form_placeholder_email: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="nom@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Form Placeholder - Subject</label>
+                  <input 
+                    type="text"
+                    value={settings.contact_form_placeholder_subject}
+                    onChange={e => setSettings({...settings, contact_form_placeholder_subject: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Sujet"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Form Placeholder - Message</label>
+                  <textarea 
+                    value={settings.contact_form_placeholder_message}
+                    onChange={e => setSettings({...settings, contact_form_placeholder_message: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24 text-gray-300"
+                    placeholder="Parlez-moi de votre vision..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Form Button Text</label>
+                  <input 
+                    type="text"
+                    value={settings.contact_form_button_text}
+                    onChange={e => setSettings({...settings, contact_form_button_text: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display"
+                    placeholder="Envoyer le Message"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <button type="submit" className="px-12 py-5 bg-white text-black font-display text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-4">
+              <Save size={16} /> Save Settings
+            </button>
+          </form>
+        )}
 
         {/* Branding Tab */}
         {activeTab === 'branding' && settings && (
@@ -1427,6 +1600,124 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Contact Messages Tab */}
+        {activeTab === 'contact-messages' && (
+          <div className="max-w-6xl space-y-8">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-display font-bold uppercase text-blue-500">Messages ({contactMessages.length})</h2>
+              <button 
+                onClick={fetchContactMessages}
+                className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
+              >
+                <Loader2 size={14} className="animate-spin" /> Refresh
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Message List */}
+              <div className="space-y-4 h-[600px] overflow-y-auto">
+                {contactMessages.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <p className="text-[10px] font-display uppercase tracking-widest mb-2">Aucun message</p>
+                    <p className="text-sm">Vous n'avez pas encore reçu de messages.</p>
+                  </div>
+                ) : (
+                  contactMessages.map(message => (
+                    <div 
+                      key={message.id}
+                      onClick={() => {
+                        setSelectedMessage(message);
+                        setReplyText(message.admin_reply || '');
+                      }}
+                      className={`p-4 border border-gray-800 cursor-pointer transition-all ${
+                        selectedMessage?.id === message.id ? 'border-blue-500 bg-blue-500/10' : 'border-gray-800 hover:border-blue-500'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-display font-bold uppercase text-sm">{message.name}</h3>
+                        <span className={`text-[10px] font-display uppercase tracking-widest ${
+                          message.status === 'new' ? 'text-green-500' : 
+                          message.status === 'read' ? 'text-gray-500' : 
+                          message.status === 'replied' ? 'text-blue-500' : 'text-gray-600'
+                        }`}>
+                          {message.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-display text-gray-400 mb-2">{message.email}</p>
+                      <p className="font-display text-sm truncate mb-2">{message.subject}</p>
+                      <p className="text-gray-400 text-sm line-clamp-2">{message.message}</p>
+                      <p className="text-[10px] font-display text-gray-600 mt-2">{new Date(message.created_at).toLocaleString()}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              {/* Message Detail */}
+              {selectedMessage && (
+                <div className="space-y-6">
+                  <div className="p-4 border border-gray-800 bg-gray-900/50">
+                    <h3 className="font-display font-bold uppercase text-lg mb-4">{selectedMessage.subject}</h3>
+                    <div className="space-y-2 mb-4">
+                      <p className="text-sm"><span className="text-gray-500">De:</span> {selectedMessage.name}</p>
+                      <p className="text-sm"><span className="text-gray-500">Email:</span> {selectedMessage.email}</p>
+                      <p className="text-sm"><span className="text-gray-500">Date:</span> {new Date(selectedMessage.created_at).toLocaleString()}</p>
+                      <p className="text-sm"><span className="text-gray-500">Statut:</span> {selectedMessage.status}</p>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-[10px] font-display uppercase tracking-widest text-gray-500 mb-2">Message</h4>
+                        <p className="text-gray-300 whitespace-pre-line">{selectedMessage.message}</p>
+                      </div>
+                      {selectedMessage.admin_reply && (
+                        <div className="pt-4 border-t border-gray-800">
+                          <h4 className="text-[10px] font-display uppercase tracking-widest text-blue-500 mb-2">Votre réponse</h4>
+                          <p className="text-blue-400 whitespace-pre-line">{selectedMessage.admin_reply}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Reply Form */}
+                  <div className="p-4 border border-gray-800">
+                    <h4 className="text-[10px] font-display uppercase tracking-widest text-gray-500 mb-4">Répondre</h4>
+                    <textarea 
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Écrire une réponse..."
+                      className="w-full bg-transparent border border-gray-800 p-3 focus:border-blue-500 outline-none font-display text-sm h-40 text-gray-300"
+                    />
+                    <div className="flex gap-4 mt-4">
+                      <button 
+                        onClick={handleReply}
+                        disabled={!replyText.trim()}
+                        className="px-6 py-2 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Envoyer la réponse
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedMessage(null);
+                          setReplyText('');
+                        }}
+                        className="px-6 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors font-display text-xs uppercase tracking-widest"
+                      >
+                        Fermer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {!selectedMessage && contactMessages.length > 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-[10px] font-display uppercase tracking-widest mb-2">Sélectionnez un message</p>
+                  <p className="text-sm">Cliquez sur un message pour le voir et répondre.</p>
+                </div>
+              )}
             </div>
           </div>
         )}

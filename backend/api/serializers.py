@@ -72,9 +72,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class SocialAuthSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False)
     provider = serializers.CharField()  # google, facebook
-    provider_id = serializers.CharField()
+    provider_id = serializers.CharField(required=False)
     provider_token = serializers.CharField(write_only=True, required=True)  # OAuth access token for verification (REQUIRED)
     first_name = serializers.CharField(required=False, default='')
     last_name = serializers.CharField(required=False, default='')
@@ -96,7 +96,8 @@ class SocialAuthSerializer(serializers.Serializer):
             logger.warning(f"OAuth login attempted without provider_token for provider: {provider}")
             raise serializers.ValidationError("provider_token is required for OAuth authentication.")
         
-        verified = self._verify_oauth_token(
+        # Verify token and extract user information
+        verified, user_info = self._verify_oauth_token(
             provider, 
             provider_token, 
             attrs.get('provider_id'), 
@@ -105,12 +106,25 @@ class SocialAuthSerializer(serializers.Serializer):
         if not verified:
             raise serializers.ValidationError("OAuth token verification failed. Invalid or expired token.")
         
+        # Add extracted user information to validated data
+        if user_info:
+            if 'provider_id' in user_info:
+                attrs['provider_id'] = user_info['provider_id']
+            if 'email' in user_info and not attrs.get('email'):
+                attrs['email'] = user_info['email']
+            if 'first_name' in user_info and not attrs.get('first_name'):
+                attrs['first_name'] = user_info['first_name']
+            if 'last_name' in user_info and not attrs.get('last_name'):
+                attrs['last_name'] = user_info['last_name']
+            if 'profile_image' in user_info and not attrs.get('profile_image'):
+                attrs['profile_image'] = user_info['profile_image']
+        
         return attrs
 
     def _verify_oauth_token(self, provider, token, expected_id, expected_email):
         """
         Verify OAuth token with the provider.
-        Returns True if verified, False otherwise.
+        Returns (True, user_info) if verified, (False, None) otherwise.
         
         Uses safe URL parameter passing to prevent injection issues.
         - Google: https://oauth2.googleapis.com/tokeninfo
@@ -131,7 +145,7 @@ class SocialAuthSerializer(serializers.Serializer):
                         'high',
                         {'provider': 'google', 'reason': 'client_id_not_configured'}
                     )
-                    return False
+                    return False, None
                 
                 # Use params for safe URL encoding instead of f-string interpolation
                 response = requests.get(
@@ -144,19 +158,27 @@ class SocialAuthSerializer(serializers.Serializer):
                     # Verify the token's audience matches our client ID
                     if data.get('aud') != client_id:
                         logger.warning("Google token audience mismatch")
-                        return False
+                        return False, None
                     # Verify the user ID matches
                     if expected_id and data.get('sub') != expected_id:
                         logger.warning("Google token user ID mismatch")
-                        return False
+                        return False, None
                     # Verify the email matches
                     if expected_email and data.get('email') != expected_email:
                         logger.warning("Google token email mismatch")
-                        return False
-                    return True
+                        return False, None
+                    # Extract user information from Google token
+                    user_info = {
+                        'provider_id': data.get('sub'),
+                        'email': data.get('email'),
+                        'first_name': data.get('given_name'),
+                        'last_name': data.get('family_name'),
+                        'profile_image': data.get('picture')
+                    }
+                    return True, user_info
                 else:
                     logger.warning(f"Google token verification failed: {response.status_code}")
-                    return False
+                    return False, None
                     
             elif provider == 'facebook':
                 # Verify Facebook access token
@@ -166,7 +188,7 @@ class SocialAuthSerializer(serializers.Serializer):
                 if not app_id or not app_secret:
                     logger.error("Facebook app credentials not configured - OAuth verification FAILED")
                     # Always fail closed - never bypass OAuth verification
-                    return False
+                    return False, None
                 
                 # Build app access token safely to prevent logging of secrets
                 # Facebook requires app access token in format: app_id|app_secret
@@ -187,13 +209,13 @@ class SocialAuthSerializer(serializers.Serializer):
                         # Verify the user ID matches
                         if expected_id and str(data.get('user_id')) != str(expected_id):
                             logger.warning("Facebook token user ID mismatch")
-                            return False
+                            return False, None
                         # For Facebook, we need to get the user's email from the graph API
                         # using the access token
                         user_response = requests.get(
                             'https://graph.facebook.com/me',
                             params={
-                                'fields': 'email',
+                                'fields': 'email,name,first_name,last_name,picture',
                                 'access_token': token
                             },
                             timeout=5
@@ -202,20 +224,28 @@ class SocialAuthSerializer(serializers.Serializer):
                             user_data = user_response.json()
                             if expected_email and user_data.get('email') != expected_email:
                                 logger.warning("Facebook token email mismatch")
-                                return False
+                                return False, None
+                            # Extract user information from Facebook API
+                            user_info = {
+                                'provider_id': str(data.get('user_id')),
+                                'email': user_data.get('email'),
+                                'first_name': user_data.get('first_name'),
+                                'last_name': user_data.get('last_name'),
+                                'profile_image': user_data.get('picture', {}).get('data', {}).get('url')
+                            }
+                            return True, user_info
                         else:
                             logger.warning(f"Facebook email verification failed: {user_response.status_code}")
-                            return False
-                        return True
+                            return False, None
                 logger.warning(f"Facebook token verification failed: {response.status_code}")
-                return False
+                return False, None
                 
         except requests.RequestException as e:
             logger.error(f"OAuth verification request failed: {e}")
             # Security: Always fail closed on network errors - never bypass OAuth verification
-            return False
+            return False, None
         
-        return False
+        return False, None
 
     def create_or_get_user(self, validated_data):
         provider = validated_data['provider']

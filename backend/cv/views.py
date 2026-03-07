@@ -95,7 +95,7 @@ class CVFullView(APIView):
                 many=True
             ).data,
             'projects': CVProjectSerializer(
-                CVProject.objects.all().order_by('-date'), 
+                CVProject.objects.all().order_by('-start_date'), 
                 many=True
             ).data,
             'interests': CVInterestSerializer(

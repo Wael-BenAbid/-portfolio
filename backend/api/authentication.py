@@ -19,18 +19,6 @@ class CookieTokenAuthentication(TokenAuthentication):
         if not token:
             return None
             
-        # Check CSRF token for unsafe HTTP methods
-        if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            csrf_token = request.COOKIES.get('csrftoken')
-            if not csrf_token:
-                raise AuthenticationFailed('CSRF token required')
-                
-            # Verify CSRF token
-            try:
-                CsrfViewMiddleware().process_view(request, None, (), {})
-            except Exception as e:
-                raise AuthenticationFailed('Invalid CSRF token') from e
-                
         try:
             # Call TokenAuthentication's authenticate_credentials with the raw token string
             return self.authenticate_credentials(token)

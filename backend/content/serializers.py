@@ -24,7 +24,10 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'cv_full_name', 'cv_job_title', 'cv_email', 'cv_phone', 'cv_location', 'cv_profile_image', 'cv_summary',
             'location', 'latitude', 'longitude',
             'instagram_url', 'linkedin_url', 'github_url', 'twitter_url',
-            'contact_email', 'contact_phone',
+            'contact_email', 'contact_phone', 'contact_title', 'contact_subtitle',
+            'contact_form_placeholder_name', 'contact_form_placeholder_email',
+            'contact_form_placeholder_subject', 'contact_form_placeholder_message',
+            'contact_form_button_text',
             'footer_text', 'copyright_year', 'version', 'designer_name', 'copyright_text', 'show_location', 'footer_background_video',
             'meta_title', 'meta_description', 'meta_keywords',
             'google_client_id', 'google_client_secret',
@@ -53,7 +56,10 @@ class SiteSettingsPublicSerializer(serializers.ModelSerializer):
             'cv_full_name', 'cv_job_title', 'cv_email', 'cv_phone', 'cv_location', 'cv_profile_image', 'cv_summary',
             'location', 'latitude', 'longitude',
             'instagram_url', 'linkedin_url', 'github_url', 'twitter_url',
-            'contact_email', 'contact_phone',
+            'contact_email', 'contact_phone', 'contact_title', 'contact_subtitle',
+            'contact_form_placeholder_name', 'contact_form_placeholder_email',
+            'contact_form_placeholder_subject', 'contact_form_placeholder_message',
+            'contact_form_button_text',
             'footer_text', 'copyright_year', 'version', 'designer_name', 'copyright_text', 'show_location', 'footer_background_video',
             'meta_title', 'meta_description', 'meta_keywords'
         ]

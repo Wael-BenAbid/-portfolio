@@ -13,6 +13,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 100 --ignore-pattern node_modules --ignore-pattern dist"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "framer-motion": "^12.34.0",

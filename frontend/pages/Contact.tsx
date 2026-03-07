@@ -1,12 +1,11 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Instagram, Linkedin, Github, MapPin } from 'lucide-react';
-import { STORAGE_KEYS, DEFAULT_ABOUT, API_BASE_URL } from '../constants';
-import { AboutData } from '../types';
+import { API_BASE_URL } from '../constants';
+import { useSettings } from '../hooks/useData';
 
 const Contact: React.FC = () => {
-  const [about, setAbout] = useState<AboutData>(DEFAULT_ABOUT);
+  const { data: settings } = useSettings();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,11 +15,6 @@ const Contact: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ABOUT);
-    if (saved) setAbout(JSON.parse(saved));
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -33,7 +27,7 @@ const Contact: React.FC = () => {
     setSubmitError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/contact/`, {
+      const response = await fetch(`${API_BASE_URL}/content/contact/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,6 +54,10 @@ const Contact: React.FC = () => {
     }
   };
 
+  if (!settings) {
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -70,10 +68,10 @@ const Contact: React.FC = () => {
       <div className="grid lg:grid-cols-2 gap-24">
         <div>
           <h1 className="text-6xl md:text-8xl font-display font-bold uppercase mb-12 leading-tight">
-            Créons <br /> Ensemble
+            {settings.contact_title}
           </h1>
           <p className="text-xl text-gray-400 mb-12 max-w-md">
-            Que vous ayez besoin d'un ingénieur full-stack ou d'un cinéaste drone, je suis prêt pour le prochain défi.
+            {settings.contact_subtitle}
           </p>
           
           <div className="space-y-8">
@@ -83,20 +81,20 @@ const Contact: React.FC = () => {
               </div>
               <div>
                 <p className="text-[10px] font-display uppercase tracking-widest text-gray-500">Localisation</p>
-                <p className="text-xl font-display">{about.location}</p>
+                <p className="text-xl font-display">{settings.location}</p>
                 <p className="text-[10px] font-display text-gray-600 mt-1 uppercase tracking-widest">
-                  LAT: {about.coordinates.lat} / LNG: {about.coordinates.lng}
+                  LAT: {settings.latitude} / LNG: {settings.longitude}
                 </p>
               </div>
             </div>
 
-            <a href={`mailto:${about.email}`} className="flex items-center gap-6 group">
+            <a href={`mailto:${settings.contact_email}`} className="flex items-center gap-6 group">
               <div className="p-4 rounded-full bg-gray-900 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 <Mail size={24} />
               </div>
               <div>
                 <p className="text-[10px] font-display uppercase tracking-widest text-gray-500">Me Contacter</p>
-                <p className="text-xl font-display group-hover:text-blue-500 transition-colors">{about.email}</p>
+                <p className="text-xl font-display group-hover:text-blue-500 transition-colors">{settings.contact_email}</p>
               </div>
             </a>
             
@@ -133,7 +131,7 @@ const Contact: React.FC = () => {
               value={formData.name}
               onChange={handleInputChange}
               className="w-full bg-transparent border-b border-gray-800 py-4 focus:border-blue-500 outline-none font-display text-xl transition-colors"
-              placeholder="Votre Nom"
+              placeholder={settings.contact_form_placeholder_name}
               required
             />
           </div>
@@ -145,7 +143,7 @@ const Contact: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange}
               className="w-full bg-transparent border-b border-gray-800 py-4 focus:border-blue-500 outline-none font-display text-xl transition-colors"
-              placeholder="nom@email.com"
+              placeholder={settings.contact_form_placeholder_email}
               required
             />
           </div>
@@ -157,7 +155,7 @@ const Contact: React.FC = () => {
               value={formData.subject}
               onChange={handleInputChange}
               className="w-full bg-transparent border-b border-gray-800 py-4 focus:border-blue-500 outline-none font-display text-xl transition-colors"
-              placeholder="Sujet"
+              placeholder={settings.contact_form_placeholder_subject}
               required
             />
           </div>
@@ -169,7 +167,7 @@ const Contact: React.FC = () => {
               value={formData.message}
               onChange={handleInputChange}
               className="w-full bg-transparent border-b border-gray-800 py-4 focus:border-blue-500 outline-none font-display text-xl transition-colors resize-none"
-              placeholder="Parlez-moi de votre vision..."
+              placeholder={settings.contact_form_placeholder_message}
               required
             />
           </div>
@@ -178,18 +176,17 @@ const Contact: React.FC = () => {
             disabled={isSubmitting}
             className="px-12 py-5 bg-white text-black font-display text-xs tracking-[0.3em] uppercase hover:bg-blue-500 hover:text-white transition-all w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Envoi en cours...' : 'Envoyer le Message'}
+            {isSubmitting ? 'Envoi en cours...' : settings.contact_form_button_text}
           </button>
         </form>
       </div>
 
       <footer className="pt-24 flex justify-between items-center text-[10px] font-display uppercase tracking-[0.4em] text-gray-600">
         <p>© 2024 WAEL. TOUS DROITS RÉSERVÉS.</p>
-        <p>COORDONNÉES: {about.coordinates.lat}, {about.coordinates.lng}</p>
+        <p>COORDONNÉES: {settings.latitude}, {settings.longitude}</p>
       </footer>
     </motion.div>
   );
 };
 
 export default Contact;
-

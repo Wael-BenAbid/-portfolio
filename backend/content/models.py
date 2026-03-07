@@ -106,6 +106,13 @@ class SiteSettings(models.Model):
     # Contact
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=20, blank=True)
+    contact_title = models.CharField(max_length=100, default='Créons Ensemble')
+    contact_subtitle = models.TextField(default='Que vous ayez besoin d\'un ingénieur full-stack ou d\'un cinéaste drone, je suis prêt pour le prochain défi.')
+    contact_form_placeholder_name = models.CharField(max_length=100, default='Votre Nom')
+    contact_form_placeholder_email = models.CharField(max_length=100, default='nom@email.com')
+    contact_form_placeholder_subject = models.CharField(max_length=100, default='Sujet')
+    contact_form_placeholder_message = models.CharField(max_length=200, default='Parlez-moi de votre vision...')
+    contact_form_button_text = models.CharField(max_length=50, default='Envoyer le Message')
     
      # Footer
     footer_text = models.TextField(blank=True)

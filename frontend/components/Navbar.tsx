@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../App';
@@ -19,7 +19,16 @@ export const Navbar: React.FC = () => {
     { name: 'Contact', path: '/contact' },
   ];
 
-  const siteTitle = settings?.hero_title || 'ABIDOS';
+  // Temporary fix to bypass cache - force re-fetch settings
+  const [siteTitle, setSiteTitle] = useState('ABIDOS');
+  
+  useEffect(() => {
+    fetch('http://localhost:8000/api/settings/')
+      .then(response => response.json())
+      .then(data => setSiteTitle(data.hero_title || 'ABIDOS'))
+      .catch(error => console.error('Error fetching settings:', error));
+  }, []);
+
 
   return (
     <nav className="fixed top-0 left-0 w-full z-[100] px-8 py-10 flex justify-between items-center pointer-events-none">
