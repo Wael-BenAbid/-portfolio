@@ -88,20 +88,27 @@ const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren
 
 // Auth Provider Component
 const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
-  // Initialize state directly from sessionStorage to avoid delay
+  /**
+   * SECURITY: Never auto-login a user. Return null and require explicit authentication.
+   * The backend will verify actual auth via the HttpOnly cookie.
+   */
   const getUserFromSession = (): User | null => {
-    // Bypass login for testing purposes
-    const testUser: User = {
-      id: 2,
-      email: "waelbenabid1@gmail.com",
-      user_type: "admin",
-      first_name: "Wael",
-      last_name: "Ben Abid",
-      profile_image: null,
-      requires_password_change: false
-    };
-    sessionStorage.setItem('auth_user', JSON.stringify(testUser));
-    return testUser;
+    try {
+      const stored = sessionStorage.getItem('auth_user');
+      if (!stored) return null;
+      
+      const user = JSON.parse(stored);
+      // Validate minimum required fields
+      if (!user.id || !user.email) {
+        sessionStorage.removeItem('auth_user');
+        return null;
+      }
+      return user;
+    } catch (error) {
+      console.error('Failed to parse stored user:', error);
+      sessionStorage.removeItem('auth_user');
+      return null;
+    }
   };
 
   const initialUser = getUserFromSession();

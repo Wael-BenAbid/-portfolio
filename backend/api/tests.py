@@ -366,3 +366,269 @@ class MetricsViewTests(TestCase):
             from api.metrics import metrics_view
             response = metrics_view(request)
             self.assertEqual(response.status_code, 200)
+
+
+class RefreshTokenTest(TestCase):
+    """Tests for RefreshToken model and endpoint"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            password='testpass123',
+            user_type='registered'
+        )
+    
+    def test_refresh_token_creation(self):
+        """Test RefreshToken model creation"""
+        from api.models import RefreshToken
+        
+        refresh_token = RefreshToken.create_for_user(self.user)
+        self.assertIsNotNone(refresh_token.token)
+        self.assertEqual(refresh_token.user, self.user)
+        self.assertIsNone(refresh_token.revoked_at)
+    
+    def test_refresh_token_verify_valid(self):
+        """Test verifying a valid refresh token"""
+        from api.models import RefreshToken
+        
+        refresh_token = RefreshToken.create_for_user(self.user)
+        is_valid = refresh_token.is_valid()
+        self.assertTrue(is_valid)
+    
+    def test_refresh_token_revoke(self):
+        """Test revoking a refresh token"""
+        from api.models import RefreshToken
+        
+        refresh_token = RefreshToken.create_for_user(self.user)
+        refresh_token.revoke()
+        
+        is_valid = refresh_token.is_valid()
+        self.assertFalse(is_valid)
+    
+    def test_refresh_token_endpoint(self):
+        """Test /api/auth/refresh/ endpoint"""
+        from api.models import RefreshToken
+        
+        # Create refresh token
+        refresh_token = RefreshToken.create_for_user(self.user)
+        
+        # Make request with refresh token in cookie
+        response = self.client.post(
+            '/api/auth/refresh/',
+            HTTP_COOKIE=f'refresh_token={refresh_token.token}'
+        )
+        
+        # Should return new access token
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access_token', response.data)
+
+
+class OAuthStateTest(TestCase):
+    """Tests for OAuth state tokens (CSRF protection)"""
+    
+    def test_oauth_state_creation(self):
+        """Test creating OAuth state token"""
+        from api.models import OAuthState
+        
+        oauth_state = OAuthState.create_for_provider('github')
+        self.assertIsNotNone(oauth_state.state)
+        self.assertIsNotNone(oauth_state.nonce)
+        self.assertEqual(oauth_state.provider, 'github')
+        self.assertIsNotNone(oauth_state.expires_at)
+    
+    def test_oauth_state_verify_valid(self):
+        """Test verifying valid OAuth state"""
+        from api.models import OAuthState
+        
+        oauth_state = OAuthState.create_for_provider('github')
+        verified_state = OAuthState.verify_and_consume(oauth_state.state, 'github')
+        
+        self.assertIsNotNone(verified_state)
+        self.assertEqual(verified_state.nonce, oauth_state.nonce)
+    
+    def test_oauth_state_verify_invalid(self):
+        """Test verifying invalid OAuth state"""
+        from api.models import OAuthState
+        
+        verified_state = OAuthState.verify_and_consume('invalid_state', 'github')
+        self.assertIsNone(verified_state)
+    
+    def test_oauth_state_one_time_use(self):
+        """Test that used OAuth state cannot be reused"""
+        from api.models import OAuthState
+        
+        oauth_state = OAuthState.create_for_provider('github')
+        state_value = oauth_state.state
+        
+        # First verification should work
+        verified1 = OAuthState.verify_and_consume(state_value, 'github')
+        self.assertIsNotNone(verified1)
+        
+        # Second verification should fail (already consumed)
+        verified2 = OAuthState.verify_and_consume(state_value, 'github')
+        self.assertIsNone(verified2)
+    
+    def test_oauth_state_endpoint(self):
+        """Test GET /api/auth/oauth-state/ endpoint"""
+        response = self.client.get('/api/auth/oauth-state/?provider=github')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('state', response.data)
+        self.assertIn('nonce', response.data)
+        self.assertEqual(response.data['provider'], 'github')
+    
+    def test_oauth_state_invalid_provider(self):
+        """Test oauth-state endpoint with invalid provider"""
+        response = self.client.get('/api/auth/oauth-state/?provider=invalid')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class VisitorConsentTest(TestCase):
+    """Tests for GDPR compliance - Visitor consent"""
+    
+    def test_visitor_consent_creation(self):
+        """Test creating VisitorConsent record"""
+        from api.models import VisitorConsent
+        
+        consent = VisitorConsent.get_or_create_consent('test_session')
+        self.assertIsNotNone(consent)
+        self.assertEqual(consent.session_key, 'test_session')
+    
+    def test_visitor_consent_has_valid_consent(self):
+        """Test checking if consent is valid"""
+        from api.models import VisitorConsent
+        
+        consent = VisitorConsent.get_or_create_consent('test_session')
+        # Initially, tracking is not consented
+        has_consent = consent.has_tracking_consent()
+        self.assertFalse(has_consent)
+    
+    def test_visitor_anonymized_ip(self):
+        """Test that visitor IP is anonymized"""
+        from api.models import Visitor, VisitorConsent
+        
+        consent = VisitorConsent.get_or_create_consent('test_session')
+        
+        visitor = Visitor.objects.create(
+            session_key='test_session',
+            ip_address='192.168.1.100',
+            path='/home',
+            consent_record=consent
+        )
+        
+        # IP should be anonymized (last octet = 0)
+        self.assertEqual(visitor.ip_address, '192.168.1.0')
+    
+    def test_visitor_auto_delete_after_retention(self):
+        """Test that visitors are deleted after retention period"""
+        from api.models import Visitor, VisitorConsent
+        from django.utils import timezone
+        
+        consent = VisitorConsent.get_or_create_consent('test_session')
+        
+        # Create visitor with expired deletion date
+        visitor = Visitor.objects.create(
+            session_key='test_session',
+            ip_address='192.168.1.100',
+            path='/home',
+            consent_record=consent,
+            will_delete_at=timezone.now()  # Expired
+        )
+        
+        # Run cleanup command
+        from api.management.commands.cleanup_expired_visitors import Command
+        cmd = Command()
+        cmd.handle()
+        
+        # Check visitor is deleted
+        self.assertFalse(Visitor.objects.filter(id=visitor.id).exists())
+
+
+class FileUploadValidationTest(TestCase):
+    """Tests for file upload validation (magic bytes)"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            password='testpass123',
+            user_type='registered'
+        )
+        self.client.force_authenticate(user=self.user)
+    
+    def test_valid_jpeg_upload(self):
+        """Test uploading valid JPEG file"""
+        import io
+        
+        # Create a minimal valid JPEG
+        jpeg_data = b'\xff\xd8\xff\xe0\x00\x10JFIF'
+        jpeg_file = io.BytesIO(jpeg_data)
+        jpeg_file.name = 'test.jpg'
+        
+        response = self.client.post(
+            '/api/upload/',
+            {'file': jpeg_file},
+            format='multipart'
+        )
+        
+        # Should accept valid JPEG
+        self.assertIn(response.status_code, [200, 201])
+    
+    def test_exe_disguised_as_jpg(self):
+        """Test that .exe file disguised as .jpg is rejected"""
+        import io
+        
+        # Create fake EXE file (not valid JPEG magic bytes)
+        exe_data = b'MZ\x90\x00'  # EXE header
+        exe_file = io.BytesIO(exe_data)
+        exe_file.name = 'malware.jpg'  # Disguised as JPG
+        
+        response = self.client.post(
+            '/api/upload/',
+            {'file': exe_file},
+            format='multipart'
+        )
+        
+        # Should reject because magic bytes are EXE, not JPEG
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_file_size_limit(self):
+        """Test that oversized files are rejected"""
+        import io
+        
+        # Create a 20MB file (limit is 10MB for images)
+        large_file = io.BytesIO(b'\xff\xd8\xff\xe0' + (b'x' * (20 * 1024 * 1024)))
+        large_file.name = 'large.jpg'
+        
+        response = self.client.post(
+            '/api/upload/',
+            {'file': large_file},
+            format='multipart'
+        )
+        
+        # Should reject because file too large
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class SecurityHeadersTest(TestCase):
+    """Tests for security headers and CSRF protection"""
+    
+    def test_oauth_csrf_protection(self):
+        """Test CSRF protection on OAuth endpoint"""
+        import json
+        
+        # Try to authenticate without state parameter
+        response = self.client.post(
+            '/api/auth/social/',
+            json.dumps({
+                'provider': 'github',
+                'code': 'invalid_code'
+            }),
+            content_type='application/json'
+        )
+        
+        # Should reject missing state parameter
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('state', str(response.data).lower())

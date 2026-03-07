@@ -369,16 +369,67 @@ class MediaUploadSerializer(serializers.ModelSerializer):
         fields = ['id', 'file', 'url', 'uploaded_at', 'uploaded_by']
         read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
 
+    def _detect_mime_type_from_bytes(self, file_bytes: bytes, filename: str) -> str:
+        """
+        Detect MIME type from file magic bytes instead of just extension.
+        Prevents fake file extensions (e.g., .exe renamed to .jpg).
+        
+        Returns:
+            str: Detected MIME type
+        """
+        # JPEG: FF D8 FF
+        if file_bytes.startswith(b'\xff\xd8\xff'):
+            return 'image/jpeg'
+        
+        # PNG: 89 50 4E 47
+        if file_bytes.startswith(b'\x89PNG'):
+            return 'image/png'
+        
+        # GIF: 47 49 46 38
+        if file_bytes.startswith(b'GIF8'):
+            return 'image/gif'
+        
+        # WebP: RIFF...WEBP
+        if b'WEBP' in file_bytes[:32]:
+            return 'image/webp'
+        
+        # MP4: (usually has 'ftyp' atom)
+        if b'ftyp' in file_bytes[:32]:
+            return 'video/mp4'
+        
+        # WebM: 1A 45 DF A3
+        if file_bytes.startswith(b'\x1a\x45\xdf\xa3'):
+            return 'video/webm'
+        
+        # OGG: OggS
+        if file_bytes.startswith(b'OggS'):
+            return 'video/ogg'
+        
+        # Fallback - still validate extension
+        import mimetypes
+        guessed, _ = mimetypes.guess_type(filename)
+        return guessed or 'application/octet-stream'
+
     def validate_file(self, value):
         """
         Validate media file with comprehensive security checks:
-        1. File size limit
-        2. MIME type validation
+        1. File size limit (10MB max for images, 50MB for videos)
+        2. MIME type validation (from magic bytes, not extension)
         3. File extension validation
         4. Content validation using Pillow (for images)
+        
+        Raises:
+            serializers.ValidationError: If file fails validation
         """
         # 1. Validate file size
-        max_size_mb = int(os.environ.get('MAX_MEDIA_SIZE_MB', 50))  # Larger limit for videos
+        # Smaller default (10MB) but configurable per environment
+        max_size_mb = 10  # Default: 10MB
+        
+        # Allow larger for videos if explicitly configured
+        filename = value.name.lower()
+        if any(filename.endswith(ext) for ext in ALLOWED_VIDEO_EXTENSIONS):
+            max_size_mb = int(os.environ.get('MAX_VIDEO_SIZE_MB', 50))
+        
         max_size = max_size_mb * 1024 * 1024
         if value.size > max_size:
             raise serializers.ValidationError(
@@ -386,29 +437,50 @@ class MediaUploadSerializer(serializers.ModelSerializer):
                 f"Current size: {value.size / (1024 * 1024):.2f}MB"
             )
         
-        # 2. Validate MIME type
-        content_type = getattr(value, 'content_type', None)
-        if not content_type or content_type.lower() not in ALLOWED_MIME_TYPES:
+        # 2. Detect MIME type from file content (magic bytes)
+        # This prevents fake extensions like malware.exe renamed to image.jpg
+        value.seek(0)
+        file_header = value.read(512)  # Read first 512 bytes
+        value.seek(0)  # Reset pointer
+        
+        detected_mime = self._detect_mime_type_from_bytes(file_header, value.name)
+        
+        # Get client-provided MIME type (for logging)
+        client_mime = getattr(value, 'content_type', 'unknown')
+        
+        # Check if detected MIME type is allowed
+        if detected_mime not in ALLOWED_MIME_TYPES:
+            logger.warning(
+                f"Rejected file '{value.name}': "
+                f"detected={detected_mime}, client_claimed={client_mime}"
+            )
             raise serializers.ValidationError(
-                f"Invalid file type '{content_type}'. "
-                f"Allowed types: {', '.join(ALLOWED_MIME_TYPES)}"
+                f"File type '{detected_mime}' is not allowed. "
+                f"Allowed types: Images (JPEG, PNG, WebP, GIF) and Videos (MP4, WebM, OGG)"
             )
         
-        # 3. Validate file extension
+        # 3. Validate file extension matches detected MIME type
         filename = get_valid_filename(value.name)
         file_ext = os.path.splitext(filename)[1].lower()
+        
+        if not file_ext:
+            raise serializers.ValidationError(
+                "File must have a valid extension (e.g., .jpg, .png, .mp4)"
+            )
+        
         if file_ext not in ALLOWED_EXTENSIONS:
             raise serializers.ValidationError(
-                f"Invalid file extension '{file_ext}'. "
+                f"File extension '{file_ext}' is not allowed. "
                 f"Allowed extensions: {', '.join(ALLOWED_EXTENSIONS)}"
             )
         
-        # 4. Validate content based on media type
-        if content_type.lower() in ALLOWED_IMAGE_MIME_TYPES:
+        # 4. Validate content based on detected media type
+        if detected_mime in ALLOWED_IMAGE_MIME_TYPES:
             # Validate image content using Pillow
             try:
                 from PIL import Image
-                # Open the file to verify it's a valid image
+                
+                value.seek(0)
                 img = Image.open(value)
                 img.verify()  # Verify it's actually an image
                 
@@ -416,14 +488,15 @@ class MediaUploadSerializer(serializers.ModelSerializer):
                 value.seek(0)
                 img = Image.open(value)
                 
-                # Check for potentially malicious image formats
-                if img.format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
+                # Check image format matches detected type
+                img_format = img.format or 'UNKNOWN'
+                if img_format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
                     raise serializers.ValidationError(
-                        f"Invalid image format '{img.format}'. "
+                        f"Invalid image format '{img_format}'. "
                         f"Allowed formats: JPEG, PNG, WEBP, GIF"
                     )
                 
-                # Check image dimensions (prevent extremely large images)
+                # Check image dimensions (prevent extremely large images causing memory issues)
                 max_dimension = 10000  # 10,000 pixels
                 if img.width > max_dimension or img.height > max_dimension:
                     raise serializers.ValidationError(
@@ -432,15 +505,17 @@ class MediaUploadSerializer(serializers.ModelSerializer):
                     )
                 
             except ImportError:
-                logger.warning("Pillow not installed - skipping image content validation")
+                logger.warning("Pillow not installed - skipping detailed image validation")
+            except serializers.ValidationError:
+                raise
             except Exception as e:
                 logger.error(f"Image validation failed: {str(e)}")
                 raise serializers.ValidationError(
                     "Invalid image file. The file may be corrupted or not a valid image."
                 )
-        elif content_type.lower() in ALLOWED_VIDEO_MIME_TYPES:
-            # Video validation - basic checks for now
-            # You could add more advanced video validation here if needed
+        elif detected_mime in ALLOWED_VIDEO_MIME_TYPES:
+            # Video validation - basic checks
+            # For videos, we trust the file signature we detected
             pass
         
         return value

@@ -17,7 +17,7 @@ from .serializers import (
     AdminUserUpdateSerializer, PasswordChangeSerializer, MediaUploadSerializer,
     VisitorSerializer, VisitorStatsSerializer
 )
-from .models import MediaUpload, Visitor
+from .models import MediaUpload, Visitor, RefreshToken, OAuthState
 from api.permissions import IsAdminUser
 
 User = get_user_model()
@@ -36,19 +36,27 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
+        
+        # Generate tokens
+        access_token, _ = Token.objects.get_or_create(user=user)
+        refresh_token = RefreshToken.create_for_user(user)
         
         # Set token as HttpOnly cookie
         response = Response({
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user).data,
+            'access_token': access_token.key,
+            'token_type': 'Bearer',
+            'expires_in': 3600  # 1 hour
         }, status=status.HTTP_201_CREATED)
+        
         response.set_cookie(
-            'auth_token',
-            token.key,
+            'refresh_token',
+            refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=3600 * 24 * 7  # 7 days
+            samesite='Strict',
+            max_age=3600 * 24 * 7,  # 7 days
+            path='/api/auth/refresh/'
         )
         return response
 
@@ -74,24 +82,79 @@ class LoginView(APIView):
         if not user or not user.check_password(password):
             return Response({
                 'error': 'Invalid email or password.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_401_UNAUTHORIZED)
         
-        token, created = Token.objects.get_or_create(user=user)
+        # Generate tokens
+        access_token, _ = Token.objects.get_or_create(user=user)
+        refresh_token = RefreshToken.create_for_user(user)
         
-        # Set token as HttpOnly cookie only - NOT in response body for security
-        # This prevents XSS token theft since JavaScript cannot access HttpOnly cookies
+        # Create response
         response = Response({
-            'user': UserSerializer(user).data
-        })
+            'user': UserSerializer(user).data,
+            'access_token': access_token.key,
+            'token_type': 'Bearer',
+            'expires_in': 3600  # 1 hour
+        }, status=status.HTTP_200_OK)
+        
+        # Set refresh token as httpOnly cookie (NOT access token!)
+        # The access token is short-lived (1 hour)
+        # The refresh token is longer-lived (7 days) and secure
         response.set_cookie(
-            'auth_token',
-            token.key,
+            'refresh_token',
+            refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=3600 * 24 * 7  # 7 days
+            samesite='Strict',  # Stricter than Lax for better CSRF protection
+            max_age=3600 * 24 * 7,  # 7 days
+            path='/api/auth/refresh/'  # Only sent to refresh endpoint
         )
+        
         return response
+
+
+class OAuthStateView(APIView):
+    """
+    Generate OAuth state and nonce for CSRF protection.
+    
+    This prevents CSRF attacks on OAuth endpoints by requiring a unpredictable
+    state parameter that must match in the callback.
+    
+    Request: GET /api/auth/oauth-state/?provider=github
+    Response: {
+        "state": "long-random-string",
+        "nonce": "long-random-string",
+        "provider": "github"
+    }
+    
+    Frontend Usage:
+    1. Request new state: GET /api/auth/oauth-state/?provider=github
+    2. Store returned state/nonce in session
+    3. Redirect to: https://github.com/login/oauth/authorize?client_id=xxx&state=xxx
+    4. Provider redirects to: /callback?code=xxx&state=xxx
+    5. POST with state/code to /api/auth/social/ to exchange for token
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        """Generate new state token for OAuth flow."""
+        provider = request.query_params.get('provider', '').lower()
+        
+        # Validate provider
+        valid_providers = ['github', 'google', 'microsoft']
+        if provider not in valid_providers:
+            return Response({
+                'error': f'Invalid provider. Must be one of: {", ".join(valid_providers)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create new state + nonce
+        oauth_state = OAuthState.create_for_provider(provider)
+        
+        return Response({
+            'state': oauth_state.state,
+            'nonce': oauth_state.nonce,
+            'provider': oauth_state.provider,
+            'expires_at': oauth_state.expires_at.isoformat()
+        })
 
 
 @method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
@@ -99,23 +162,61 @@ class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        """
+        Authenticate user via OAuth provider.
+        
+        Expected request data:
+        {
+            "provider": "github",
+            "code": "oauth_code_from_provider",
+            "state": "csrf_token_from_state_endpoint",
+            "redirect_uri": "http://localhost:3000/callback"
+        }
+        
+        SECURITY: State parameter prevents CSRF attacks. Must match value
+        returned from GET /api/auth/oauth-state/
+        """
+        # CSRF Protection: Verify state parameter
+        state = request.data.get('state')
+        provider = request.data.get('provider', '').lower()
+        
+        if not state:
+            return Response({
+                'error': 'state parameter required for CSRF protection'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify and consume state (one-time use)
+        oauth_state = OAuthState.verify_and_consume(state, provider)
+        if not oauth_state:
+            return Response({
+                'error': 'Invalid or expired state token'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # State is valid, proceed with OAuth
         serializer = SocialAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user, created = serializer.create_or_get_user(serializer.validated_data)
-        token, _ = Token.objects.get_or_create(user=user)
+        
+        # Generate tokens
+        access_token, _ = Token.objects.get_or_create(user=user)
+        refresh_token = RefreshToken.create_for_user(user)
         
         # Set token as HttpOnly cookie
         response = Response({
             'user': UserSerializer(user).data,
+            'access_token': access_token.key,
+            'token_type': 'Bearer',
+            'expires_in': 3600,    # 1 hour
             'is_new_user': created
         })
         response.set_cookie(
-            'auth_token',
-            token.key,
+            'refresh_token',
+            refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=3600 * 24 * 7  # 7 days
+            samesite='Strict',
+            max_age=3600 * 24 * 7,  # 7 days
+            path='/api/auth/refresh/'
         )
         return response
 
@@ -124,17 +225,78 @@ class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        """
+        Logout user and invalidate refresh token.
+        """
+        # Revoke refresh token if it exists
+        try:
+            refresh_token = RefreshToken.objects.get(user=request.user)
+            refresh_token.revoke()
+            logger.info(f"Refresh token revoked for user {request.user.id}")
+        except RefreshToken.DoesNotExist:
+            pass  # User might not have a refresh token yet
+        except Exception as e:
+            logger.warning(f"Error revoking refresh token for user {request.user.id}: {e}")
+        
         # Delete auth token if it exists
         try:
             if hasattr(request.user, 'auth_token'):
                 request.user.auth_token.delete()
         except Exception as e:
-            # Log the error but don't fail the logout
             logger.warning(f"Logout error for user {request.user.id}: {e}")
         
         response = Response({'message': 'Successfully logged out.'})
-        response.delete_cookie('auth_token')
+        response.delete_cookie('refresh_token', path='/api/auth/refresh/')
         return response
+
+
+class RefreshTokenView(APIView):
+    """
+    Endpoint to refresh access token using refresh token.
+    
+    Request: POST /api/auth/refresh/
+    Response: { "access_token": "...", "expires_in": 3600 }
+    
+    The refresh token is sent automatically via httpOnly cookie
+    (only to this endpoint due to path-restriction).
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """Refresh access token using refresh token from cookie."""
+        refresh_token_value = request.COOKIES.get('refresh_token')
+        
+        if not refresh_token_value:
+            return Response({
+                'error': 'Refresh token not found'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Validate refresh token exists and is valid
+        try:
+            refresh_token = RefreshToken.objects.get(
+                token=refresh_token_value
+            )
+        except RefreshToken.DoesNotExist:
+            logger.warning(f"Invalid refresh token attempted: {refresh_token_value[:10]}...")
+            return Response({
+                'error': 'Invalid or expired refresh token'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        if not refresh_token.is_valid():
+            logger.warning(f"Invalid refresh token used by user {refresh_token.user.id}")
+            return Response({
+                'error': 'Refresh token has expired or been revoked'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Generate new access token
+        user = refresh_token.user
+        access_token, _ = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'access_token': access_token.key,
+            'token_type': 'Bearer',
+            'expires_in': 3600  # 1 hour
+        }, status=status.HTTP_200_OK)
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

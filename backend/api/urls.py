@@ -12,6 +12,8 @@ urlpatterns = [
     # Authentication
     path('register/', views.RegisterView.as_view(), name='register'),
     path('login/', views.LoginView.as_view(), name='login'),
+    path('refresh/', views.RefreshTokenView.as_view(), name='refresh-token'),
+    path('oauth-state/', views.OAuthStateView.as_view(), name='oauth-state'),
     path('social/', views.SocialAuthView.as_view(), name='social-auth'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
     

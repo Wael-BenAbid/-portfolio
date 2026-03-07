@@ -11,13 +11,13 @@ from .models import CustomUser
 class VisitorAdmin(admin.ModelAdmin):
     """Admin configuration for Visitor model."""
     list_display = [
-        'ip_address', 'user_agent', 'path', 'session_key', 'user',
+        'anonymized_ip', 'user_agent', 'path', 'session_key', 'user',
         'visit_time', 'is_unique', 'device_type', 'browser', 'os'
     ]
     list_filter = [
         'visit_time', 'is_unique', 'device_type', 'browser', 'os'
     ]
-    search_fields = ['ip_address', 'user_agent', 'path', 'session_key']
+    search_fields = ['anonymized_ip', 'user_agent', 'path', 'session_key']
     date_hierarchy = 'visit_time'
     list_per_page = 25
 
