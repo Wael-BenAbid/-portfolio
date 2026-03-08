@@ -176,7 +176,13 @@ class SocialAuthView(APIView):
         """
         Authenticate user via OAuth provider.
         
-        Expected request data:
+        Expected request data for Google ID token flow:
+        {
+            "provider": "google",
+            "provider_token": "google_id_token"
+        }
+        
+        Expected request data for other providers:
         {
             "provider": "github",
             "code": "oauth_code_from_provider",
@@ -184,26 +190,30 @@ class SocialAuthView(APIView):
             "redirect_uri": "http://localhost:3000/callback"
         }
         
-        SECURITY: State parameter prevents CSRF attacks. Must match value
-        returned from GET /api/auth/oauth-state/
+        SECURITY: State parameter prevents CSRF attacks for code flow.
+        For Google ID token flow, we skip state check since token is directly verified.
         """
-        # CSRF Protection: Verify state parameter
         state = request.data.get('state')
         provider = request.data.get('provider', '').lower()
+        provider_token = request.data.get('provider_token')
         
-        if not state:
+        # For Google ID token flow, we skip state check since we verify the token directly
+        if provider == 'google' and provider_token:
+            # State check is not required for Google ID token flow
+            pass
+        elif not state:
             return Response({
                 'error': 'state parameter required for CSRF protection'
             }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Verify and consume state (one-time use)
+            oauth_state = OAuthState.verify_and_consume(state, provider)
+            if not oauth_state:
+                return Response({
+                    'error': 'Invalid or expired state token'
+                }, status=status.HTTP_403_FORBIDDEN)
         
-        # Verify and consume state (one-time use)
-        oauth_state = OAuthState.verify_and_consume(state, provider)
-        if not oauth_state:
-            return Response({
-                'error': 'Invalid or expired state token'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # State is valid, proceed with OAuth
+        # State is valid (or Google ID token flow), proceed with OAuth
         serializer = SocialAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user, created = serializer.create_or_get_user(serializer.validated_data)

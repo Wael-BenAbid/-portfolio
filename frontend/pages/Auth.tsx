@@ -688,3 +688,4 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
 };
 
 export default AuthPage;
+
