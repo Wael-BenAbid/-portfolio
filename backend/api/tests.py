@@ -562,13 +562,25 @@ class FileUploadValidationTest(TestCase):
         """Test uploading valid JPEG file"""
         import io
         
-        # Create a minimal valid JPEG
-        jpeg_data = b'\xff\xd8\xff\xe0\x00\x10JFIF'
+        # Create a real minimal valid JPEG file
+        # This is a 1x1 pixel JPEG
+        jpeg_data = (
+            b'\xff\xd8'  # SOI
+            b'\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00'  # APP0
+            b'\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x03\x01\x22\x00\x02\x11\x01'
+            b'\x03\x11\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01'
+            b'\x00\x02\x11\x03\x11\x00\x3f\x00\x11\x11\x11\x11\x11\x11\x11\x11'
+            b'\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11'
+            b'\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11'
+            b'\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11'
+            b'\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\xff\xd9'  # EOI
+        )
         jpeg_file = io.BytesIO(jpeg_data)
         jpeg_file.name = 'test.jpg'
         
         response = self.client.post(
-            '/api/upload/',
+            '/api/auth/upload/',
             {'file': jpeg_file},
             format='multipart'
         )
@@ -586,7 +598,7 @@ class FileUploadValidationTest(TestCase):
         exe_file.name = 'malware.jpg'  # Disguised as JPG
         
         response = self.client.post(
-            '/api/upload/',
+            '/api/auth/upload/',
             {'file': exe_file},
             format='multipart'
         )
@@ -603,7 +615,7 @@ class FileUploadValidationTest(TestCase):
         large_file.name = 'large.jpg'
         
         response = self.client.post(
-            '/api/upload/',
+            '/api/auth/upload/',
             {'file': large_file},
             format='multipart'
         )

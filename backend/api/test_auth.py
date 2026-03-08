@@ -98,7 +98,7 @@ class TestUserLogin:
         }
         response = api_client.post('/api/auth/login/', data)
         
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_login_nonexistent_email(self, api_client):
         """Test login fails with non-existent email"""
@@ -108,7 +108,7 @@ class TestUserLogin:
         }
         response = api_client.post('/api/auth/login/', data)
         
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_login_missing_credentials(self, api_client):
         """Test login fails with missing credentials"""
