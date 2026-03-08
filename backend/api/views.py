@@ -109,6 +109,17 @@ class LoginView(APIView):
             path='/api/auth/refresh/'  # Only sent to refresh endpoint
         )
         
+        # Set access token as httpOnly cookie for API authentication
+        response.set_cookie(
+            'auth_token',
+            access_token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=3600,  # 1 hour
+            path='/api/'  # Sent to all API endpoints
+        )
+        
         return response
 
 
@@ -201,7 +212,7 @@ class SocialAuthView(APIView):
         access_token, _ = Token.objects.get_or_create(user=user)
         refresh_token = RefreshToken.create_for_user(user)
         
-        # Set token as HttpOnly cookie
+         # Set token as HttpOnly cookie
         response = Response({
             'user': UserSerializer(user).data,
             'access_token': access_token.key,
@@ -218,6 +229,18 @@ class SocialAuthView(APIView):
             max_age=3600 * 24 * 7,  # 7 days
             path='/api/auth/refresh/'
         )
+        
+        # Set access token as httpOnly cookie for API authentication
+        response.set_cookie(
+            'auth_token',
+            access_token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=3600,  # 1 hour
+            path='/api/'  # Sent to all API endpoints
+        )
+        
         return response
 
 
@@ -247,6 +270,7 @@ class LogoutView(APIView):
         
         response = Response({'message': 'Successfully logged out.'})
         response.delete_cookie('refresh_token', path='/api/auth/refresh/')
+        response.delete_cookie('auth_token', path='/api/')
         return response
 
 
@@ -292,11 +316,25 @@ class RefreshTokenView(APIView):
         user = refresh_token.user
         access_token, _ = Token.objects.get_or_create(user=user)
         
-        return Response({
+        # Create response
+        response = Response({
             'access_token': access_token.key,
             'token_type': 'Bearer',
             'expires_in': 3600  # 1 hour
         }, status=status.HTTP_200_OK)
+        
+        # Set access token as httpOnly cookie for API authentication
+        response.set_cookie(
+            'auth_token',
+            access_token.key,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=3600,  # 1 hour
+            path='/api/'  # Sent to all API endpoints
+        )
+        
+        return response
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

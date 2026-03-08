@@ -204,9 +204,6 @@ const Settings: React.FC = () => {
   const fetchContactMessages = async () => {
     try {
       const response = await fetch(`${API_URL}/settings/contact/messages/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         credentials: 'include'
       });
       if (response.ok) {
@@ -265,9 +262,6 @@ const Settings: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/auth/admin/users/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         credentials: 'include'
       });
       if (response.ok) {
