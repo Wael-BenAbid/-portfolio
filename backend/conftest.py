@@ -3,12 +3,18 @@ Pytest configuration and fixtures for backend tests
 Shared fixtures used across all test modules
 """
 import os
+import sys
 import pytest
 import logging
 from pathlib import Path
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
+
+# Debug print sys.argv
+print("sys.argv in conftest.py:", sys.argv)
+print("'test' in sys.argv:", 'test' in sys.argv)
+print("Any arg contains 'test':", any('test' in arg for arg in sys.argv))
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

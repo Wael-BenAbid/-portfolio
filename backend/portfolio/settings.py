@@ -297,16 +297,27 @@ if not DB_PASSWORD:
         raise ValueError("DB_PASSWORD environment variable is required")
 
 # Database configuration using environment variables
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': DB_PASSWORD,  # Use validated environment variable
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),  # Default to 5432 (Docker/standard PostgreSQL port)
+# Database configuration using environment variables
+# Check if we're running tests
+if 'pytest' in sys.argv or 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+    # Use SQLite for testing to avoid PostgreSQL dependency
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': DB_PASSWORD,  # Use validated environment variable
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),  # Default to 5432 (Docker/standard PostgreSQL port)
+        }
+    }
 
 # ===========================================
 # PASSWORD VALIDATION
