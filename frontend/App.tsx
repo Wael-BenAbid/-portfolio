@@ -1,5 +1,6 @@
 
 import React, { Suspense, lazy, useEffect, useState, createContext, useContext } from 'react';
+import * as Sentry from "@sentry/react";
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/Toast';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
@@ -13,6 +14,34 @@ import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
 import { useSettings } from './hooks/useData';
+
+// Initialize Sentry for error tracking
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    tracesSampleRate: import.meta.env.MODE === 'development' ? 1.0 : 0.1,
+    integrations: [
+      new Sentry.Replay({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    ],
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    beforeSend(event, hint) {
+      // Filter out certain errors
+      if (event.exception) {
+        const error = hint.originalException;
+        // Don't send network errors in development
+        if (import.meta.env.MODE === 'development' && error instanceof TypeError) {
+          return null;
+        }
+      }
+      return event;
+    },
+  });
+}
 
 // Types
 interface User {

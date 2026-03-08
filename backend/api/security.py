@@ -322,3 +322,295 @@ def create_success_response(data: dict, message: str = None, status_code: int = 
         response_data['message'] = message
     
     return Response(response_data, status=status_code)
+
+
+# ===========================================
+# Malicious Activity Detection & Alerting
+# ===========================================
+
+import sentry_sdk
+from django.core.cache import cache
+
+
+class MaliciousActivityDetector:
+    """
+    Detects and logs suspicious activity patterns.
+    Sends alerts to Sentry for HIGH/CRITICAL threats.
+    
+    Patterns detected:
+    - SQL injection attempts
+    - XSS payloads
+    - Path traversal attacks
+    - Suspicious query parameters
+    - Brute force attempts
+    - Admin panel probing
+    """
+    
+    # SQL Injection patterns
+    SQL_INJECTION_PATTERNS = [
+        r"('|\")\s*(or|and)\s*('|\"|\d+)=",
+        r"(union|select|insert|update|delete|drop|create|alter)\s*\(",
+        r"(union|select|insert|update|delete|drop|create|alter).*\s+(from|into|where)",
+        r";\s*(drop|create|alter|delete|update|insert)",
+        r"--\s*$",
+        r"/\*.*\*/",
+        r"xp_",
+        r"sp_",
+    ]
+    
+    # XSS patterns
+    XSS_PATTERNS = [
+        r"<\s*script[^>]*>",
+        r"javascript:",
+        r"on(load|error|click|mouseover|keypress)\s*=",
+        r"<\s*iframe",
+        r"<\s*object",
+        r"<\s*embed",
+        r"<\s*img[^>]*on",
+        r"<\s*svg[^>]*on",
+    ]
+    
+    # Path traversal patterns  
+    PATH_TRAVERSAL_PATTERNS = [
+        r"\.\./",
+        r"\.\.",
+        r"%2e%2e",
+        r"\.\.\\",
+    ]
+    
+    # Suspicious patterns
+    SUSPICIOUS_PATTERNS = {
+        'admin_probe': r"/(admin|manager|administrator|wp-admin|phpmyadmin)/",
+        'config_probe': r"/(config|\.env|\.git|\.hg|\.svn)/",
+        'backup_probe': r"\.(bak|backup|old|tar|zip|rar|gz)$",
+        'shell_probe': r"\.(php|aspx|jsp|py|rb)\?",
+    }
+    
+    # Cache configuration for rate limiting
+    RATE_LIMIT_WINDOW = 3600  # 1 hour
+    RATE_LIMIT_THRESHOLD = 100  # requests per window
+    
+    def __init__(self):
+        """Initialize detector with compiled regex patterns."""
+        self.sql_patterns = [re.compile(p, re.IGNORECASE) for p in self.SQL_INJECTION_PATTERNS]
+        self.xss_patterns = [re.compile(p, re.IGNORECASE) for p in self.XSS_PATTERNS]
+        self.path_patterns = [re.compile(p, re.IGNORECASE) for p in self.PATH_TRAVERSAL_PATTERNS]
+        self.suspicious_patterns = {
+            k: re.compile(v, re.IGNORECASE) 
+            for k, v in self.SUSPICIOUS_PATTERNS.items()
+        }
+    
+    def check_request(self, request) -> dict:
+        """
+        Check request for malicious patterns.
+        
+        Args:
+            request: Django request object
+            
+        Returns:
+            dict: Detection results with keys: is_suspicious, threats, severity
+        """
+        threats = []
+        
+        # Get IP for rate limiting
+        ip = self._get_client_ip(request)
+        
+        # Check rate limit
+        if not self._check_rate_limit(ip):
+            threats.append({
+                'type': 'rate_limit',
+                'description': f'Excessive requests from {ip}',
+                'severity': 'HIGH'
+            })
+        
+        # Check URL for patterns
+        url_threats = self._check_string(request.path, 'URL')
+        threats.extend(url_threats)
+        
+        # Check query string
+        if request.GET:
+            query_threats = self._check_dict(request.GET.dict(), 'Query Parameter')
+            threats.extend(query_threats)
+        
+        # Check POST data
+        if request.method == 'POST' and request.POST:
+            post_threats = self._check_dict(request.POST.dict(), 'POST Parameter')
+            threats.extend(post_threats)
+        
+        # Check headers for suspicious content
+        headers_to_check = ['User-Agent', 'Referer', 'X-Forwarded-For']
+        for header in headers_to_check:
+            header_key = f'HTTP_{header.upper().replace("-", "_")}'
+            if header_key in request.META:
+                header_value = request.META.get(header_key, '')
+                if header_value:
+                    header_threats = self._check_string(header_value, f'Header: {header}')
+                    threats.extend(header_threats)
+        
+        # Determine severity
+        severity = 'LOW'
+        if any(t.get('severity') == 'CRITICAL' for t in threats):
+            severity = 'CRITICAL'
+        elif any(t.get('severity') == 'HIGH' for t in threats):
+            severity = 'HIGH'
+        elif any(t.get('severity') == 'MEDIUM' for t in threats):
+            severity = 'MEDIUM'
+        
+        return {
+            'is_suspicious': len(threats) > 0,
+            'threats': threats,
+            'severity': severity,
+            'ip': ip,
+            'path': request.path,
+            'method': request.method,
+        }
+    
+    def _check_string(self, value: str, field_name: str) -> list:
+        """Check a string for malicious patterns."""
+        threats = []
+        
+        if not value:
+            return threats
+        
+        # Check SQL injection
+        for pattern in self.sql_patterns:
+            if pattern.search(value):
+                threats.append({
+                    'type': 'sql_injection',
+                    'field': field_name,
+                    'description': f'Possible SQL injection in {field_name}',
+                    'severity': 'CRITICAL',
+                    'pattern': 'SQL injection detected'
+                })
+                break  # Only report once per field
+        
+        # Check XSS
+        for pattern in self.xss_patterns:
+            if pattern.search(value):
+                threats.append({
+                    'type': 'xss',
+                    'field': field_name,
+                    'description': f'Possible XSS attempt in {field_name}',
+                    'severity': 'CRITICAL',
+                    'pattern': 'XSS payload detected'
+                })
+                break
+        
+        # Check path traversal
+        for pattern in self.path_patterns:
+            if pattern.search(value):
+                threats.append({
+                    'type': 'path_traversal',
+                    'field': field_name,
+                    'description': f'Possible path traversal in {field_name}',
+                    'severity': 'HIGH',
+                    'pattern': 'Path traversal detected'
+                })
+                break
+        
+        # Check suspicious patterns
+        for pattern_name, pattern in self.suspicious_patterns.items():
+            if pattern.search(value):
+                threats.append({
+                    'type': pattern_name,
+                    'field': field_name,
+                    'description': f'Suspicious pattern ({pattern_name}) in {field_name}',
+                    'severity': 'MEDIUM' if pattern_name != 'admin_probe' else 'HIGH',
+                    'pattern': pattern_name
+                })
+        
+        return threats
+    
+    def _check_dict(self, data: dict, prefix: str) -> list:
+        """Check dictionary values for malicious patterns."""
+        threats = []
+        for key, value in data.items():
+            if isinstance(value, str):
+                field_threats = self._check_string(value, f'{prefix}: {key}')
+                threats.extend(field_threats)
+        return threats
+    
+    def _get_client_ip(self, request) -> str:
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR', 'unknown')
+        return ip
+    
+    def _check_rate_limit(self, ip: str) -> bool:
+        """
+        Check if IP has exceeded rate limit for suspicious requests.
+        
+        Returns:
+            bool: True if within limit, False if exceeded
+        """
+        cache_key = f'malicious_requests:{ip}'
+        count = cache.get(cache_key, 0)
+        
+        if count >= self.RATE_LIMIT_THRESHOLD:
+            return False
+        
+        cache.set(cache_key, count + 1, self.RATE_LIMIT_WINDOW)
+        return True
+    
+    def log_threat(self, detection_result: dict, request=None):
+        """
+        Log security threat to Sentry and local logger.
+        
+        Args:
+            detection_result: Result from check_request()
+            request: Django request object (optional)
+        """
+        if not detection_result['is_suspicious']:
+            return
+        
+        severity = detection_result['severity']
+        threats = detection_result['threats']
+        
+        # Build message
+        threat_descriptions = [t['description'] for t in threats]
+        message = f"[{severity}] Security Threat Detected: {'; '.join(threat_descriptions)}"
+        
+        # Send to Sentry for HIGH/CRITICAL threats
+        if severity in ['HIGH', 'CRITICAL']:
+            self._send_to_sentry(message, detection_result, severity)
+        
+        # Log locally
+        log_level = 'warning' if severity == 'MEDIUM' else 'error'
+        log_func = getattr(logger, log_level)
+        log_func(
+            message,
+            extra={
+                'detection_result': detection_result,
+                'request_path': request.path if request else None,
+                'request_method': request.method if request else None,
+                'request_user': str(request.user) if request and request.user else None,
+            }
+        )
+    
+    def _send_to_sentry(self, message: str, detection_result: dict, severity: str):
+        """Send security event to Sentry."""
+        with sentry_sdk.push_scope() as scope:
+            scope.set_context('security_threat', {
+                'severity': severity,
+                'threats': str(detection_result['threats']),
+                'ip': detection_result['ip'],
+                'path': detection_result['path'],
+                'method': detection_result['method'],
+            })
+            
+            # Set level based on severity
+            level = 'error' if severity in ['HIGH', 'CRITICAL'] else 'warning'
+            scope.set_level(level)
+            
+            # Add tag for filtering in Sentry
+            scope.set_tag('security_threat', severity.lower())
+            scope.set_tag('threat_detected', 'true')
+            
+            sentry_sdk.capture_message(message, level=level)
+
+
+# Global instance
+detector = MaliciousActivityDetector()

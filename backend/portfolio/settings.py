@@ -248,6 +248,8 @@ _MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.middleware.MaliciousActivityDetectionMiddleware',  # Security threat detection
+    'api.middleware.SecurityHeadersMiddleware',  # OAuth COOP and security headers
     'api.middleware.PrometheusMetricsMiddleware',
     'api.middleware.VisitorTrackingMiddleware',
 ]

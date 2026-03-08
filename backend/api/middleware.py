@@ -289,3 +289,102 @@ class PrometheusMetricsMiddleware(MiddlewareMixin):
         ).observe(duration)
         
         return response
+
+
+class SecurityHeadersMiddleware(MiddlewareMixin):
+    """
+    Middleware to add security headers for OAuth and CORS functionality.
+    
+    This middleware adds headers that:
+    - Allow Google's postMessage for OAuth flows (COOP)
+    - Allow proper cross-origin resource sharing
+    - Protect against XSS and clickjacking
+    """
+    
+    def process_response(self, request, response):
+        """
+        Add security headers to response
+        """
+        # Allow Cross-Origin-Opener-Policy for OAuth flows
+        # 'same-origin-allow-popups' allows popups from same origin to maintain opener reference
+        # This is necessary for Google OAuth signin callbacks
+        response['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+        
+        # Referrer policy for privacy
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        
+        # X-Content-Type-Options prevents MIME type sniffing
+        response['X-Content-Type-Options'] = 'nosniff'
+        
+        # X-Frame-Options prevents clickjacking
+        response['X-Frame-Options'] = 'SAMEORIGIN'
+        
+        # X-XSS-Protection for older browsers (modern browsers use CSP)
+        response['X-XSS-Protection'] = '1; mode=block'
+        
+        return response
+
+
+class MaliciousActivityDetectionMiddleware(MiddlewareMixin):
+    """
+    Middleware to detect and log malicious activity.
+    
+    Detects:
+    - SQL injection attempts
+    - XSS payloads
+    - Path traversal attacks
+    - Admin panel probing
+    - Rate limit violations
+    
+    Automatically blocks requests with CRITICAL threats.
+    Sends alerts to Sentry for HIGH/CRITICAL threats.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Import here to avoid circular imports
+        from .security import detector
+        self.detector = detector
+    
+    def process_request(self, request):
+        """
+        Check request for malicious patterns before processing.
+        """
+        # Skip security checks for health-check and metrics endpoints
+        if request.path in ['/health/', '/api/metrics/']:
+            return None
+        
+        # Check for malicious patterns
+        detection_result = self.detector.check_request(request)
+        
+        # Log any detected threats
+        if detection_result['is_suspicious']:
+            self.detector.log_threat(detection_result, request)
+        
+        # Block CRITICAL threats immediately
+        if detection_result['severity'] == 'CRITICAL':
+            logger.error(
+                f"CRITICAL security threat blocked: {detection_result['threats']}, IP: {detection_result['ip']}"
+            )
+            # Return 403 Forbidden for critical threats
+            from .security import create_error_response
+            return create_error_response(
+                message='Request blocked due to security policy',
+                code='SECURITY_VIOLATION',
+                status_code=403
+            )
+        
+        # Attach detection result to request for logging in response middleware
+        request.security_detection = detection_result
+        return None
+    
+    def process_response(self, request, response):
+        """
+        Add security event headers to response if threat detected.
+        """
+        detection = getattr(request, 'security_detection', None)
+        if detection and detection['is_suspicious'] and detection['severity'] in ['MEDIUM']:
+            # Add header to indicate suspicious request was processed
+            response['X-Security-Alert'] = f"Suspicious activity detected: {detection['severity']}"
+        
+        return response
