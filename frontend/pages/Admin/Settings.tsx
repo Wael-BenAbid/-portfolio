@@ -204,6 +204,9 @@ const Settings: React.FC = () => {
   const fetchContactMessages = async () => {
     try {
       const response = await fetch(`${API_URL}/settings/contact/messages/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         credentials: 'include'
       });
       if (response.ok) {
@@ -262,6 +265,9 @@ const Settings: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/auth/admin/users/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         credentials: 'include'
       });
       if (response.ok) {
@@ -279,7 +285,8 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify(settings)
@@ -298,7 +305,8 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({ user_type: userType })
@@ -358,7 +366,8 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/auth/admin/users/${editingUser.id}/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify(dataToSend)
@@ -395,6 +404,9 @@ const Settings: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         credentials: 'include'
       });
       
@@ -432,6 +444,9 @@ const Settings: React.FC = () => {
 
       const response = await fetch(`${API_URL}/settings/upload/`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         credentials: 'include',
         body: formData
       });
@@ -485,7 +500,8 @@ const Settings: React.FC = () => {
       const response = await fetch(`${API_URL}/settings/contact/${selectedMessage.id}/reply/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({ reply: replyText })
