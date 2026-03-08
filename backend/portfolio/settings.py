@@ -299,7 +299,15 @@ if not DB_PASSWORD:
 # Database configuration using environment variables
 # Database configuration using environment variables
 # Check if we're running tests
-if 'pytest' in sys.argv or 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+if DEBUG:
+    # Use SQLite for development to avoid PostgreSQL dependency
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+elif 'pytest' in sys.argv or 'test' in sys.argv or any('test' in arg for arg in sys.argv):
     # Use SQLite for testing to avoid PostgreSQL dependency
     DATABASES = {
         'default': {
