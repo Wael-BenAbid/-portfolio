@@ -215,11 +215,14 @@ class RefreshToken(models.Model):
     
     When access token expires, client uses refresh token to get a new one.
     The refresh token is only sent to /api/auth/refresh/ endpoint (path-restricted).
+    
+    Uses ForeignKey (not OneToOneField) to allow multiple refresh tokens per user,
+    but only one active (non-revoked) token at a time via partial unique constraint.
     """
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
-        related_name='refresh_token'
+        related_name='refresh_tokens'
     )
     token = models.CharField(
         max_length=255,
@@ -244,6 +247,13 @@ class RefreshToken(models.Model):
             models.Index(fields=['token']),
             models.Index(fields=['expires_at']),
             models.Index(fields=['user']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(revoked_at__isnull=True),
+                name='unique_active_refresh_token_per_user'
+            )
         ]
     
     def is_valid(self) -> bool:

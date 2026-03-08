@@ -228,13 +228,13 @@ class LogoutView(APIView):
         """
         Logout user and invalidate refresh token.
         """
-        # Revoke refresh token if it exists
+        # Revoke active refresh token if it exists
         try:
-            refresh_token = RefreshToken.objects.get(user=request.user)
+            refresh_token = RefreshToken.objects.get(user=request.user, revoked_at__isnull=True)
             refresh_token.revoke()
             logger.info(f"Refresh token revoked for user {request.user.id}")
         except RefreshToken.DoesNotExist:
-            pass  # User might not have a refresh token yet
+            pass  # User might not have an active refresh token
         except Exception as e:
             logger.warning(f"Error revoking refresh token for user {request.user.id}: {e}")
         
