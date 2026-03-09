@@ -1,11 +1,10 @@
 # Backend Dockerfile - Production Ready with Security Hardening
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /build
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
     libpq-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
@@ -23,24 +22,21 @@ WORKDIR /app
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user before copying files
+RUN useradd -m -u 1000 -s /bin/bash appuser
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 
 # Copy project files with correct ownership
-COPY --chown=1000:1000 . .
+COPY --chown=appuser:appuser . .
 
-# Copy and make entrypoint script executable
-COPY entrypoint.sh /app/entrypoint.sh
+# Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
-
-# ✅ Security: Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
 
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \

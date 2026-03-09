@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 
 # ============ Production Stage ============
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Install security updates and required tools
 RUN apk update && apk upgrade && \
@@ -32,15 +32,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration for security
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create non-root user for nginx
-RUN addgroup -g 101 -S nginx && \
-    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
-
-# Set permissions
+# Set permissions (nginx user/group already exist in nginx:alpine)
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html
 
-# Create nginx cache directory
+# Create nginx cache directory with correct permissions
 RUN mkdir -p /var/cache/nginx && \
     chown -R nginx:nginx /var/cache/nginx && \
     chmod -R 755 /var/cache/nginx
@@ -51,9 +47,6 @@ EXPOSE 80
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
-
-# Drop capabilities and run as non-root
-# USER nginx
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
