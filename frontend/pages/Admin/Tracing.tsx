@@ -7,13 +7,9 @@ import {
   Filter,
   Search,
   RefreshCw,
-  Calendar,
   MapPin,
   Smartphone,
-  Globe,
-  Clock,
   X,
-  ChevronDown,
   Eye,
   Info
 } from 'lucide-react';
@@ -87,7 +83,6 @@ const Tracing: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
   const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [detailType, setDetailType] = useState<DetailType>(null);
   const { token } = useAuth();
@@ -139,38 +134,6 @@ const Tracing: React.FC = () => {
     if (!response.ok) throw new Error('Failed to fetch security alerts');
     const data = await response.json();
     setSecurityAlerts(data.results || data);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'bg-emerald-100 text-emerald-700';
-      case 'failed': return 'bg-red-100 text-red-700';
-      case 'account_locked': return 'bg-orange-100 text-orange-700';
-      case 'open': return 'bg-red-100 text-red-700';
-      case 'investigating': return 'bg-yellow-100 text-yellow-700';
-      case 'resolved': return 'bg-emerald-100 text-emerald-700';
-      case 'false_positive': return 'bg-gray-100 text-gray-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-700 border-red-300';
-      case 'high': return 'bg-orange-100 text-orange-700 border-orange-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
-      case 'low': return 'bg-gray-100 text-gray-700 border-gray-300';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   return (

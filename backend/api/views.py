@@ -100,6 +100,7 @@ class LoginView(APIView):
                 user=user,
                 action='login',
                 description=f"Failed login attempt from {ip_address}",
+                object_type='auth',
                 ip_address=ip_address,
                 success=False,
                 error_message='Invalid credentials'
@@ -125,6 +126,7 @@ class LoginView(APIView):
             user=user,
             action='login',
             description=f"Successful login from {ip_address}",
+            object_type='auth',
             ip_address=ip_address,
             success=True
         )
@@ -244,9 +246,12 @@ class SocialAuthView(APIView):
         SECURITY: State parameter prevents CSRF attacks for code flow.
         For Google ID token flow, we skip state check since token is directly verified.
         """
+        from .security import SecurityLogger
         state = request.data.get('state')
         provider = request.data.get('provider', '').lower()
         provider_token = request.data.get('provider_token')
+        ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+                     or request.META.get('REMOTE_ADDR', '')
         
         # For Google ID token flow, we skip state check since we verify the token directly
         if provider == 'google' and provider_token:
@@ -281,9 +286,27 @@ class SocialAuthView(APIView):
         try:
             user, created = serializer.create_or_get_user(serializer.validated_data)
         except serializers.ValidationError as e:
+            SecurityLogger.log_activity(
+                user=None,
+                action='social_login',
+                description=f"Failed {provider} OAuth login from {ip_address}",
+                object_type='auth',
+                ip_address=ip_address,
+                success=False,
+                error_message=str(e.detail[0]) if isinstance(e.detail, list) else str(e.detail)
+            )
             return Response({'error': str(e.detail[0]) if isinstance(e.detail, list) else str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error('Social auth user creation failed: %s', e, exc_info=True)
+            SecurityLogger.log_activity(
+                user=None,
+                action='social_login',
+                description=f"Failed {provider} OAuth login from {ip_address}",
+                object_type='auth',
+                ip_address=ip_address,
+                success=False,
+                error_message=str(e)
+            )
             return Response({'error': 'User creation failed: ' + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Generate tokens
@@ -322,7 +345,18 @@ class SocialAuthView(APIView):
             max_age=3600,  # 1 hour
             path='/api/'  # Sent to all API endpoints
         )
-        
+
+        # Log successful OAuth login
+        action_label = 'new_user_registration' if created else 'social_login'
+        SecurityLogger.log_activity(
+            user=user,
+            action=action_label,
+            description=f"Successful {provider} login from {ip_address}" + (" (new account)" if created else ""),
+            object_type='auth',
+            ip_address=ip_address,
+            success=True
+        )
+
         return response
 
 
@@ -359,6 +393,7 @@ class LogoutView(APIView):
             user=request.user,
             action='logout',
             description=f"User logged out from {ip_address}",
+            object_type='auth',
             ip_address=ip_address,
             success=True
         )

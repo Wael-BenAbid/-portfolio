@@ -617,6 +617,8 @@ class ActivityLog(models.Model):
         # Auth related
         ('login', 'User Login'),
         ('logout', 'User Logout'),
+        ('social_login', 'Social/OAuth Login'),
+        ('new_user_registration', 'New User Registration'),
         ('password_change', 'Password Changed'),
         ('password_reset', 'Password Reset'),
         ('email_change', 'Email Changed'),

@@ -680,7 +680,7 @@ class SecurityLogger:
                 user=user,
                 action=action,
                 description=description,
-                object_type=object_type,
+                object_type=object_type or '',
                 object_id=object_id,
                 ip_address=ip_address,
                 success=success,
