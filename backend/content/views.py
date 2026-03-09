@@ -93,6 +93,14 @@ class ContactMessageCreate(generics.CreateAPIView):
             serializer.save()
 
 
+class UserContactMessagesView(generics.ListAPIView):
+    serializer_class = ContactMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ContactMessage.objects.filter(user=self.request.user)
+
+
 class ContactMessageList(generics.ListAPIView):
     serializer_class = ContactMessageSerializer
     permission_classes = [IsAdminUser]

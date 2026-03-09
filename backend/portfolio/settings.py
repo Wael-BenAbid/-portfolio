@@ -71,6 +71,9 @@ if not SECRET_KEY:
 # ALLOWED_HOSTS - Required in production
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend').split(',')
 
+# Disable automatic slash appending to avoid 301 redirects that break CORS
+APPEND_SLASH = False
+
 # CSRF Configuration
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = not DEBUG
@@ -379,23 +382,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ===========================================
 
 if DEBUG:
-    # Still restrict origins in DEBUG mode for security
-    # Don't use CORS_ALLOW_ALL_ORIGINS = True as it's too permissive
-    CORS_ALLOWED_ORIGINS = [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-        'http://localhost:3003',
-        'http://localhost:3004',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:3001',
-        'http://127.0.0.1:3002',
-        'http://127.0.0.1:3003',
-        'http://127.0.0.1:3004',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-    ]
-    logger.warning(f"CORS restricted to: {CORS_ALLOWED_ORIGINS}")
+    # Allow all origins for development to avoid CORS issues
+    # This is safe for development only
+    CORS_ALLOW_ALL_ORIGINS = True
+    logger.warning("DEBUG mode: CORS allowed for all origins")
 else:
     CORS_ALLOW_ALL_ORIGINS = False
     cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')

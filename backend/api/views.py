@@ -2,7 +2,7 @@
 API Views - Authentication and User Management
 """
 import logging
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
@@ -31,6 +31,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip auth so stale cookies don't cause 401
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -64,8 +65,11 @@ class RegisterView(generics.CreateAPIView):
 @method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip auth so stale cookies don't cause 401
     
     def post(self, request, *args, **kwargs):
+        from .security import SecurityLogger
+        
         email = request.data.get('email', '')
         password = request.data.get('password', '')
         
@@ -74,12 +78,24 @@ class LoginView(APIView):
                 'error': 'Email and password are required.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Get IP and user agent for logging
+        ip_address = self._get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        
         # Use filter().first() to prevent timing attacks - always returns None if not found
         # This prevents attackers from enumerating valid email addresses
         user = User.objects.filter(email=email).first()
         
         # Check password only if user exists, but always return same error message
         if not user or not user.check_password(password):
+            # Log failed login attempt
+            SecurityLogger.log_login_attempt(
+                user=user,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                status='invalid_credentials'
+            )
+            
             return Response({
                 'error': 'Invalid email or password.'
             }, status=status.HTTP_401_UNAUTHORIZED)
@@ -87,6 +103,14 @@ class LoginView(APIView):
         # Generate tokens
         access_token, _ = Token.objects.get_or_create(user=user)
         refresh_token = RefreshToken.create_for_user(user)
+        
+        # Log successful login
+        SecurityLogger.log_login_attempt(
+            user=user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            status='success'
+        )
         
         # Create response
         response = Response({
@@ -121,6 +145,15 @@ class LoginView(APIView):
         )
         
         return response
+    
+    def _get_client_ip(self, request):
+        """Get client IP from request, accounting for proxies."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
 
 
 class OAuthStateView(APIView):
@@ -171,6 +204,7 @@ class OAuthStateView(APIView):
 @method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip auth so stale cookies don't cause 401
 
     def post(self, request):
         """
@@ -215,12 +249,33 @@ class SocialAuthView(APIView):
         
         # State is valid (or Google ID token flow), proceed with OAuth
         serializer = SocialAuthSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user, created = serializer.create_or_get_user(serializer.validated_data)
+        if not serializer.is_valid():
+            # Flatten DRF validation errors to a single readable message
+            errors = serializer.errors
+            msg = None
+            for v in errors.values():
+                if isinstance(v, list) and v:
+                    msg = str(v[0])
+                    break
+            return Response(
+                {'error': msg or 'OAuth verification failed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            user, created = serializer.create_or_get_user(serializer.validated_data)
+        except serializers.ValidationError as e:
+            return Response({'error': str(e.detail[0]) if isinstance(e.detail, list) else str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error('Social auth user creation failed: %s', e, exc_info=True)
+            return Response({'error': 'User creation failed: ' + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Generate tokens
-        access_token, _ = Token.objects.get_or_create(user=user)
-        refresh_token = RefreshToken.create_for_user(user)
+        try:
+            access_token, _ = Token.objects.get_or_create(user=user)
+            refresh_token = RefreshToken.create_for_user(user)
+        except Exception as e:
+            logger.error(f"Token generation failed for user {user.pk}: {e}", exc_info=True)
+            return Response({'error': 'Authentication token generation failed.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
          # Set token as HttpOnly cookie
         response = Response({
@@ -555,6 +610,53 @@ class VisitorListView(generics.ListAPIView):
         return queryset
 
 
+# ============================================================================
+# SECURITY & LOGGING VIEWS
+# ============================================================================
+
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from .models import LoginActivity, ActivityLog, SecurityAlert
+from .serializers import (
+    LoginActivitySerializer, ActivityLogSerializer, SecurityAlertSerializer
+)
+
+
+class LoginActivityViewSet(ReadOnlyModelViewSet):
+    """ViewSet for viewing login activities (admins only)."""
+    serializer_class = LoginActivitySerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    filterset_fields = ['status', 'device_type', 'country', 'unusual_location']
+    ordering_fields = ['created_at', 'ip_address', 'status']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        return LoginActivity.objects.select_related('user').order_by('-created_at')
+
+
+class ActivityLogViewSet(ReadOnlyModelViewSet):
+    """ViewSet for viewing activity logs (admins only)."""
+    serializer_class = ActivityLogSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    filterset_fields = ['action', 'success']
+    ordering_fields = ['created_at', 'action']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        return ActivityLog.objects.select_related('user').order_by('-created_at')
+
+
+class SecurityAlertViewSet(ReadOnlyModelViewSet):
+    """ViewSet for managing security alerts (admins only)."""
+    serializer_class = SecurityAlertSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    filterset_fields = ['severity', 'status', 'alert_type']
+    ordering_fields = ['created_at', 'severity']
+    ordering = ['-severity', '-created_at']
+    
+    def get_queryset(self):
+        return SecurityAlert.objects.select_related('user', 'resolved_by').order_by('-severity', '-created_at')
+
+
 # ============ Health Check View ============
 
 class HealthCheckView(APIView):
@@ -604,3 +706,144 @@ class HealthCheckView(APIView):
         # Return appropriate status code
         status_code = status.HTTP_200_OK if health_status['status'] == 'healthy' else status.HTTP_503_SERVICE_UNAVAILABLE
         return Response(health_status, status=status_code)
+
+
+# ============================================================================
+# PASSWORD RESET VIEWS
+# ============================================================================
+
+class ForgotPasswordView(APIView):
+    """Request a password reset email."""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        from .models import PasswordResetToken
+        import os
+        
+        email = request.data.get('email', '').strip().lower()
+        
+        if not email:
+            return Response({
+                'message': 'Please provide an email address'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Don't reveal if email exists for security reasons
+            return Response({
+                'message': 'If an account with this email exists, a reset link has been sent.'
+            }, status=status.HTTP_200_OK)
+        
+        # Create reset token
+        reset_token = PasswordResetToken.create_for_user(user)
+        
+        # Build reset URL
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+        reset_url = f"{frontend_url}/forgot-password?token={reset_token.token}"
+        
+        # Send email (using Django email backend)
+        try:
+            from django.core.mail import send_mail
+            
+            # Basic HTML email for password reset
+            html_message = f"""
+            <h2>Password Reset Request</h2>
+            <p>Hello {user.first_name or user.email},</p>
+            <p>We received a request to reset your password. Click the link below to create a new password:</p>
+            <p>
+                <a href="{reset_url}" style="background-color: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    Reset Password
+                </a>
+            </p>
+            <p>Or copy this link in your browser:</p>
+            <p>{reset_url}</p>
+            <p>This link will expire in 24 hours.</p>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+            <p>Best regards,<br>Portfolio Team</p>
+            """
+            
+            send_mail(
+                'Password Reset Request',
+                f'Click here to reset your password: {reset_url}',
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                html_message=html_message,
+                fail_silently=False
+            )
+            
+            logger.info(f"Password reset email sent to {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
+            # Still return success to the client for security
+        
+        return Response({
+            'message': 'If an account with this email exists, a reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(APIView):
+    """Reset password with token."""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        from .models import PasswordResetToken
+        from django.utils import timezone
+        
+        token = request.data.get('token', '').strip()
+        password = request.data.get('password', '')
+        password_confirm = request.data.get('password_confirm', '')
+        
+        if not token or not password or not password_confirm:
+            return Response({
+                'message': 'Missing required fields'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if password != password_confirm:
+            return Response({
+                'message': 'Passwords do not match'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(password) < 8:
+            return Response({
+                'message': 'Password must be at least 8 characters'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response({
+                'message': 'Invalid reset token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if token is valid
+        if not reset_token.is_valid:
+            return Response({
+                'message': 'Reset token has expired or been used'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Update password
+            user = reset_token.user
+            user.set_password(password)
+            user.save()
+            
+            # Mark token as used
+            reset_token.used = True
+            reset_token.used_at = timezone.now()
+            reset_token.save()
+            
+            # Invalidate all refresh tokens for security
+            RefreshToken.objects.filter(user=user).delete()
+            
+            logger.info(f"Password reset successful for user {user.email}")
+            
+            return Response({
+                'message': 'Password has been reset successfully. You can now log in with your new password.'
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error resetting password: {str(e)}")
+            return Response({
+                'message': 'An error occurred while resetting your password'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

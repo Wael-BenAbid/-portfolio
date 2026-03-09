@@ -12,6 +12,7 @@ prometheus-client>=0.16.0
 django-csp>=4.0
 dj-database-url>=2.0.0
 drf-spectacular>=0.26.0  # OpenAPI/Swagger documentation
+user-agents>=2.2.0  # Parse user agent strings
 
 # Testing & Code Quality
 pytest>=7.4.0

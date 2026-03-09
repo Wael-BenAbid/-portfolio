@@ -61,6 +61,7 @@ interface AuthContextType {
   isInitializing: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
+  updateUser: (user: User) => void;
   clearPasswordChangeRequired: () => void;
 }
 
@@ -77,6 +78,7 @@ export const useAuth = () => {
       isInitializing: false,
       login: () => {}, 
       logout: () => {}, 
+      updateUser: () => {},
       clearPasswordChangeRequired: () => {} 
     };
   }
@@ -90,10 +92,13 @@ const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const AuthPage = lazy(() => import('./pages/Auth'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const AdminSettings = lazy(() => import('./pages/Admin/Settings'));
 const AdminCV = lazy(() => import('./pages/Admin/CV'));
 const AdminStatistics = lazy(() => import('./pages/Admin/Statistics'));
+const AdminTracing = lazy(() => import('./pages/Admin/Tracing'));
+const UserSettingsPage = lazy(() => import('./pages/UserSettings'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }: React.PropsWithChildren<{ adminOnly?: boolean }>) => {
@@ -228,6 +233,11 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
     }
   };
 
+  const updateUser = (userData: User) => {
+    setUser(userData);
+    sessionStorage.setItem('auth_user', JSON.stringify(userData));
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -236,6 +246,7 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
       isInitializing,
       login, 
       logout, 
+      updateUser,
       clearPasswordChangeRequired 
     }}>
       {children}
@@ -262,6 +273,14 @@ const AnimatedRoutes = () => {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/auth" element={<AuthPage onLogin={login} />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          
+          {/* User Settings */}
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <UserSettingsPage />
+            </ProtectedRoute>
+          } />
           
           {/* Admin Section */}
           <Route path="/admin" element={
@@ -282,6 +301,11 @@ const AnimatedRoutes = () => {
           <Route path="/admin/statistics" element={
             <ProtectedRoute adminOnly>
               <AdminStatistics />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/tracing" element={
+            <ProtectedRoute adminOnly>
+              <AdminTracing />
             </ProtectedRoute>
           } />
           

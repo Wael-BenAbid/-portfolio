@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
@@ -474,6 +474,9 @@ const Dashboard: React.FC = () => {
             </Link>
             <Link to="/admin/cv" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <User size={16} /> CV Management
+            </Link>
+            <Link to="/admin/tracing" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
+              <Activity size={16} /> Traçage
             </Link>
             <Link to="/" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <HomeIcon size={16} /> View Site

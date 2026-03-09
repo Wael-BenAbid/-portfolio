@@ -1,9 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useProjects, useSettings } from '../hooks/useData';
-import { ProjectCardSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
+import { ProjectCardSkeleton, ErrorDisplay } from '../components/Loading';
 import LikeButton from '../components/LikeButton';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { OptimizedVideo } from '../components/OptimizedVideo';
@@ -19,11 +19,7 @@ const Home: React.FC = () => {
     error: projectsError 
   } = useProjects();
   
-  const { 
-    data: settings, 
-    loading: settingsLoading, 
-    error: settingsError 
-  } = useSettings();
+  const { data: settings } = useSettings();
 
   // Get featured projects (first 4 active, or all active if no featured)
   const featuredWorks: Project[] = projectsData?.results?.filter(p => p.is_active).slice(0, 4) || [];
@@ -34,13 +30,6 @@ const Home: React.FC = () => {
     offset: ["start end", "end start"]
   });
 
-  // Clip path transition from top to bottom
-  const clipPath = useTransform(
-    aboutScrollProgress,
-    [0.2, 0.6],
-    ["inset(100% 0 0 0)", "inset(0 0 0 0)"]
-  );
-
   // Use settings or defaults
   const heroTitle = settings?.hero_title || 'CREATIVE DEVELOPER';
   const heroSubtitle = settings?.hero_subtitle || 'Digital Craftsman';
@@ -50,18 +39,12 @@ const Home: React.FC = () => {
   const locationName = settings?.location || 'Bizerte, Tunisia';
   const latitude = settings?.latitude || 33.5731;
   const longitude = settings?.longitude || -7.5898;
-   const profileImage = settings?.profile_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';
-  const droneImage = settings?.drone_image || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=800&auto=format&fit=crop';
-  const droneVideoUrl = settings?.drone_video_url;
   const footerText = settings?.footer_text || 'DESIGNED BY wael';
   const footerBackgroundVideo = settings?.footer_background_video;
   const copyrightYear = settings?.copyright_year || 2026;
   const version = settings?.version || '1.0';
   
-  // Navigation labels from settings
-  const navWorkLabel = settings?.nav_work_label || 'Work';
-  const navAboutLabel = settings?.nav_about_label || 'About';
-  const navContactLabel = settings?.nav_contact_label || 'Contact';
+
 
   return (
     <div className="relative bg-transparent selection:bg-blue-500">
@@ -260,7 +243,7 @@ const Home: React.FC = () => {
 
       {/* 3. ABOUT MINI SECTION - Scroll-based Image Transition */}
       <section ref={aboutSectionRef} className="py-48 px-8 md:px-24 bg-black/80 backdrop-blur-sm relative z-10 border-t border-gray-900">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-24 items-center">
+        <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -275,39 +258,6 @@ const Home: React.FC = () => {
               Meet WAEL <div className="p-4 border border-gray-800 rounded-full group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16}/></div>
             </Link>
           </motion.div>
-          
-           <div className="relative">
-            <motion.div 
-              style={{ clipPath }}
-              className="relative z-10"
-            >
-              {droneVideoUrl ? (
-                <video
-                  src={droneVideoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-[60vh] object-cover rounded-2xl"
-                />
-              ) : (
-                <img 
-                  src={droneImage} 
-                  alt="Drone Work" 
-                  loading="lazy"
-                  className="w-full h-[60vh] object-cover rounded-2xl"
-                />
-              )}
-            </motion.div>
-            <div className="absolute -bottom-8 -left-8 w-48 h-48 z-20">
-              <img 
-                src={profileImage} 
-                alt="Profile" 
-                loading="lazy"
-                className="w-full h-full object-cover rounded-2xl border-4 border-black shadow-2xl"
-              />
-            </div>
-          </div>
         </div>
       </section>
 

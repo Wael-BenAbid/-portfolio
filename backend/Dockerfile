@@ -1,5 +1,5 @@
 # Backend Dockerfile - Production Ready with Security Hardening
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 WORKDIR /build
 
@@ -17,7 +17,7 @@ RUN python -m venv /opt/venv && \
     /opt/venv/bin/pip install --no-cache-dir -r requirements.txt gunicorn
 
 # ============ Production Stage ============
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 

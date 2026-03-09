@@ -355,21 +355,17 @@ def api_exception_handler(exc, context):
         }
         return Response(data, status=status.HTTP_404_NOT_FOUND)
     
-    # Handle unexpected exceptions in production
-    if not settings.DEBUG:
-        logger.error(
-            f"Unhandled exception in API: {type(exc).__name__}: {str(exc)}",
-            exc_info=True,
-            extra={'context': context}
-        )
-        data = {
-            'error': {
-                'message': 'An internal server error occurred',
-                'code': 'INTERNAL_SERVER_ERROR',
-            }
+    # Handle unexpected exceptions (both DEBUG and production)
+    logger.error(
+        f"Unhandled exception in API: {type(exc).__name__}: {str(exc)}",
+        exc_info=True,
+        extra={'context': context}
+    )
+    error_message = str(exc) if settings.DEBUG else 'An internal server error occurred'
+    data = {
+        'error': {
+            'message': error_message,
+            'code': 'INTERNAL_SERVER_ERROR',
         }
-        return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    # In DEBUG mode, use default DRF handler
-    from rest_framework.views import exception_handler
-    return exception_handler(exc, context)
+    }
+    return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

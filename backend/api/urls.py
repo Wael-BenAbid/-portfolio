@@ -1,11 +1,18 @@
 """
 API URL Configuration - Authentication and User Management
 """
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 from . import metrics
 
+# Create router for ViewSets
+router = DefaultRouter()
+
 urlpatterns = [
+    # Include router URLs
+    path('', include(router.urls)),
+    
     # Health Check
     path('health/', views.HealthCheckView.as_view(), name='health-check'),
     
@@ -16,6 +23,8 @@ urlpatterns = [
     path('oauth-state/', views.OAuthStateView.as_view(), name='oauth-state'),
     path('social/', views.SocialAuthView.as_view(), name='social-auth'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
+    path('forgot-password/', views.ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/', views.ResetPasswordView.as_view(), name='reset-password'),
     
     # User Profile
     path('profile/', views.UserProfileView.as_view(), name='user-profile'),

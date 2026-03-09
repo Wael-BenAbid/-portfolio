@@ -1,15 +1,18 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../App';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Settings } from 'lucide-react';
 import { useSettings } from '../hooks/useData';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const { data: settings } = useSettings();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Navigation links - show login only when not authenticated
   const links = [
@@ -23,12 +26,28 @@ export const Navbar: React.FC = () => {
   const [siteTitle, setSiteTitle] = useState('ABIDOS');
   
   useEffect(() => {
-    fetch('http://localhost:8000/api/settings/')
+    fetch('/api/settings/')
       .then(response => response.json())
       .then(data => setSiteTitle(data.hero_title || 'ABIDOS'))
       .catch(error => console.error('Error fetching settings:', error));
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    setDropdownOpen(false);
+    logout();
+    navigate('/');
+  };
 
   return (
     <nav className="fixed top-0 left-0 w-full z-[100] px-8 py-10 flex justify-between items-center pointer-events-none">
@@ -90,25 +109,77 @@ export const Navbar: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-4"
           >
-            <Link to={user?.user_type === 'admin' ? '/admin' : '/'} className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
-                {user?.profile_image ? (
-                  <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={16} className="text-white" />
-                )}
+            {user?.user_type === 'admin' ? (
+              // Admin: direct link to admin panel + separate logout
+              <>
+                <Link to="/admin" className="flex items-center gap-2 group">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                    {user?.profile_image ? (
+                      <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={16} className="text-white" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-display uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                    {user?.first_name || user?.email?.split('@')[0]}
+                  </span>
+                </Link>
+                <button 
+                  onClick={handleLogout}
+                  className="text-gray-500 hover:text-red-500 transition-colors"
+                  title="Déconnexion"
+                >
+                  <LogOut size={16} />
+                </button>
+              </>
+            ) : (
+              // Regular user: dropdown with Settings + Logout
+              <div ref={dropdownRef} className="relative">
+                <button
+                  onClick={() => setDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-2 group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                    {user?.profile_image ? (
+                      <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={16} className="text-white" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-display uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                    {user?.first_name || user?.email?.split('@')[0]}
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {dropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-3 w-44 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+                    >
+                      <Link
+                        to="/settings"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-[11px] font-display uppercase tracking-widest text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                      >
+                        <Settings size={14} />
+                        Paramètres
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-display uppercase tracking-widest text-gray-400 hover:text-red-400 hover:bg-zinc-800 transition-colors border-t border-zinc-800"
+                      >
+                        <LogOut size={14} />
+                        Déconnexion
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              <span className="text-[10px] font-display uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
-                {user?.first_name || user?.email?.split('@')[0]}
-              </span>
-            </Link>
-            <button 
-              onClick={logout}
-              className="text-gray-500 hover:text-red-500 transition-colors"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            )}
           </motion.div>
         ) : (
           <motion.div

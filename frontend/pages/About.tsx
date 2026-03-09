@@ -1,9 +1,108 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Code, Globe2, Award, Heart, Mail, Phone, MapPin, Linkedin, Github, ExternalLink, AlertCircle } from 'lucide-react';
 import { useCV } from '../hooks/useData';
 import { AboutSkeleton, ErrorDisplay } from '../components/Loading';
 import RadialProgress from '../components/RadialProgress';
+
+// ── Animated starfield canvas ─────────────────────────────────────────────
+const StarField: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    interface Star {
+      x: number; y: number; r: number;
+      opacity: number; vx: number; vy: number;
+      phase: number; speed: number;
+    }
+
+    const stars: Star[] = Array.from({ length: 300 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.4 + 0.2,
+      opacity: Math.random() * 0.6 + 0.2,
+      vx: (Math.random() - 0.5) * 0.1,
+      vy: (Math.random() - 0.5) * 0.1,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.014 + 0.005,
+    }));
+
+    const glows: Star[] = Array.from({ length: 20 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 2.5 + 1.5,
+      opacity: Math.random() * 0.35 + 0.1,
+      vx: (Math.random() - 0.5) * 0.05,
+      vy: (Math.random() - 0.5) * 0.05,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.007 + 0.003,
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const tick = (s: Star, rgba: (a: number) => string) => {
+        s.phase += s.speed;
+        s.x = (s.x + s.vx + canvas.width) % canvas.width;
+        s.y = (s.y + s.vy + canvas.height) % canvas.height;
+        const a = s.opacity * (0.55 + 0.45 * Math.sin(s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = rgba(a);
+        ctx.fill();
+      };
+
+      stars.forEach(s => tick(s, a => `rgba(160,190,255,${a})`));
+      glows.forEach(s => {
+        s.phase += s.speed;
+        s.x = (s.x + s.vx + canvas.width) % canvas.width;
+        s.y = (s.y + s.vy + canvas.height) % canvas.height;
+        const a = s.opacity * (0.55 + 0.45 * Math.sin(s.phase));
+        const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 5);
+        grad.addColorStop(0, `rgba(150,180,255,${a})`);
+        grad.addColorStop(1, 'rgba(150,180,255,0)');
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 5, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(210,225,255,${a})`;
+        ctx.fill();
+      });
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 0 }}
+    />
+  );
+};
 
 const About: React.FC = () => {
   const { data: cvData, loading, error, refetch } = useCV();
@@ -59,8 +158,13 @@ const About: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-[#0a0a0a] pt-24 pb-24"
+      className="relative min-h-screen bg-[#030508] pt-24 pb-24"
     >
+      <StarField />
+      {/* Ambient glow orbs */}
+      <div className="fixed top-[-150px] right-[10%] w-[500px] h-[500px] bg-blue-700/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-100px] left-[5%] w-[400px] h-[400px] bg-indigo-700/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="relative z-10">
       {/* Header / Personal Info */}
       <div className="px-8 md:px-24 mb-20">
         <div className="flex flex-col md:flex-row gap-12 items-start">
@@ -484,6 +588,7 @@ const About: React.FC = () => {
       >
         <p>© {new Date().getFullYear()} {personal_info.full_name || 'Your Name'}. All rights reserved.</p>
       </motion.div>
+      </div>{/* end z-10 */}
     </motion.div>
   );
 };

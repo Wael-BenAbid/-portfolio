@@ -47,6 +47,7 @@ urlpatterns = [
     
     # API Routes - No overlapping prefixes
     path('api/auth/', include('api.urls')),              # Authentication & User Management
+    path('api/security/', include('api.urls_security')), # Security Monitoring & Logging
     path('api/projects/', include('projects.urls')),     # Projects & Skills
     path('api/cv/', include('cv.urls')),                 # CV Data
     path('api/settings/', include('content.urls')),      # Site Settings, Contact, Upload

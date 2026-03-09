@@ -113,9 +113,9 @@ class SocialAuthSerializer(serializers.Serializer):
             if 'email' in user_info and not attrs.get('email'):
                 attrs['email'] = user_info['email']
             if 'first_name' in user_info and not attrs.get('first_name'):
-                attrs['first_name'] = user_info['first_name']
+                attrs['first_name'] = user_info['first_name'] or ''
             if 'last_name' in user_info and not attrs.get('last_name'):
-                attrs['last_name'] = user_info['last_name']
+                attrs['last_name'] = user_info['last_name'] or ''
             if 'profile_image' in user_info and not attrs.get('profile_image'):
                 attrs['profile_image'] = user_info['profile_image']
         
@@ -156,8 +156,11 @@ class SocialAuthSerializer(serializers.Serializer):
                 if response.status_code == 200:
                     data = response.json()
                     # Verify the token's audience matches our client ID
-                    if data.get('aud') != client_id:
-                        logger.warning("Google token audience mismatch")
+                    # Strip whitespace to handle CRLF env files on Windows
+                    token_aud = data.get('aud', '')
+                    clean_client_id = client_id.strip()
+                    if token_aud != clean_client_id:
+                        logger.warning(f"Google token audience mismatch: token_aud={repr(token_aud)} client_id={repr(clean_client_id)}")
                         return False, None
                     # Verify the user ID matches
                     if expected_id and data.get('sub') != expected_id:
@@ -249,12 +252,17 @@ class SocialAuthSerializer(serializers.Serializer):
 
     def create_or_get_user(self, validated_data):
         provider = validated_data['provider']
-        provider_id = validated_data['provider_id']
-        email = validated_data['email']
+        provider_id = validated_data.get('provider_id')
+        email = validated_data.get('email')
+
+        if not email:
+            raise serializers.ValidationError('Email is required for OAuth authentication.')
         
         # Try to find existing user
         user = User.objects.filter(email=email).first()
         
+        profile_image = validated_data.get('profile_image') or None
+
         if user:
             # Update social auth info
             if provider == 'google':
@@ -262,14 +270,17 @@ class SocialAuthSerializer(serializers.Serializer):
             elif provider == 'facebook':
                 user.facebook_id = provider_id
             user.auth_provider = provider
+            # Update profile image if not already set
+            if profile_image and not user.profile_image:
+                user.profile_image = profile_image
             user.save()
             return user, False
         
         # Create new user
         user = User.objects.create_user(
             email=email,
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
+            first_name=validated_data.get('first_name') or '',
+            last_name=validated_data.get('last_name') or '',
             user_type='registered',
             auth_provider=provider,
         )
@@ -278,6 +289,8 @@ class SocialAuthSerializer(serializers.Serializer):
             user.google_id = provider_id
         elif provider == 'facebook':
             user.facebook_id = provider_id
+        if profile_image:
+            user.profile_image = profile_image
         user.save()
         return user, True
 
@@ -552,3 +565,60 @@ class VisitorStatsSerializer(serializers.Serializer):
     browser_distribution = serializers.DictField()
     os_distribution = serializers.DictField()
     daily_trend = serializers.ListField()
+
+
+# ============================================================================
+# SECURITY & LOGGING SERIALIZERS
+# ============================================================================
+
+class LoginActivitySerializer(serializers.ModelSerializer):
+    """Serializer for LoginActivity model."""
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        from .models import LoginActivity
+        model = LoginActivity
+        fields = [
+            'id', 'user', 'user_email', 'status', 'status_display', 'ip_address',
+            'user_agent', 'device_type', 'browser', 'os', 'country', 'city',
+            'latitude', 'longitude', 'unusual_location', 'failed_attempt_after_success',
+            'created_at'
+        ]
+        read_only_fields = fields
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    """Serializer for ActivityLog model."""
+    user_email = serializers.CharField(source='user.email', read_only=True, allow_null=True)
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    
+    class Meta:
+        from .models import ActivityLog
+        model = ActivityLog
+        fields = [
+            'id', 'user', 'user_email', 'action', 'action_display', 'description',
+            'object_type', 'object_id', 'ip_address', 'user_agent', 'changes',
+            'success', 'error_message', 'created_at'
+        ]
+        read_only_fields = fields
+
+
+class SecurityAlertSerializer(serializers.ModelSerializer):
+    """Serializer for SecurityAlert model."""
+    user_email = serializers.CharField(source='user.email', read_only=True, allow_null=True)
+    alert_type_display = serializers.CharField(source='get_alert_type_display', read_only=True)
+    severity_display = serializers.CharField(source='get_severity_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    resolved_by_email = serializers.CharField(source='resolved_by.email', read_only=True, allow_null=True)
+    
+    class Meta:
+        from .models import SecurityAlert
+        model = SecurityAlert
+        fields = [
+            'id', 'user', 'user_email', 'alert_type', 'alert_type_display',
+            'severity', 'severity_display', 'status', 'status_display', 'title',
+            'description', 'evidence', 'action_taken', 'notified_at', 'resolved_at',
+            'resolved_by', 'resolved_by_email', 'created_at', 'updated_at'
+        ]
+        read_only_fields = fields

@@ -520,3 +520,314 @@ class Visitor(models.Model):
         if not self.will_delete_at:
             self.will_delete_at = timezone.now() + timezone.timedelta(days=90)
         super().save(*args, **kwargs)
+
+# ============================================================================
+# SECURITY & LOGGING MODELS
+# ============================================================================
+
+class LoginActivity(models.Model):
+    """
+    Track all login attempts with IP, device, and location information.
+    Used for security monitoring and detecting suspicious activity.
+    """
+    STATUS_CHOICES = [
+        ('success', 'Successful Login'),
+        ('failed', 'Failed Login'),
+        ('invalid_credentials', 'Invalid Credentials'),
+        ('account_locked', 'Account Locked'),
+        ('mfa_required', 'MFA Required'),
+    ]
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='login_activities',
+        null=True,
+        blank=True,  # Allow NULL for failed logins where user wasn't found
+        help_text="User who attempted login (NULL if user not found)"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='failed')
+    ip_address = models.GenericIPAddressField(help_text="Source IP address")
+    user_agent = models.TextField(help_text="Full user agent string")
+    
+    # Parsed device information
+    device_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Device type: desktop, mobile, tablet"
+    )
+    browser = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Browser name and version"
+    )
+    os = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Operating system"
+    )
+    
+    # Geolocation
+    country = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Country based on IP geolocation"
+    )
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="City based on IP geolocation"
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    
+    # Metadata for security alerts
+    failed_attempt_after_success = models.BooleanField(
+        default=False,
+        help_text="True if this failed login came shortly after a successful one"
+    )
+    unusual_location = models.BooleanField(
+        default=False,
+        help_text="True if login is from unusual location"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Login Activity'
+        verbose_name_plural = 'Login Activities'
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['ip_address', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['country', '-created_at']),
+        ]
+    
+    def __str__(self):
+        user_str = self.user.email if self.user else "Unknown"
+        return f"{self.status.upper()} - {user_str} from {self.ip_address} at {self.created_at}"
+
+
+class ActivityLog(models.Model):
+    """
+    General activity logging for all important user actions.
+    Tracks: profile updates, password changes, API modifications, etc.
+    """
+    ACTION_CHOICES = [
+        # Auth related
+        ('login', 'User Login'),
+        ('logout', 'User Logout'),
+        ('password_change', 'Password Changed'),
+        ('password_reset', 'Password Reset'),
+        ('email_change', 'Email Changed'),
+        
+        # Profile
+        ('profile_update', 'Profile Updated'),
+        ('profile_picture_upload', 'Profile Picture Uploaded'),
+        
+        # API/Data operations
+        ('api_request', 'API Request'),
+        ('data_create', 'Data Created'),
+        ('data_update', 'Data Updated'),
+        ('data_delete', 'Data Deleted'),
+        
+        # Admin
+        ('user_created', 'User Created'),
+        ('user_updated', 'User Updated'),
+        ('user_deleted', 'User Deleted'),
+        ('user_type_changed', 'User Type Changed'),
+        
+        # Security
+        ('security_alert', 'Security Alert'),
+        ('mfa_enabled', 'MFA Enabled'),
+        ('mfa_disabled', 'MFA Disabled'),
+        ('session_revoked', 'Session Revoked'),
+    ]
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs',
+        help_text="User who performed the action"
+    )
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    description = models.TextField(help_text="Detailed description of the action")
+    
+    # Request information
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    
+    # What was changed (for auditing)
+    object_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Type of object affected (User, Profile, etc)"
+    )
+    object_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of the affected object"
+    )
+    changes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Dictionary of changes: {field: (old_value, new_value)}"
+    )
+    
+    # Status
+    success = models.BooleanField(default=True)
+    error_message = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Activity Log'
+        verbose_name_plural = 'Activity Logs'
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['action', '-created_at']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['object_type', 'object_id']),
+        ]
+    
+    def __str__(self):
+        user_str = self.user.email if self.user else "System"
+        return f"{self.action}: {user_str} at {self.created_at}"
+
+
+class SecurityAlert(models.Model):
+    """
+    Automatic security alerts for suspicious activities.
+    Triggers when:
+    - Multiple failed login attempts
+    - Login from unusual location
+    - Unusual API activity
+    - Massive data modifications
+    """
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('investigating', 'Investigating'),
+        ('resolved', 'Resolved'),
+        ('false_positive', 'False Positive'),
+    ]
+    
+    ALERT_TYPE_CHOICES = [
+        ('brute_force', 'Brute Force Attack'),
+        ('unusual_location', 'Login from Unusual Location'),
+        ('impossible_travel', 'Impossible Travel'),
+        ('mass_api_requests', 'Mass API Requests'),
+        ('data_exfiltration', 'Data Exfiltration'),
+        ('privilege_escalation', 'Privilege Escalation'),
+        ('malware_detected', 'Malware Detected'),
+        ('custom', 'Custom Alert'),
+    ]
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='security_alerts',
+        null=True,
+        blank=True
+    )
+    alert_type = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='medium')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='open')
+    
+    title = models.CharField(max_length=255, help_text="Alert title")
+    description = models.TextField(help_text="Detailed description")
+    
+    # Evidence
+    evidence = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Evidence data (IP addresses, IPs, counts, etc)"
+    )
+    
+    # Action taken
+    action_taken = models.TextField(blank=True, help_text="What was done (e.g., account locked)")
+    notified_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='resolved_alerts'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Security Alert'
+        verbose_name_plural = 'Security Alerts'
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['severity', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_severity_display()} - {self.get_alert_type_display()} at {self.created_at}"
+
+
+# ============================================================================
+# PASSWORD RESET
+# ============================================================================
+
+class PasswordResetToken(models.Model):
+    """Model for password reset tokens."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reset_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['expires_at']),
+        ]
+    
+    def __str__(self):
+        return f"Reset token for {self.user.email} - {self.created_at}"
+    
+    @property
+    def is_valid(self):
+        """Check if token is still valid (not expired and not used)."""
+        from django.utils import timezone
+        return not self.used and timezone.now() < self.expires_at
+    
+    @staticmethod
+    def create_for_user(user):
+        """Create a new password reset token for a user."""
+        import secrets
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        # Invalidate all previous tokens
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        
+        reset_token = PasswordResetToken.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at
+        )
+        return reset_token

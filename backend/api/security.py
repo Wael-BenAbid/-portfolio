@@ -148,7 +148,7 @@ class OAuthSecurityManager:
             if not client_id:
                 logger.error(f"OAuth provider {provider} not configured: missing CLIENT_ID")
                 return None
-            return client_id
+            return client_id.strip()  # Strip CRLF / whitespace from Windows env files
         
         elif provider == 'facebook':
             client_id = getattr(settings, 'FACEBOOK_OAUTH2_CLIENT_ID', None)
@@ -614,3 +614,204 @@ class MaliciousActivityDetector:
 
 # Global instance
 detector = MaliciousActivityDetector()
+
+# ============================================================================
+# LOGGING & ANOMALY DETECTION
+# ============================================================================
+
+class SecurityLogger:
+    """
+    Centralized logging for security events with geolocation and user-agent parsing.
+    """
+    
+    @staticmethod
+    def log_login_attempt(user, ip_address, user_agent, status='failed'):
+        """
+        Log a login attempt with device and geolocation information.
+        """
+        from .models import LoginActivity
+        from user_agents import parse as parse_user_agent
+        
+        try:
+            # Parse user agent
+            ua = parse_user_agent(user_agent)
+            
+            # Create login activity record
+            activity = LoginActivity.objects.create(
+                user=user,
+                status=status,
+                ip_address=ip_address,
+                user_agent=user_agent[:1000],  # Truncate long user agents
+                device_type=ua.device.family or '',
+                browser=f"{ua.browser.family or ''} {ua.browser.version_string or ''}".strip(),
+                os=f"{ua.os.family or ''} {ua.os.version_string or ''}".strip(),
+            )
+            
+            # Log to Python logger
+            logger.info(f"Login {status.upper()}: {user.email if user else 'Unknown'} from {ip_address} via {ua.browser.family}")
+            
+            # Check for brute force
+            if status in ['failed', 'invalid_credentials']:
+                SecurityLogger._check_brute_force(ip_address)
+            
+            return activity
+            
+        except Exception as e:
+            logger.error(f"Error logging login attempt: {str(e)}", exc_info=True)
+            # Still create a minimal record
+            from .models import LoginActivity
+            return LoginActivity.objects.create(
+                user=user,
+                status=status,
+                ip_address=ip_address,
+                user_agent=user_agent[:1000]
+            )
+    
+    @staticmethod
+    def log_activity(user, action, description, object_type=None, object_id=None,
+                    ip_address=None, success=True, error_message=None):
+        """
+        Log a user activity for audit trail.
+        """
+        from .models import ActivityLog
+        
+        try:
+            activity = ActivityLog.objects.create(
+                user=user,
+                action=action,
+                description=description,
+                object_type=object_type,
+                object_id=object_id,
+                ip_address=ip_address,
+                success=success,
+                error_message=error_message or ''
+            )
+            
+            # Log to Python logger
+            log_msg = f"{action}: {user.email if user else 'System'} - {description}"
+            if success:
+                logger.info(log_msg)
+            else:
+                logger.warning(f"{log_msg} (Error: {error_message})")
+            
+            return activity
+            
+        except Exception as e:
+            logger.error(f"Error logging activity: {str(e)}", exc_info=True)
+    
+    @staticmethod
+    def _check_brute_force(ip_address):
+        """
+        Check for brute force patterns and create alert if detected.
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import LoginActivity, SecurityAlert
+        
+        try:
+            five_minutes_ago = timezone.now() - timedelta(minutes=5)
+            
+            # Count failed attempts in last 5 minutes
+            failed_5m = LoginActivity.objects.filter(
+                ip_address=ip_address,
+                status__in=['failed', 'invalid_credentials'],
+                created_at__gte=five_minutes_ago
+            ).count()
+            
+            if failed_5m >= 5:
+                # Check if alert already exists for this IP
+                existing = SecurityAlert.objects.filter(
+                    alert_type='brute_force',
+                    evidence__ip=ip_address,
+                    status='open'
+                ).exists()
+                
+                if not existing:
+                    SecurityAlert.objects.create(
+                        alert_type='brute_force',
+                        severity='high' if failed_5m >= 10 else 'medium',
+                        title=f"Brute force attack from {ip_address}",
+                        description=f"{failed_5m} failed login attempts from {ip_address} in 5 minutes",
+                        evidence={'ip': ip_address, 'attempts': failed_5m}
+                    )
+                    logger.warning(f"Brute force alert created for {ip_address}")
+        
+        except Exception as e:
+            logger.error(f"Error checking brute force: {str(e)}", exc_info=True)
+
+
+class AnomalyDetector:
+    """
+    Detect unusual patterns in user behavior.
+    """
+    
+    @staticmethod
+    def check_mass_api_requests(user, time_window_minutes=5, threshold=100):
+        """
+        Check if user is making too many API requests.
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import ActivityLog
+        
+        try:
+            time_window = timezone.now() - timedelta(minutes=time_window_minutes)
+            
+            request_count = ActivityLog.objects.filter(
+                user=user,
+                action='api_request',
+                created_at__gte=time_window
+            ).count()
+            
+            is_abuse = request_count > threshold
+            
+            if is_abuse:
+                logger.warning(
+                    f"API abuse detected: {user.email} made {request_count} requests in {time_window_minutes} minutes"
+                )
+            
+            return is_abuse
+        
+        except Exception as e:
+            logger.error(f"Error checking API abuse: {str(e)}", exc_info=True)
+            return False
+    
+    @staticmethod
+    def check_unusual_location(user):
+        """
+        Check if user logged in from a new or unusual location.
+        """
+        from .models import LoginActivity
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        try:
+            # Get last successful login
+            last_login = LoginActivity.objects.filter(
+                user=user,
+                status='success'
+            ).order_by('-created_at').first()
+            
+            if not last_login:
+                return False
+            
+            # Get all unique countries from last 30 days
+            thirty_days_ago = timezone.now() - timedelta(days=30)
+            known_countries = LoginActivity.objects.filter(
+                user=user,
+                status='success',
+                created_at__gte=thirty_days_ago
+            ).values_list('country', flat=True).distinct()
+            
+            known_countries = set(c for c in known_countries if c)
+            
+            # If first login or no country data, not unusual
+            if not known_countries:
+                return False
+            
+            # Latest login is unusual if from new country
+            return last_login.country not in known_countries
+        
+        except Exception as e:
+            logger.error(f"Error checking location: {str(e)}", exc_info=True)
+            return False

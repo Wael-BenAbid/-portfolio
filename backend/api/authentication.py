@@ -22,8 +22,11 @@ class CookieTokenAuthentication(TokenAuthentication):
         try:
             # Call TokenAuthentication's authenticate_credentials with the raw token string
             return self.authenticate_credentials(token)
-        except Exception as e:
-            raise AuthenticationFailed('Invalid or expired token') from e
+        except Exception:
+            # Token is invalid or expired — treat as anonymous so that public
+            # endpoints (AllowAny) remain accessible.  Protected endpoints will
+            # still return 401 because IsAuthenticated rejects anonymous users.
+            return None
 
 
 # Add this to REST_FRAMEWORK in settings.py:

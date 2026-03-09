@@ -16,6 +16,7 @@ urlpatterns = [
     # Contact
     path('contact/', views.ContactMessageCreate.as_view(), name='contact-create'),
     path('contact/messages/', views.ContactMessageList.as_view(), name='contact-messages'),
+    path('contact/my-messages/', views.UserContactMessagesView.as_view(), name='user-contact-messages'),
     path('contact/<int:pk>/reply/', views.ContactMessageReplyView.as_view(), name='contact-reply'),
     
     # Email Subscription
