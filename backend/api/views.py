@@ -95,6 +95,15 @@ class LoginView(APIView):
                 user_agent=user_agent,
                 status='invalid_credentials'
             )
+            # Also create ActivityLog entry
+            SecurityLogger.log_activity(
+                user=user,
+                action='login',
+                description=f"Failed login attempt from {ip_address}",
+                ip_address=ip_address,
+                success=False,
+                error_message='Invalid credentials'
+            )
             
             return Response({
                 'error': 'Invalid email or password.'
@@ -110,6 +119,14 @@ class LoginView(APIView):
             ip_address=ip_address,
             user_agent=user_agent,
             status='success'
+        )
+        # Also create ActivityLog entry
+        SecurityLogger.log_activity(
+            user=user,
+            action='login',
+            description=f"Successful login from {ip_address}",
+            ip_address=ip_address,
+            success=True
         )
         
         # Create response
@@ -316,6 +333,10 @@ class LogoutView(APIView):
         """
         Logout user and invalidate refresh token.
         """
+        from .security import SecurityLogger
+        ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+                     or request.META.get('REMOTE_ADDR', '')
+
         # Revoke active refresh token if it exists
         try:
             refresh_token = RefreshToken.objects.get(user=request.user, revoked_at__isnull=True)
@@ -332,6 +353,15 @@ class LogoutView(APIView):
                 request.user.auth_token.delete()
         except Exception as e:
             logger.warning(f"Logout error for user {request.user.id}: {e}")
+
+        # Log the logout action
+        SecurityLogger.log_activity(
+            user=request.user,
+            action='logout',
+            description=f"User logged out from {ip_address}",
+            ip_address=ip_address,
+            success=True
+        )
         
         response = Response({'message': 'Successfully logged out.'})
         response.delete_cookie('refresh_token', path='/api/auth/refresh/')

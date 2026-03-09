@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle,
   LogIn,
@@ -13,7 +13,9 @@ import {
   Globe,
   Clock,
   X,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  Info
 } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
 import { useAuth } from '../../App';
@@ -24,12 +26,16 @@ interface LoginActivity {
   status: string;
   status_display: string;
   ip_address: string;
+  user_agent: string;
   device_type: string;
   browser: string;
   os: string;
   country: string;
   city: string;
+  latitude: number | null;
+  longitude: number | null;
   unusual_location: boolean;
+  failed_attempt_after_success: boolean;
   created_at: string;
 }
 
@@ -39,7 +45,13 @@ interface ActivityLog {
   action: string;
   action_display: string;
   description: string;
+  object_type: string;
+  object_id: number | null;
+  ip_address: string;
+  user_agent: string;
+  changes: Record<string, unknown>;
   success: boolean;
+  error_message: string;
   created_at: string;
 }
 
@@ -53,10 +65,19 @@ interface SecurityAlert {
   status: string;
   status_display: string;
   title: string;
+  description: string;
+  evidence: Record<string, unknown>;
+  action_taken: string;
+  notified_at: string | null;
+  resolved_at: string | null;
+  resolved_by_email: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 type Tab = 'logins' | 'activity' | 'alerts';
+type DetailItem = LoginActivity | ActivityLog | SecurityAlert;
+type DetailType = 'login' | 'activity' | 'alert' | null;
 
 const Tracing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('logins');
@@ -67,6 +88,8 @@ const Tracing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+  const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
+  const [detailType, setDetailType] = useState<DetailType>(null);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -255,15 +278,134 @@ const Tracing: React.FC = () => {
               <p className="text-slate-400">Loading data...</p>
             </div>
           ) : activeTab === 'logins' ? (
-            <LoginActivityTable activities={loginActivities} searchTerm={searchTerm} />
+            <LoginActivityTable activities={loginActivities} searchTerm={searchTerm} onDetail={(item) => { setDetailItem(item); setDetailType('login'); }} />
           ) : activeTab === 'activity' ? (
-            <ActivityLogTable logs={activityLogs} searchTerm={searchTerm} />
+            <ActivityLogTable logs={activityLogs} searchTerm={searchTerm} onDetail={(item) => { setDetailItem(item); setDetailType('activity'); }} />
           ) : (
-            <SecurityAlertTable alerts={securityAlerts} searchTerm={searchTerm} />
+            <SecurityAlertTable alerts={securityAlerts} searchTerm={searchTerm} onDetail={(item) => { setDetailItem(item); setDetailType('alert'); }} />
           )}
         </motion.div>
       </div>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {detailItem && detailType && (
+          <DetailModal item={detailItem} type={detailType} onClose={() => { setDetailItem(null); setDetailType(null); }} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+};
+
+// ============================================================================
+// COMPONENT: DetailModal
+// ============================================================================
+
+interface DetailModalProps {
+  item: DetailItem;
+  type: 'login' | 'activity' | 'alert';
+  onClose: () => void;
+}
+
+const DetailModal: React.FC<DetailModalProps> = ({ item, type, onClose }) => {
+  const rows: { label: string; value: React.ReactNode }[] = [];
+
+  if (type === 'login') {
+    const a = item as LoginActivity;
+    rows.push(
+      { label: 'User', value: a.user_email || 'N/A' },
+      { label: 'Status', value: <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(a.status)}`}>{a.status_display}</span> },
+      { label: 'IP Address', value: <span className="font-mono">{a.ip_address}</span> },
+      { label: 'Browser', value: a.browser || '—' },
+      { label: 'OS', value: a.os || '—' },
+      { label: 'Device', value: a.device_type || 'Other' },
+      { label: 'Country', value: a.country || '—' },
+      { label: 'City', value: a.city || '—' },
+      { label: 'Coordinates', value: a.latitude != null ? `${a.latitude}, ${a.longitude}` : '—' },
+      { label: 'Unusual location', value: a.unusual_location ? <span className="text-yellow-400">⚠ Yes</span> : 'No' },
+      { label: 'Failed after success', value: a.failed_attempt_after_success ? <span className="text-orange-400">Yes</span> : 'No' },
+      { label: 'User Agent', value: <span className="text-xs break-all">{a.user_agent || '—'}</span> },
+      { label: 'Time', value: new Date(a.created_at).toLocaleString() },
+    );
+  } else if (type === 'activity') {
+    const l = item as ActivityLog;
+    rows.push(
+      { label: 'User', value: l.user_email || 'System' },
+      { label: 'Action', value: l.action_display },
+      { label: 'Description', value: l.description },
+      { label: 'IP Address', value: <span className="font-mono">{l.ip_address || '—'}</span> },
+      { label: 'Object Type', value: l.object_type || '—' },
+      { label: 'Object ID', value: l.object_id != null ? String(l.object_id) : '—' },
+      { label: 'Status', value: l.success ? <span className="text-emerald-400">✓ Success</span> : <span className="text-red-400">✗ Failed</span> },
+      { label: 'Error', value: l.error_message || '—' },
+      { label: 'Changes', value: Object.keys(l.changes || {}).length > 0 ? <pre className="text-xs bg-slate-900 p-2 rounded overflow-auto max-h-32">{JSON.stringify(l.changes, null, 2)}</pre> : '—' },
+      { label: 'User Agent', value: <span className="text-xs break-all">{l.user_agent || '—'}</span> },
+      { label: 'Time', value: new Date(l.created_at).toLocaleString() },
+    );
+  } else {
+    const al = item as SecurityAlert;
+    rows.push(
+      { label: 'Title', value: al.title },
+      { label: 'Type', value: al.alert_type_display },
+      { label: 'Severity', value: <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getSeverityColor(al.severity)}`}>{al.severity_display}</span> },
+      { label: 'Status', value: <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(al.status)}`}>{al.status_display}</span> },
+      { label: 'User', value: al.user_email || 'N/A' },
+      { label: 'Description', value: al.description },
+      { label: 'Evidence', value: Object.keys(al.evidence || {}).length > 0 ? <pre className="text-xs bg-slate-900 p-2 rounded overflow-auto max-h-32">{JSON.stringify(al.evidence, null, 2)}</pre> : '—' },
+      { label: 'Action Taken', value: al.action_taken || '—' },
+      { label: 'Notified At', value: al.notified_at ? new Date(al.notified_at).toLocaleString() : '—' },
+      { label: 'Resolved At', value: al.resolved_at ? new Date(al.resolved_at).toLocaleString() : '—' },
+      { label: 'Resolved By', value: al.resolved_by_email || '—' },
+      { label: 'Created At', value: new Date(al.created_at).toLocaleString() },
+      { label: 'Updated At', value: new Date(al.updated_at).toLocaleString() },
+    );
+  }
+
+  const titles = { login: 'Login Activity Detail', activity: 'Activity Log Detail', alert: 'Security Alert Detail' };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600/20 rounded-lg">
+              <Info className="w-4 h-4 text-blue-400" />
+            </div>
+            <h2 className="text-white font-semibold">{titles[type]}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-6">
+          <dl className="space-y-3">
+            {rows.map(({ label, value }) => (
+              <div key={label} className="flex gap-3">
+                <dt className="text-slate-500 text-xs uppercase tracking-wider w-36 shrink-0 pt-0.5">{label}</dt>
+                <dd className="text-slate-200 text-sm flex-1">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -274,9 +416,10 @@ const Tracing: React.FC = () => {
 interface LoginActivityTableProps {
   activities: LoginActivity[];
   searchTerm: string;
+  onDetail: (item: LoginActivity) => void;
 }
 
-const LoginActivityTable: React.FC<LoginActivityTableProps> = ({ activities, searchTerm }) => {
+const LoginActivityTable: React.FC<LoginActivityTableProps> = ({ activities, searchTerm, onDetail }) => {
   const filtered = activities.filter(
     a => a.user_email.includes(searchTerm) || a.ip_address.includes(searchTerm)
   );
@@ -292,6 +435,7 @@ const LoginActivityTable: React.FC<LoginActivityTableProps> = ({ activities, sea
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Device</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Location</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Time</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -327,6 +471,15 @@ const LoginActivityTable: React.FC<LoginActivityTableProps> = ({ activities, sea
                   </div>
                 </td>
                 <td className="px-6 py-4 text-xs text-slate-400">{formatDateCompact(activity.created_at)}</td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => onDetail(activity)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors border border-blue-600/30"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Détail
+                  </button>
+                </td>
               </tr>
             ))
           )}
@@ -343,9 +496,10 @@ const LoginActivityTable: React.FC<LoginActivityTableProps> = ({ activities, sea
 interface ActivityLogTableProps {
   logs: ActivityLog[];
   searchTerm: string;
+  onDetail: (item: ActivityLog) => void;
 }
 
-const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, searchTerm }) => {
+const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, searchTerm, onDetail }) => {
   const filtered = logs.filter(
     l => l.user_email.includes(searchTerm) || l.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -373,6 +527,7 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, searchTerm })
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Description</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Time</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -398,6 +553,15 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, searchTerm })
                   </span>
                 </td>
                 <td className="px-6 py-4 text-xs text-slate-400">{formatDateCompact(log.created_at)}</td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => onDetail(log)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors border border-blue-600/30"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Détail
+                  </button>
+                </td>
               </tr>
             ))
           )}
@@ -414,9 +578,10 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, searchTerm })
 interface SecurityAlertTableProps {
   alerts: SecurityAlert[];
   searchTerm: string;
+  onDetail: (item: SecurityAlert) => void;
 }
 
-const SecurityAlertTable: React.FC<SecurityAlertTableProps> = ({ alerts, searchTerm }) => {
+const SecurityAlertTable: React.FC<SecurityAlertTableProps> = ({ alerts, searchTerm, onDetail }) => {
   const filtered = alerts.filter(
     a => a.user_email.includes(searchTerm) || a.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -442,6 +607,7 @@ const SecurityAlertTable: React.FC<SecurityAlertTableProps> = ({ alerts, searchT
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Time</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -468,6 +634,15 @@ const SecurityAlertTable: React.FC<SecurityAlertTableProps> = ({ alerts, searchT
                   </span>
                 </td>
                 <td className="px-6 py-4 text-xs text-slate-400">{formatDateCompact(alert.created_at)}</td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => onDetail(alert)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors border border-blue-600/30"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Détail
+                  </button>
+                </td>
               </tr>
             ))
           )}

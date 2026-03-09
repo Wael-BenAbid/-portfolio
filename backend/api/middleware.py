@@ -388,3 +388,72 @@ class MaliciousActivityDetectionMiddleware(MiddlewareMixin):
             response['X-Security-Alert'] = f"Suspicious activity detected: {detection['severity']}"
         
         return response
+
+
+# ============================================================================
+# ACTIVITY LOGGING MIDDLEWARE
+# ============================================================================
+
+class ActivityLoggingMiddleware(MiddlewareMixin):
+    """
+    Log all authenticated API mutations (POST/PUT/PATCH/DELETE) to ActivityLog.
+    Tracks data creation, updates and deletions for the audit trail.
+    """
+
+    MUTATING_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
+
+    _ACTION_MAP = {
+        'POST':   'data_create',
+        'PUT':    'data_update',
+        'PATCH':  'data_update',
+        'DELETE': 'data_delete',
+    }
+
+    _SKIP_PREFIXES = (
+        '/api/auth/',
+        '/api/metrics',
+        '/api/visitors/',
+        '/api/security/',
+        '/admin/',
+        '/static/',
+        '/media/',
+    )
+
+    def process_response(self, request, response):
+        try:
+            if request.method not in self.MUTATING_METHODS:
+                return response
+            if not request.path.startswith('/api/'):
+                return response
+            if any(request.path.startswith(p) for p in self._SKIP_PREFIXES):
+                return response
+
+            user = getattr(request, 'user', None)
+            if not user or not user.is_authenticated:
+                return response
+
+            action = self._ACTION_MAP.get(request.method, 'api_request')
+            success = 200 <= response.status_code < 400
+            description = f"{request.method} {request.path}"
+            error_msg = '' if success else f"HTTP {response.status_code}"
+
+            from .security import SecurityLogger
+            SecurityLogger.log_activity(
+                user=user,
+                action=action,
+                description=description,
+                ip_address=self._get_client_ip(request),
+                success=success,
+                error_message=error_msg,
+            )
+        except Exception:
+            pass
+
+        return response
+
+    @staticmethod
+    def _get_client_ip(request):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR', '127.0.0.1')

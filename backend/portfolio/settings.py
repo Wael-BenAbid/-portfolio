@@ -254,6 +254,7 @@ _MIDDLEWARE = [
     'api.middleware.MaliciousActivityDetectionMiddleware',  # Security threat detection
     'api.middleware.SecurityHeadersMiddleware',  # OAuth COOP and security headers
     'api.middleware.PrometheusMetricsMiddleware',
+    'api.middleware.ActivityLoggingMiddleware',  # Audit trail for all API mutations
     'api.middleware.VisitorTrackingMiddleware',
 ]
 
