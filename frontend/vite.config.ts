@@ -5,13 +5,15 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    // In Docker, BACKEND_URL is set to http://backend:8000 via docker-compose
+    const backendUrl = process.env.BACKEND_URL || env.BACKEND_URL || 'http://localhost:8000';
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'http://localhost:8000',
+            target: backendUrl,
             changeOrigin: true,
           },
         },

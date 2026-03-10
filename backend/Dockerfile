@@ -35,6 +35,9 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy project files with correct ownership
 COPY --chown=appuser:appuser . .
 
+# Create logs directory (excluded from build context) and fix /app ownership
+RUN mkdir -p /app/logs && chown appuser:appuser /app /app/logs
+
 # Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
 

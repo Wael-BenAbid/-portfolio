@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+htmlcov
+.coverage
+coverage.xml
+*.log
+logs/
+media/
+staticfiles/
+db.sqlite3
+.env
+.env.*
