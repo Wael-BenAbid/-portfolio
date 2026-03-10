@@ -32,8 +32,6 @@ class ToggleLikeView(APIView):
         
         if like:
             like.delete()
-            # likes_count updated via signal using atomic F expression
-            # Refresh from DB to get latest count
             if content_type == 'project':
                 content_obj.refresh_from_db(fields=['likes_count'])
             else:
@@ -46,8 +44,6 @@ class ToggleLikeView(APIView):
                 content_id=content_id,
                 **{'project' if content_type == 'project' else 'media': content_obj}
             )
-            # likes_count updated via signal using atomic F expression
-            # Refresh from DB to get latest count
             if content_type == 'project':
                 content_obj.refresh_from_db(fields=['likes_count'])
             else:
@@ -73,6 +69,19 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(recipients=self.request.user)
 
 
+class NotificationUnreadCountView(APIView):
+    """Return the number of unread notifications for the current user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(
+            recipients=request.user
+        ).exclude(
+            is_read=request.user
+        ).count()
+        return Response({'unread_count': count})
+
+
 class MarkNotificationReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -80,3 +89,17 @@ class MarkNotificationReadView(APIView):
         notification = get_object_or_404(Notification, pk=pk, recipients=request.user)
         notification.is_read.add(request.user)
         return Response({'message': 'Notification marked as read'})
+
+
+class MarkAllNotificationsReadView(APIView):
+    """Mark all unread notifications as read for the current user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        unread = Notification.objects.filter(
+            recipients=request.user
+        ).exclude(is_read=request.user)
+        for notif in unread:
+            notif.is_read.add(request.user)
+        return Response({'message': 'All notifications marked as read'})
+

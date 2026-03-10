@@ -163,7 +163,11 @@ const CV: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
+        // Convert null values to empty strings to prevent controlled/uncontrolled input warnings
+        const sanitized = Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, v === null ? (DEFAULT_SETTINGS as Record<string, unknown>)[k] ?? '' : v])
+        );
+        setSettings({ ...DEFAULT_SETTINGS, ...sanitized } as SiteSettings);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);

@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useProject, useProjects } from '../hooks/useData';
 import { ProjectDetailSkeleton, ErrorDisplay } from '../components/Loading';
 import { OptimizedImage } from '../components/OptimizedImage';
@@ -9,9 +9,17 @@ import { OptimizedVideo } from '../components/OptimizedVideo';
 import { ImageCarousel } from '../components/ImageCarousel';
 import LikeButton from '../components/LikeButton';
 import { BackButton } from '../components/BackButton';
+import { useAuth } from '../App';
+import { API_BASE_URL } from '../constants';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  // Registration state
+  const [regStatus, setRegStatus] = useState<'idle' | 'loading' | 'done' | 'already'>('idle');
+  const [regError, setRegError] = useState<string | null>(null);
   
   // Fetch current project
   const { data: project, loading, error, refetch } = useProject(slug);
@@ -24,9 +32,49 @@ const ProjectDetail: React.FC = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 1.1]);
 
+  // Check if user is already registered when component loads
+  useEffect(() => {
+    if (isAuthenticated && slug && project?.show_registration) {
+      fetch(`${API_BASE_URL}/projects/${slug}/register/status/`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => { if (data.registered) setRegStatus('already'); })
+        .catch(() => {});
+    }
+  }, [isAuthenticated, slug, project?.show_registration]);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [slug]);
+
+  const handleRegister = async () => {
+    if (!isAuthenticated) {
+      navigate('/auth', { state: { from: `/project/${slug}` } });
+      return;
+    }
+    setRegStatus('loading');
+    setRegError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/${slug}/register/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.status === 201) {
+        setRegStatus('done');
+      } else if (data.already_registered) {
+        setRegStatus('already');
+      } else {
+        setRegError(data.detail || 'Erreur lors de l\'inscription.');
+        setRegStatus('idle');
+      }
+    } catch {
+      setRegError('Impossible de contacter le serveur.');
+      setRegStatus('idle');
+    }
+  };
+
 
   // Loading state
   if (loading) {
@@ -168,13 +216,23 @@ const ProjectDetail: React.FC = () => {
 
               {project.is_active && project.show_registration && (
                 <div>
-                  <Link
-                    to="/auth"
-                    state={{ from: `/project/${project.slug}` }}
-                    className="inline-block px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
-                  >
-                    Inscription
-                  </Link>
+                  {(regStatus === 'done' || regStatus === 'already') ? (
+                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/20 border border-green-500/40 rounded-lg text-green-400 text-sm font-medium">
+                      <CheckCircle size={16} />
+                      {regStatus === 'already' ? 'Déjà inscrit' : 'Inscription confirmée !'}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleRegister}
+                        disabled={regStatus === 'loading'}
+                        className="inline-flex items-center gap-2 px-8 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white font-display text-xs uppercase tracking-widest transition-all"
+                      >
+                        {regStatus === 'loading' ? <><Loader2 size={14} className="animate-spin" /> Inscription…</> : 'S\'inscrire'}
+                      </button>
+                      {regError && <p className="text-red-400 text-xs">{regError}</p>}
+                    </div>
+                  )}
                 </div>
               )}
           </div>

@@ -56,6 +56,31 @@ class Project(models.Model):
     def __str__(self):
         return self.title
 
+class ProjectRegistration(models.Model):
+    """User registrations for projects (when show_registration is True)."""
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('confirmed', 'Confirmé'),
+        ('cancelled', 'Annulé'),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='registrations')
+    user = models.ForeignKey('api.CustomUser', on_delete=models.CASCADE, related_name='project_registrations')
+    # Extra contact info the user can provide at registration time
+    phone = models.CharField(max_length=30, blank=True)
+    message = models.TextField(blank=True, help_text="Optional message from the registrant")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['project', 'user']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} → {self.project.title}"
+
+
 class MediaItem(models.Model):
     MEDIA_TYPES = [
         ('image', 'Image'),

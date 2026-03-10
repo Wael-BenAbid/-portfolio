@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../App';
 import { User, LogOut, Settings } from 'lucide-react';
 import { useSettings } from '../hooks/useData';
+import { NotificationBell } from './NotificationBell';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -112,6 +113,7 @@ export const Navbar: React.FC = () => {
             {user?.user_type === 'admin' ? (
               // Admin: direct link to admin panel + separate logout
               <>
+                <NotificationBell />
                 <Link to="/admin" className="flex items-center gap-2 group">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
                     {user?.profile_image ? (
@@ -134,7 +136,8 @@ export const Navbar: React.FC = () => {
               </>
             ) : (
               // Regular user: dropdown with Settings + Logout
-              <div ref={dropdownRef} className="relative">
+              <div ref={dropdownRef} className="relative flex items-center gap-3">
+                <NotificationBell />
                 <button
                   onClick={() => setDropdownOpen(prev => !prev)}
                   className="flex items-center gap-2 group"

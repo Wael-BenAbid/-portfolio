@@ -9,8 +9,8 @@ from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
 import os
 
-from .models import Project, Skill, MediaItem
-from .serializers import ProjectSerializer, SkillSerializer, MediaItemCreateSerializer
+from .models import Project, Skill, MediaItem, ProjectRegistration
+from .serializers import ProjectSerializer, SkillSerializer, MediaItemCreateSerializer, ProjectRegistrationSerializer
 from api.permissions import IsAdminUser, IsAdminOrReadOnly
 
 
@@ -185,3 +185,108 @@ class MediaItemDelete(generics.DestroyAPIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         return super().handle_exception(exc)
+
+
+# ============ Project Registration Views ============
+
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+
+
+class ProjectRegisterView(APIView):
+    """
+    Authenticated user registers for a project.
+    POST /api/projects/<slug>/register/
+    Body: { phone?: string, message?: string }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, slug):
+        project = get_object_or_404(Project, slug=slug, is_active=True)
+        if not project.show_registration:
+            return Response({'detail': 'Les inscriptions ne sont pas ouvertes pour ce projet.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if ProjectRegistration.objects.filter(project=project, user=request.user).exists():
+            return Response({'detail': 'Vous êtes déjà inscrit à ce projet.', 'already_registered': True}, status=status.HTTP_200_OK)
+
+        registration = ProjectRegistration.objects.create(
+            project=project,
+            user=request.user,
+            phone=request.data.get('phone', ''),
+            message=request.data.get('message', ''),
+        )
+
+        # Notify admin via Notification
+        try:
+            from interactions.models import Notification
+            from api.models import CustomUser
+            admins = CustomUser.objects.filter(user_type='admin')
+            notif = Notification.objects.create(
+                title=f'Nouvelle inscription : {project.title}',
+                message=f'{request.user.email} vient de s\'inscrire au projet « {project.title} ».',
+                notification_type='system',
+                link=f'/admin/registrations',
+            )
+            notif.recipients.set(admins)
+        except Exception:
+            pass  # Don't block registration if notification fails
+
+        serializer = ProjectRegistrationSerializer(registration)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ProjectRegistrationStatusView(APIView):
+    """Check whether the current user is registered for a project."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, slug):
+        project = get_object_or_404(Project, slug=slug)
+        registered = ProjectRegistration.objects.filter(project=project, user=request.user).exists()
+        return Response({'registered': registered})
+
+
+class ProjectRegistrationListView(generics.ListAPIView):
+    """Admin: list all registrations, optionally filtered by project slug."""
+    serializer_class = ProjectRegistrationSerializer
+    permission_classes = [IsAdminUser]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = ProjectRegistration.objects.select_related('project', 'user')
+        slug = self.request.query_params.get('project')
+        if slug:
+            qs = qs.filter(project__slug=slug)
+        return qs
+
+
+class ProjectRegistrationUpdateView(generics.UpdateAPIView):
+    """Admin: update status of a registration."""
+    serializer_class = ProjectRegistrationSerializer
+    permission_classes = [IsAdminUser]
+    queryset = ProjectRegistration.objects.all()
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in ['pending', 'confirmed', 'cancelled']:
+            return Response({'detail': 'Invalid status.'}, status=status.HTTP_400_BAD_REQUEST)
+        instance.status = new_status
+        instance.save(update_fields=['status', 'updated_at'])
+
+        # Notify the user
+        try:
+            from interactions.models import Notification
+            status_labels = {'confirmed': 'confirmée', 'cancelled': 'annulée', 'pending': 'en attente'}
+            notif = Notification.objects.create(
+                title=f'Inscription {status_labels.get(new_status, new_status)} : {instance.project.title}',
+                message=f'Votre inscription au projet « {instance.project.title} » est maintenant {status_labels.get(new_status, new_status)}.',
+                notification_type='system',
+                link=f'/project/{instance.project.slug}',
+            )
+            notif.recipients.add(instance.user)
+        except Exception:
+            pass
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+

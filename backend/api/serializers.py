@@ -264,16 +264,20 @@ class SocialAuthSerializer(serializers.Serializer):
         profile_image = validated_data.get('profile_image') or None
 
         if user:
-            # Update social auth info
+            # Update social auth info — never overwrite user_type or permissions
+            update_fields = ['auth_provider']
             if provider == 'google':
                 user.google_id = provider_id
+                update_fields.append('google_id')
             elif provider == 'facebook':
                 user.facebook_id = provider_id
+                update_fields.append('facebook_id')
             user.auth_provider = provider
             # Update profile image if not already set
             if profile_image and not user.profile_image:
                 user.profile_image = profile_image
-            user.save()
+                update_fields.append('profile_image')
+            user.save(update_fields=update_fields)
             return user, False
         
         # Create new user

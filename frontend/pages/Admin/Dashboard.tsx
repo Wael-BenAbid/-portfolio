@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity } from 'lucide-react';
+import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity, ClipboardList, ChevronDown, Mail, Phone, MessageSquare } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
+import { NotificationBell } from '../../components/NotificationBell';
 
 const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -34,6 +35,62 @@ const Dashboard: React.FC = () => {
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { token, logout, isAuthenticated } = useAuth();
+
+  // View mode: projects or registrations
+  const [viewMode, setViewMode] = useState<'projects' | 'registrations'>('projects');
+
+  // Registrations state
+  interface Registration {
+    id: number;
+    project_title: string;
+    project_slug: string;
+    user_id: number;
+    user_email: string;
+    user_first_name: string;
+    user_last_name: string;
+    user_phone: string;
+    phone: string;
+    message: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+    status_display: string;
+    created_at: string;
+  }
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regFilter, setRegFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
+  const [regDetail, setRegDetail] = useState<Registration | null>(null);
+
+  const fetchRegistrations = async () => {
+    setRegLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/registrations/`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setRegistrations(data.results || data);
+      }
+    } catch {}
+    setRegLoading(false);
+  };
+
+  useEffect(() => {
+    if (viewMode === 'registrations') fetchRegistrations();
+  }, [viewMode]);
+
+  const updateRegistrationStatus = async (id: number, status: Registration['status']) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/registrations/${id}/status/`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setRegistrations(prev => prev.map(r => r.id === id ? { ...r, status, status_display: status === 'confirmed' ? 'Confirmé' : status === 'cancelled' ? 'Annulé' : 'En attente' } : r));
+        if (regDetail?.id === id) setRegDetail(prev => prev ? { ...prev, status } : null);
+      }
+    } catch {}
+  };
+
 
   useEffect(() => {
     fetchProjects();
@@ -401,7 +458,7 @@ const Dashboard: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
       setError(errorMessage);
     }
-    setNewProject({ title: '',    category: 'Développement', description: '', technologies: [], media: [], featured: false, is_active: true });
+    setNewProject({ title: '', category: 'Développement', description: '', technologies: [], thumbnail: '', media: [], featured: false, is_active: true, show_registration: true });
   };
 
   const updateProject = async (e: React.FormEvent) => {
@@ -478,6 +535,12 @@ const Dashboard: React.FC = () => {
             <Link to="/admin/tracing" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <Activity size={16} /> Traçage
             </Link>
+            <button
+              onClick={() => setViewMode('registrations')}
+              className={`flex items-center gap-4 font-display text-xs uppercase tracking-widest transition-colors ${viewMode === 'registrations' ? 'text-white' : 'text-gray-500 hover:text-white'}`}
+            >
+              <ClipboardList size={16} /> Inscriptions
+            </button>
             <Link to="/" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <HomeIcon size={16} /> View Site
             </Link>
@@ -509,13 +572,36 @@ const Dashboard: React.FC = () => {
         )}
         
         <header className="flex justify-between items-center mb-16">
-          <h1 className="text-4xl font-display font-bold uppercase">Work Management</h1>
-          <button 
-            onClick={() => { setShowAddForm(true); setEditingProject(null); setError(null); }}
-            className="px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
-          >
-            <Plus size={16} /> New Project
-          </button>
+          <div className="flex items-center gap-6">
+            <h1 className="text-4xl font-display font-bold uppercase">
+              {viewMode === 'projects' ? 'Work Management' : 'Inscriptions'}
+            </h1>
+            <div className="flex items-center gap-1 bg-[#111] border border-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('projects')}
+                className={`px-4 py-1.5 text-[10px] font-display uppercase tracking-widest rounded-md transition-all ${viewMode === 'projects' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'}`}
+              >
+                Projets
+              </button>
+              <button
+                onClick={() => setViewMode('registrations')}
+                className={`px-4 py-1.5 text-[10px] font-display uppercase tracking-widest rounded-md transition-all ${viewMode === 'registrations' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white'}`}
+              >
+                Inscriptions
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationBell variant="dark" />
+            {viewMode === 'projects' && (
+              <button 
+                onClick={() => { setShowAddForm(true); setEditingProject(null); setError(null); }}
+                className="px-8 py-3 bg-blue-500 text-white font-display text-xs uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"
+              >
+                <Plus size={16} /> New Project
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Add Project Form */}
@@ -533,7 +619,7 @@ const Dashboard: React.FC = () => {
                   <input 
                     required
                     type="text" 
-                    value={newProject.title}
+                    value={newProject.title ?? ''}
                     onChange={e => setNewProject({...newProject, title: e.target.value})}
                     className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display uppercase"
                   />
@@ -556,7 +642,7 @@ const Dashboard: React.FC = () => {
                 <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Description</label>
                 <textarea 
                   required
-                  value={newProject.description}
+                  value={newProject.description ?? ''}
                   onChange={e => setNewProject({...newProject, description: e.target.value})}
                   className="w-full bg-transparent border-b border-gray-800 py-3 focus:border-blue-500 outline-none font-display h-24"
                 />
@@ -1162,7 +1248,120 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Projects List */}
-        <div className="space-y-4">
+        {viewMode === 'registrations' ? (
+          /* ── Registrations View ─────────────────────────────── */
+          <div>
+            {/* Filter bar */}
+            <div className="flex items-center gap-2 mb-8">
+              {(['all', 'pending', 'confirmed', 'cancelled'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setRegFilter(f)}
+                  className={`px-4 py-1.5 text-[10px] font-display uppercase tracking-widest border rounded transition-all ${regFilter === f ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'}`}
+                >
+                  {f === 'all' ? 'Tous' : f === 'pending' ? 'En attente' : f === 'confirmed' ? 'Confirmés' : 'Annulés'}
+                </button>
+              ))}
+              <button
+                onClick={fetchRegistrations}
+                className="ml-auto text-[10px] font-display uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+              >
+                Actualiser
+              </button>
+            </div>
+
+            {regLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="animate-spin text-blue-500" size={32} />
+              </div>
+            ) : registrations.filter(r => regFilter === 'all' || r.status === regFilter).length === 0 ? (
+              <div className="text-center py-20 text-gray-600 font-display text-sm uppercase tracking-widest">
+                Aucune inscription trouvée
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {registrations.filter(r => regFilter === 'all' || r.status === regFilter).map(reg => (
+                  <motion.div
+                    key={reg.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 bg-[#111] border border-gray-900 hover:border-gray-700 rounded-lg transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="flex-1 grid grid-cols-4 gap-4">
+                        {/* User info */}
+                        <div>
+                          <p className="text-[9px] font-display uppercase tracking-widest text-gray-600 mb-1">Utilisateur</p>
+                          <p className="font-display font-bold text-sm uppercase text-white">
+                            {reg.user_first_name} {reg.user_last_name}
+                          </p>
+                          <a href={`mailto:${reg.user_email}`} className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1">
+                            <Mail size={10} /> {reg.user_email}
+                          </a>
+                          {(reg.phone || reg.user_phone) && (
+                            <p className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                              <Phone size={10} /> {reg.phone || reg.user_phone}
+                            </p>
+                          )}
+                        </div>
+                        {/* Project */}
+                        <div>
+                          <p className="text-[9px] font-display uppercase tracking-widest text-gray-600 mb-1">Projet</p>
+                          <p className="font-display text-sm uppercase text-white">{reg.project_title}</p>
+                          <p className="text-[10px] text-gray-600 mt-0.5">{new Date(reg.created_at).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        {/* Message */}
+                        <div className="col-span-1">
+                          <p className="text-[9px] font-display uppercase tracking-widest text-gray-600 mb-1">Message</p>
+                          <p className="text-xs text-gray-400 line-clamp-3">
+                            {reg.message || <span className="italic text-gray-700">Aucun message</span>}
+                          </p>
+                        </div>
+                        {/* Status */}
+                        <div>
+                          <p className="text-[9px] font-display uppercase tracking-widest text-gray-600 mb-1">Statut</p>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-display uppercase tracking-wider ${
+                            reg.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                            reg.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {reg.status_display}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                        {reg.status !== 'confirmed' && (
+                          <button
+                            onClick={() => updateRegistrationStatus(reg.id, 'confirmed')}
+                            className="px-3 py-1.5 text-[9px] font-display uppercase tracking-widest bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded transition-all"
+                          >
+                            Confirmer
+                          </button>
+                        )}
+                        {reg.status !== 'cancelled' && (
+                          <button
+                            onClick={() => updateRegistrationStatus(reg.id, 'cancelled')}
+                            className="px-3 py-1.5 text-[9px] font-display uppercase tracking-widest bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded transition-all"
+                          >
+                            Annuler
+                          </button>
+                        )}
+                        <a
+                          href={`mailto:${reg.user_email}?subject=Inscription - ${reg.project_title}`}
+                          className="px-3 py-1.5 text-[9px] font-display uppercase tracking-widest bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 rounded transition-all text-center"
+                        >
+                          Contacter
+                        </a>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
           {projects.map(project => (
             <div key={project.id} className="p-6 bg-[#111] border border-gray-900 flex justify-between items-center group hover:border-blue-500/50 transition-all">
               <div className="flex items-center gap-8">
@@ -1217,6 +1416,7 @@ const Dashboard: React.FC = () => {
             </div>
           ))}
         </div>
+        )} {/* end viewMode conditional */}
       </main>
 
       {/* Delete Project Confirmation Modal */}

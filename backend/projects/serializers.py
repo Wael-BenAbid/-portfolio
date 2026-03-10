@@ -3,7 +3,7 @@ Projects App - Serializers for projects and media
 """
 from rest_framework import serializers
 from django.conf import settings
-from .models import Project, MediaItem, Skill
+from .models import Project, MediaItem, Skill, ProjectRegistration
 from interactions.models import Like
 
 
@@ -179,3 +179,24 @@ class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
         fields = '__all__'
+
+
+class ProjectRegistrationSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user_phone = serializers.CharField(source='user.phone', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    project_title = serializers.CharField(source='project.title', read_only=True)
+    project_slug = serializers.CharField(source='project.slug', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = ProjectRegistration
+        fields = [
+            'id', 'project', 'project_title', 'project_slug',
+            'user_id', 'user_email', 'user_first_name', 'user_last_name', 'user_phone',
+            'phone', 'message', 'status', 'status_display', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'status']
+
