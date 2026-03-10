@@ -22,7 +22,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     environment: import.meta.env.MODE,
     tracesSampleRate: import.meta.env.MODE === 'development' ? 1.0 : 0.1,
     integrations: [
-      new Sentry.Replay({
+      Sentry.replayIntegration({
         maskAllText: true,
         blockAllMedia: true,
       }),

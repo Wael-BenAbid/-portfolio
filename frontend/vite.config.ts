@@ -22,6 +22,21 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+
+      build: {
+        chunkSizeWarningLimit: 600,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+              'motion': ['framer-motion'],
+              'three': ['three', '@react-three/fiber', '@react-three/drei'],
+              'sentry': ['@sentry/react'],
+              'ui': ['lucide-react'],
+            },
+          },
+        },
+      },
     };
 });
