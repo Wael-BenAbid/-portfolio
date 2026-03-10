@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { User, Save, ArrowLeft, Bell, Lock, Loader2, CheckCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Save, Bell, Lock, Loader2, CheckCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../App';
 import { API_BASE_URL, API_ENDPOINTS } from '../constants';
 import { getCookie } from '../utils/cookies';
+import { BackButton } from '../components/BackButton';
 
 interface ContactMsg {
   id: number;
@@ -185,13 +186,7 @@ const UserSettings: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-2xl mx-auto px-6 py-24">
         {/* Back link */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-[11px] font-display uppercase tracking-widest text-gray-500 hover:text-white transition-colors mb-10"
-        >
-          <ArrowLeft size={14} />
-          Retour
-        </Link>
+        <BackButton to="/" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

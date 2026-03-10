@@ -260,7 +260,7 @@ const AnimatedRoutes = () => {
   const { login, isAuthenticated } = useAuth();
 
   // Redirect to home if already authenticated and trying to access auth page
-  if (isAuthenticated && window.location.pathname === '/auth') {
+  if (isAuthenticated && location.pathname === '/auth') {
     return <Navigate to="/" replace />;
   }
 

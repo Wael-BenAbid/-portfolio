@@ -304,11 +304,15 @@ if not DB_PASSWORD:
 # Database configuration using environment variables
 # Check if we're running tests
 if DEBUG:
-    # Use SQLite for development to avoid PostgreSQL dependency
+    # Use PostgreSQL for development (as per user requirements)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': DB_PASSWORD,
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),  # Use IP address for better reliability
+            'PORT': os.environ.get('DB_PORT', '5433'),  # Use custom port 5433
         }
     }
 elif 'pytest' in sys.argv or 'test' in sys.argv or any('test' in arg for arg in sys.argv):
@@ -325,9 +329,9 @@ else:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ.get('DB_NAME', 'portfolio_db'),
             'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': DB_PASSWORD,  # Use validated environment variable
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '5432'),  # Default to 5432 (Docker/standard PostgreSQL port)
+            'PASSWORD': DB_PASSWORD,
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '5433'),
         }
     }
 

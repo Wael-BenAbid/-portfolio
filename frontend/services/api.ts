@@ -131,7 +131,12 @@ const retryWithExponentialBackoff = async <T>(
       throw error;
     }
     
-    // Wait with exponential backoff
+    // Never retry client errors (4xx) — they won't succeed on retry
+    if (error instanceof APIError && error.status >= 400 && error.status < 500) {
+      throw error;
+    }
+    
+    // Wait with exponential backoff before retrying network/server errors
     await new Promise(resolve => setTimeout(resolve, delay));
     
     return retryWithExponentialBackoff(fn, maxRetries - 1, delay * 2);

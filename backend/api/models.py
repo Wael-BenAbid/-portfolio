@@ -342,28 +342,28 @@ class VisitorConsent(models.Model):
     - Only track IP (anonymized), user agent if consent given
     - All visitor records reference the consent record
     """
-    SESSION_KEY = models.CharField(
+    session_key = models.CharField(
         max_length=64,
         unique=True,
         db_index=True,
         help_text="Unique session identifier"
     )
-    IP_ADDRESS = models.GenericIPAddressField(
+    ip_address = models.GenericIPAddressField(
         null=True,
         blank=True,
         help_text="IP address of visitor (not anonymized at consent time)"
     )
-    CONSENT_GIVEN = models.BooleanField(
+    consent_given = models.BooleanField(
         default=False,
         help_text="Whether visitor consented to tracking"
     )
-    CONSENT_VERSION = models.CharField(
+    consent_version = models.CharField(
         max_length=10,
         default='1.0',
         help_text="Version of privacy policy accepted"
     )
-    CREATED_AT = models.DateTimeField(auto_now_add=True)
-    EXPIRES_AT = models.DateTimeField(
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
         help_text="When consent expires (usually 90 days from creation)"
     )
     
@@ -371,15 +371,15 @@ class VisitorConsent(models.Model):
         verbose_name = 'Visitor Consent'
         verbose_name_plural = 'Visitor Consents'
         indexes = [
-            models.Index(fields=['SESSION_KEY']),
-            models.Index(fields=['EXPIRES_AT']),
+            models.Index(fields=['session_key']),
+            models.Index(fields=['expires_at']),
         ]
     
     def is_valid(self) -> bool:
         """Check if consent is still valid."""
         return (
-            self.CONSENT_GIVEN and
-            self.EXPIRES_AT > timezone.now()
+            self.consent_given and
+            self.expires_at > timezone.now()
         )
     
     @classmethod
@@ -396,11 +396,11 @@ class VisitorConsent(models.Model):
             VisitorConsent: The consent record
         """
         consent, created = cls.objects.get_or_create(
-            SESSION_KEY=session_key,
+            session_key=session_key,
             defaults={
-                'IP_ADDRESS': ip_address,
-                'CONSENT_GIVEN': consent_given,
-                'EXPIRES_AT': timezone.now() + timezone.timedelta(days=90)
+                'ip_address': ip_address,
+                'consent_given': consent_given,
+                'expires_at': timezone.now() + timezone.timedelta(days=90)
             }
         )
         return consent

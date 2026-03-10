@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
 import { useAuth } from '../../App';
+import { BackButton } from '../../components/BackButton';
 
 interface LoginActivity {
   id: number;
@@ -147,6 +148,7 @@ const Tracing: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
+              <BackButton to="/admin" />
               <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
                 <Activity className="w-6 h-6 text-white" />
               </div>

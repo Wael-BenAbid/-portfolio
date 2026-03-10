@@ -35,7 +35,7 @@ class Command(BaseCommand):
         
         # Count expired consents
         expired_consents = VisitorConsent.objects.filter(
-            EXPIRES_AT__lte=now
+            expires_at__lte=now
         )
         consent_count = expired_consents.count()
         

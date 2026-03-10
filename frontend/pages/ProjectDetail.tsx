@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle } from 'lucide-react';
 import { useProject, useProjects } from '../hooks/useData';
-import { ProjectDetailSkeleton, ErrorDisplay, Spinner } from '../components/Loading';
+import { ProjectDetailSkeleton, ErrorDisplay } from '../components/Loading';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { OptimizedVideo } from '../components/OptimizedVideo';
 import { ImageCarousel } from '../components/ImageCarousel';
 import LikeButton from '../components/LikeButton';
+import { BackButton } from '../components/BackButton';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
-  const navigate = useNavigate();
   
   // Fetch current project
   const { data: project, loading, error, refetch } = useProject(slug);
@@ -141,13 +141,7 @@ const ProjectDetail: React.FC = () => {
           </motion.div>
         </div>
 
-        <button 
-          onClick={() => navigate(-1)}
-          className="absolute top-12 left-12 p-4 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all z-20"
-          aria-label="Go back"
-        >
-          <ArrowLeft size={20} />
-        </button>
+        <BackButton className="absolute top-12 left-12 z-20" />
       </section>
 
       {/* Content Section */}

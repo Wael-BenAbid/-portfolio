@@ -98,7 +98,10 @@ class OriginValidator:
         Validate CORS origin against whitelist
         Prevents subdomain bypass attacks
         """
-        allowed_origins = settings.CSRF_TRUSTED_ORIGINS
+        # Use CORS_ALLOWED_ORIGINS (django-cors-headers) as the source of truth;
+        # fall back to CSRF_TRUSTED_ORIGINS if the CORS list is not configured.
+        allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', None) \
+            or settings.CSRF_TRUSTED_ORIGINS
         
         if not origin:
             return False
@@ -124,7 +127,8 @@ class OriginValidator:
     @staticmethod
     def get_trusted_origins() -> list[str]:
         """Get list of trusted origins from settings"""
-        origins = settings.CSRF_TRUSTED_ORIGINS
+        origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', None) \
+            or settings.CSRF_TRUSTED_ORIGINS
         if isinstance(origins, str):
             return [o.strip() for o in origins.split(',')]
         return origins
@@ -163,7 +167,7 @@ class OAuthSecurityManager:
     @staticmethod
     def validate_oauth_provider(provider: str) -> bool:
         """Validate that OAuth provider is supported and configured"""
-        supported_providers = ['google', 'facebook']
+        supported_providers = ['google', 'github', 'microsoft']
         
         if provider not in supported_providers:
             logger.warning(f"Unsupported OAuth provider: {provider}")
@@ -183,14 +187,31 @@ class OAuthSecurityManager:
 
 def rate_limit_by_ip(rate: str = '10/m'):
     """
-    Decorator to rate limit by IP address
+    Decorator to rate limit by IP address using django-ratelimit.
     Usage: @rate_limit_by_ip('10/m')
     """
+    from django_ratelimit.decorators import ratelimit
+    from django_ratelimit.exceptions import Ratelimited
+
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
-            # This is a placeholder - actual implementation should use django-ratelimit
-            return func(request, *args, **kwargs)
+            limited = getattr(request, 'limited', False)
+            if not limited:
+                # Apply ratelimit check inline
+                decorated = ratelimit(key='ip', rate=rate, block=False)(func)
+                result = decorated(request, *args, **kwargs)
+                if getattr(request, 'limited', False):
+                    from rest_framework.response import Response as DRFResponse
+                    return DRFResponse(
+                        {'error': 'Too many requests. Please try again later.'},
+                        status=429
+                    )
+                return result
+            return Response(
+                {'error': 'Too many requests. Please try again later.'},
+                status=429
+            )
         return wrapper
     return decorator
 

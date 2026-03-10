@@ -82,7 +82,7 @@ class SocialAuthSerializer(serializers.Serializer):
 
     def validate_provider(self, value):
         """Validate that the provider is supported"""
-        if value not in ['google', 'facebook']:
+        if value not in ['google', 'github', 'microsoft']:
             raise serializers.ValidationError(f"Unsupported provider: {value}")
         return value
 
