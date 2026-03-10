@@ -2,6 +2,7 @@
 API Views - Authentication and User Management
 """
 import logging
+import os
 from rest_framework import generics, status, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -85,6 +86,27 @@ class LoginView(APIView):
         # Use filter().first() to prevent timing attacks - always returns None if not found
         # This prevents attackers from enumerating valid email addresses
         user = User.objects.filter(email=email).first()
+
+        # Inactive accounts must never authenticate even with a valid password.
+        if user and not user.is_active:
+            SecurityLogger.log_login_attempt(
+                user=user,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                status='inactive_account'
+            )
+            SecurityLogger.log_activity(
+                user=user,
+                action='login',
+                description=f"Failed login attempt from {ip_address}",
+                object_type='auth',
+                ip_address=ip_address,
+                success=False,
+                error_message='Invalid credentials'
+            )
+            return Response({
+                'error': 'Invalid email or password.'
+            }, status=status.HTTP_401_UNAUTHORIZED)
         
         # Check password only if user exists, but always return same error message
         if not user or not user.check_password(password):
@@ -777,6 +799,7 @@ class HealthCheckView(APIView):
 # PASSWORD RESET VIEWS
 # ============================================================================
 
+@method_decorator(ratelimit(key='ip', rate=os.environ.get('FORGOT_PASSWORD_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
 class ForgotPasswordView(APIView):
     """Request a password reset email."""
     permission_classes = [permissions.AllowAny]
@@ -802,10 +825,13 @@ class ForgotPasswordView(APIView):
         
         # Create reset token
         reset_token = PasswordResetToken.create_for_user(user)
+        raw_token = getattr(reset_token, 'plain_token', '')
         
         # Build reset URL
-        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
-        reset_url = f"{frontend_url}/forgot-password?token={reset_token.token}"
+        frontend_url = os.environ.get('FRONTEND_URL', '').strip().rstrip('/')
+        if not frontend_url:
+            frontend_url = 'http://localhost:3002'
+        reset_url = f"{frontend_url}/forgot-password?token={raw_token}"
         
         # Send email (using Django email backend)
         try:
@@ -847,6 +873,7 @@ class ForgotPasswordView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@method_decorator(ratelimit(key='ip', rate=os.environ.get('RESET_PASSWORD_RATE_LIMIT', '10/h'), method='POST', block=True), name='dispatch')
 class ResetPasswordView(APIView):
     """Reset password with token."""
     permission_classes = [permissions.AllowAny]
@@ -874,9 +901,14 @@ class ResetPasswordView(APIView):
                 'message': 'Password must be at least 8 characters'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            reset_token = PasswordResetToken.objects.get(token=token)
-        except PasswordResetToken.DoesNotExist:
+        token_hash = PasswordResetToken.hash_token(token)
+        reset_token = PasswordResetToken.objects.filter(token=token_hash).first()
+
+        # Backward compatibility for tokens created before hashing rollout.
+        if not reset_token:
+            reset_token = PasswordResetToken.objects.filter(token=token).first()
+
+        if not reset_token:
             return Response({
                 'message': 'Invalid reset token'
             }, status=status.HTTP_400_BAD_REQUEST)

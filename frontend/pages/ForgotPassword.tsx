@@ -1,251 +1,87 @@
-import React, { useState, useRef, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, ArrowRight, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Mail, Check, Lock } from 'lucide-react';
 import { API_BASE_URL } from '../constants';
 import { BackButton } from '../components/BackButton';
 
-// ============ ADVANCED 3D BACKGROUND COMPONENTS ============
+const PolygonMesh: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-// Wave Field Background - Complex moving mesh with shader
-const WaveField = () => {
-  const mesh = useRef<THREE.Mesh>(null);
-  const material = useRef<THREE.ShaderMaterial>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const vertexShader = `
-    uniform float uTime;
-    uniform float uWaveAmplitude;
-    
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying float vWaveHeight;
-    
-    void main() {
-      vec3 pos = position;
-      
-      // Multiple wave layers
-      float wave1 = sin(pos.x * 0.3 + uTime) * cos(pos.y * 0.3 + uTime * 0.7) * uWaveAmplitude;
-      float wave2 = sin(pos.y * 0.2 + uTime * 0.5) * cos(pos.x * 0.4 + uTime * 0.3) * uWaveAmplitude * 0.7;
-      float wave3 = sin((pos.x + pos.y) * 0.15 + uTime * 0.8) * uWaveAmplitude * 0.5;
-      
-      pos.z += wave1 + wave2 + wave3;
-      pos.x += sin(pos.y * 0.2 + uTime * 0.4) * 0.2;
-      pos.y += cos(pos.x * 0.2 + uTime * 0.3) * 0.2;
-      
-      vPosition = pos;
-      vWaveHeight = (wave1 + wave2 + wave3) / uWaveAmplitude;
-      vNormal = normalize(normalMatrix * normal);
-      
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-    }
-  `;
+    let animId: number;
 
-  const fragmentShader = `
-    uniform float uTime;
-    
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying float vWaveHeight;
-    
-    void main() {
-      // Animated color based on position and time
-      float freq1 = sin(vPosition.x * 1.5 + uTime) * 0.5 + 0.5;
-      float freq2 = cos(vPosition.y * 1.5 + uTime * 0.7) * 0.5 + 0.5;
-      float freq3 = sin((vPosition.x + vPosition.y) * 0.8 + uTime * 0.5) * 0.5 + 0.5;
-      
-      // Color gradient
-      vec3 col1 = mix(vec3(0.2, 0.05, 0.6), vec3(0.8, 0.1, 0.9), freq1); // purple to magenta
-      vec3 col2 = mix(vec3(0.05, 0.3, 0.9), vec3(0.1, 0.8, 1.0), freq2); // blue to cyan
-      vec3 finalColor = mix(col1, col2, freq3);
-      
-      // Fresnel effect
-      float fresnel = dot(normalize(vNormal), normalize(vec3(0.0, 0.0, 1.0)));
-      fresnel = pow(1.0 - abs(fresnel), 3.0);
-      
-      finalColor += vec3(fresnel) * 0.5;
-      
-      gl_FragColor = vec4(finalColor, 0.8);
-    }
-  `;
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
 
-  useFrame((state) => {
-    if (material.current) {
-      material.current.uniforms.uTime.value = state.clock.elapsedTime;
-    }
-  });
+    interface Node { x: number; y: number; vx: number; vy: number; r: number }
 
-  return (
-    <mesh ref={mesh} scale={[10, 10, 1]} position={[0, 0, -6]} rotation={[0.3, 0.2, 0]}>
-      <planeGeometry args={[2, 2, 128, 128]} />
-      <shaderMaterial
-        ref={material}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={{ 
-          uTime: { value: 0 },
-          uWaveAmplitude: { value: 0.4 }
-        }}
-        side={THREE.DoubleSide}
-        transparent
-      />
-    </mesh>
-  );
-};
+    const NODE_COUNT = 90;
+    const MAX_DIST = 160;
 
-// Morphing Core - Complex transforming geometry
-const MorphingCore = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.MeshPhongMaterial>(null);
-  const positionAttribute = useRef<THREE.BufferAttribute | null>(null);
-  const originalPositions = useRef<Float32Array | null>(null);
+    const nodes: Node[] = Array.from({ length: NODE_COUNT }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 0.45,
+      vy: (Math.random() - 0.5) * 0.45,
+      r: Math.random() * 2 + 1,
+    }));
 
-  useFrame((state) => {
-    if (meshRef.current && materialRef.current) {
-      // Rotation
-      meshRef.current.rotation.x = state.clock.elapsedTime * 0.12;
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.18;
-      meshRef.current.rotation.z = state.clock.elapsedTime * 0.08;
-      
-      // Pulsation
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 1.2) * 0.2;
-      meshRef.current.scale.setScalar(scale);
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Morphing deformation
-      const geometry = meshRef.current.geometry as THREE.IcosahedronGeometry;
-      if (!positionAttribute.current) {
-        positionAttribute.current = geometry.attributes.position as THREE.BufferAttribute;
-        originalPositions.current = new Float32Array(positionAttribute.current.array as Float32Array);
-      }
+      nodes.forEach((n) => {
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < 0 || n.x > canvas.width) n.vx *= -1;
+        if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+      });
 
-      const posArray = positionAttribute.current.array as Float32Array;
-      const origArray = originalPositions.current!;
-
-      for (let i = 0; i < posArray.length; i += 3) {
-        const origX = origArray[i];
-        const origY = origArray[i + 1];
-        const origZ = origArray[i + 2];
-        const len = Math.sqrt(origX * origX + origY * origY + origZ * origZ);
-
-        const wave = Math.sin(len * 10 + state.clock.elapsedTime * 2) * 0.15;
-        const newLen = len + wave;
-
-        if (len > 0) {
-          posArray[i] = (origX / len) * newLen;
-          posArray[i + 1] = (origY / len) * newLen;
-          posArray[i + 2] = (origZ / len) * newLen;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[j].x - nodes[i].x;
+          const dy = nodes[j].y - nodes[i].y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < MAX_DIST) {
+            const alpha = (1 - d / MAX_DIST) * 0.35;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.strokeStyle = `rgba(0,210,190,${alpha})`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+          }
         }
       }
-      (positionAttribute.current as THREE.BufferAttribute).needsUpdate = true;
 
-      // Color animation
-      const hue = (state.clock.elapsedTime * 0.15) % 1;
-      materialRef.current.color.setHSL(hue, 0.8, 0.55);
-      materialRef.current.emissive.setHSL(hue, 1, 0.3);
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[0, 0, 0]}>
-      <icosahedronGeometry args={[1.2, 6]} />
-      <meshPhongMaterial
-        ref={materialRef}
-        emissiveIntensity={0.5}
-        shininess={100}
-        wireframe={false}
-      />
-    </mesh>
-  );
-};
-
-// Orbital Resonance Rings - Multiple rotating tori
-const OrbitalRings = () => {
-  const group = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (group.current) {
-      group.current.children.forEach((child: THREE.Object3D, idx: number) => {
-        child.rotation.x = state.clock.elapsedTime * (0.25 + idx * 0.12);
-        child.rotation.y = state.clock.elapsedTime * (0.18 - idx * 0.1);
-        child.rotation.z = state.clock.elapsedTime * (0.05 + idx * 0.08);
+      nodes.forEach((n) => {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,220,200,0.85)';
+        ctx.fill();
       });
-    }
-  });
 
-  return (
-    <group ref={group}>
-      {[0, 1, 2, 3].map((idx) => (
-        <mesh key={idx} scale={1.4 + idx * 0.35}>
-          <torusGeometry args={[1, 0.08, 16, 48]} />
-          <meshStandardMaterial
-            color={new THREE.Color().setHSL(0.58 + idx * 0.08, 0.9, 0.5)}
-            metalness={0.7}
-            roughness={0.25}
-            emissive={new THREE.Color().setHSL(0.58 + idx * 0.08, 1, 0.35)}
-            emissiveIntensity={0.4}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-};
+      animId = requestAnimationFrame(draw);
+    };
 
-// Dynamic Light System - Orbiting lights
-const DynamicLights = () => {
-  const light1Ref = useRef<THREE.PointLight>(null);
-  const light2Ref = useRef<THREE.PointLight>(null);
-  const light3Ref = useRef<THREE.PointLight>(null);
+    draw();
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (light1Ref.current) {
-      light1Ref.current.position.x = Math.sin(t * 0.4) * 6;
-      light1Ref.current.position.y = Math.cos(t * 0.3) * 6;
-      light1Ref.current.position.z = Math.sin(t * 0.5) * 3;
-    }
-    if (light2Ref.current) {
-      light2Ref.current.position.x = Math.cos(t * 0.35) * 6;
-      light2Ref.current.position.y = Math.sin(t * 0.45) * 6;
-      light2Ref.current.position.z = Math.cos(t * 0.5) * 3;
-    }
-    if (light3Ref.current) {
-      light3Ref.current.position.x = Math.sin(t * 0.5 + Math.PI) * 5;
-      light3Ref.current.position.y = Math.cos(t * 0.4 + Math.PI) * 5;
-      light3Ref.current.position.z = Math.sin(t * 0.6) * 4;
-    }
-  });
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
-  return (
-    <>
-      <pointLight ref={light1Ref} intensity={2.5} color="#6366f1" distance={20} />
-      <pointLight ref={light2Ref} intensity={2} color="#ec4899" distance={20} />
-      <pointLight ref={light3Ref} intensity={1.8} color="#06b6d4" distance={18} />
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[8, 8, 5]} intensity={0.7} />
-    </>
-  );
-};
-
-// 3D Background Scene - Advanced spectacle
-const AuthScene = () => {
-  return (
-    <Canvas
-      camera={{ position: [0, 0, 4], fov: 60 }}
-      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-      gl={{ antialias: true, alpha: true, toneMappingExposure: 1.1 }}
-    >
-      <color attach="background" args={['#0a0415']} />
-      <fog attach="fog" args={['#0a0415', 6, 20]} />
-      
-      <Suspense fallback={null}>
-        <DynamicLights />
-        <WaveField />
-        <MorphingCore />
-        <OrbitalRings />
-      </Suspense>
-    </Canvas>
-  );
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
 };
 
 // Main Component
@@ -296,7 +132,7 @@ const ForgotPassword: React.FC = () => {
         const data = await response.json();
         setError(data.message || 'Failed to send reset email. Please try again.');
       }
-    } catch (_err) {
+    } catch {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
@@ -346,7 +182,7 @@ const ForgotPassword: React.FC = () => {
         const data = await response.json();
         setError(data.message || 'Failed to reset password. Token may have expired.');
       }
-    } catch (_err) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -354,22 +190,34 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
-      {/* 3D Background */}
-      <div className="absolute inset-0 z-0">
-        <AuthScene />
+    <div className="relative min-h-screen bg-[#060d12] overflow-hidden">
+      <div className="fixed inset-0 z-0">
+        <PolygonMesh />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-md px-6">
-        <BackButton />
+      <div className="fixed inset-0 z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#060d12]/70 via-transparent to-[#060d12]/80" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#060d12]/60 via-transparent to-[#060d12]/60" />
+      </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-8 shadow-2xl"
-        >
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="relative z-20 min-h-screen flex items-center justify-center px-6 py-12"
+      >
+        <div className="w-full max-w-md">
+          <div className="mb-6">
+            <BackButton />
+          </div>
+
+          <div className="text-center mb-10">
+            <h1 className="font-display text-3xl font-bold tracking-widest mb-2 uppercase">Reset Password</h1>
+            <p className="text-gray-500 text-xs uppercase tracking-widest">
+              {step === 'email' ? 'Request a password reset' : 'Create a new password'}
+            </p>
+          </div>
+
+          <div className="p-10 bg-[#111] border border-gray-800 rounded-2xl shadow-2xl">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -396,53 +244,37 @@ const ForgotPassword: React.FC = () => {
               exit={{ opacity: 0 }}
               onSubmit={handleRequestReset}
               className="space-y-6"
+              autoComplete="off"
             >
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  disabled={loading}
-                />
+              <div className="space-y-2">
+                <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full bg-transparent border border-gray-800 py-4 pl-12 pr-4 focus:border-blue-500 outline-none font-display transition-colors"
+                    disabled={loading}
+                    autoComplete="off"
+                  />
+                </div>
               </div>
 
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"
-                >
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-400">{error}</p>
-                </motion.div>
-              )}
+              {error && <p className="text-red-500 text-[10px] font-display uppercase text-center">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                className="w-full py-5 bg-white text-black font-display text-xs tracking-widest uppercase hover:bg-blue-500 hover:text-white transition-all disabled:opacity-50"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    Send Reset Link
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
+                {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
 
-              <p className="text-center text-slate-400 text-sm">
+              <p className="text-center text-[10px] font-display uppercase tracking-widest text-gray-600">
                 Remember your password?{' '}
-                <a href="/auth" className="text-indigo-400 hover:text-indigo-300 font-semibold">
+                <a href="/auth" className="text-white hover:text-blue-500 transition-colors">
                   Back to Login
                 </a>
               </p>
@@ -457,62 +289,48 @@ const ForgotPassword: React.FC = () => {
               exit={{ opacity: 0 }}
               onSubmit={handleResetPassword}
               className="space-y-6"
+              autoComplete="off"
             >
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  disabled={loading}
-                />
+              <div className="space-y-2">
+                <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-transparent border border-gray-800 py-4 pl-12 pr-4 focus:border-blue-500 outline-none font-display transition-colors"
+                    disabled={loading}
+                    autoComplete="off"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  disabled={loading}
-                />
+              <div className="space-y-2">
+                <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-transparent border border-gray-800 py-4 pl-12 pr-4 focus:border-blue-500 outline-none font-display transition-colors"
+                    disabled={loading}
+                    autoComplete="off"
+                  />
+                </div>
               </div>
 
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"
-                >
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-400">{error}</p>
-                </motion.div>
-              )}
+              {error && <p className="text-red-500 text-[10px] font-display uppercase text-center">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                className="w-full py-5 bg-white text-black font-display text-xs tracking-widest uppercase hover:bg-blue-500 hover:text-white transition-all disabled:opacity-50"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Resetting...
-                  </>
-                ) : (
-                  <>
-                    Reset Password
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
+                {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </motion.form>
           )}
@@ -527,31 +345,32 @@ const ForgotPassword: React.FC = () => {
                 className="text-center py-8"
               >
                 <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full">
-                    <Check className="w-6 h-6 text-white" />
+                  <div className="p-3 bg-white rounded-full">
+                    <Check className="w-6 h-6 text-black" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">
+                <h2 className="font-display text-2xl font-bold tracking-widest mb-2 uppercase text-white">
                   {step === 'email' ? 'Email Sent!' : 'Password Reset!'}
                 </h2>
-                <p className="text-slate-400 mb-4">
+                <p className="text-gray-500 text-xs uppercase tracking-widest mb-4">
                   {step === 'email'
                     ? 'Check your email for the reset link. Redirecting to login...'
                     : 'Your password has been reset successfully. Redirecting to login...'}
                 </p>
-                <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: '100%' }}
                     transition={{ duration: 3 }}
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                    className="h-full bg-blue-500"
                   />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
-      </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

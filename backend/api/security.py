@@ -651,11 +651,14 @@ class SecurityLogger:
         Log a login attempt with device and geolocation information.
         """
         from .models import LoginActivity
-        from user_agents import parse as parse_user_agent
+        try:
+            from user_agents import parse as parse_user_agent
+        except ImportError:
+            parse_user_agent = None
         
         try:
-            # Parse user agent
-            ua = parse_user_agent(user_agent)
+            # Parse user agent when the optional dependency is installed.
+            ua = parse_user_agent(user_agent) if parse_user_agent else None
             
             # Create login activity record
             activity = LoginActivity.objects.create(
@@ -663,13 +666,14 @@ class SecurityLogger:
                 status=status,
                 ip_address=ip_address,
                 user_agent=user_agent[:1000],  # Truncate long user agents
-                device_type=ua.device.family or '',
-                browser=f"{ua.browser.family or ''} {ua.browser.version_string or ''}".strip(),
-                os=f"{ua.os.family or ''} {ua.os.version_string or ''}".strip(),
+                device_type=(ua.device.family if ua else '') or '',
+                browser=(f"{ua.browser.family or ''} {ua.browser.version_string or ''}".strip() if ua else ''),
+                os=(f"{ua.os.family or ''} {ua.os.version_string or ''}".strip() if ua else ''),
             )
             
             # Log to Python logger
-            logger.info(f"Login {status.upper()}: {user.email if user else 'Unknown'} from {ip_address} via {ua.browser.family}")
+            browser_family = ua.browser.family if ua else 'unknown-browser'
+            logger.info(f"Login {status.upper()}: {user.email if user else 'Unknown'} from {ip_address} via {browser_family}")
             
             # Check for brute force
             if status in ['failed', 'invalid_credentials']:

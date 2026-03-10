@@ -5,6 +5,7 @@ Other models have been separated into microservice apps.
 import uuid
 import os
 import secrets
+import hashlib
 from django.db import models
 from django.utils.text import slugify, get_valid_filename
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -813,6 +814,11 @@ class PasswordResetToken(models.Model):
         """Check if token is still valid (not expired and not used)."""
         from django.utils import timezone
         return not self.used and timezone.now() < self.expires_at
+
+    @staticmethod
+    def hash_token(raw_token: str) -> str:
+        """Return deterministic hash for a raw reset token."""
+        return hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
     
     @staticmethod
     def create_for_user(user):
@@ -822,6 +828,7 @@ class PasswordResetToken(models.Model):
         from datetime import timedelta
         
         token = secrets.token_urlsafe(32)
+        token_hash = PasswordResetToken.hash_token(token)
         expires_at = timezone.now() + timedelta(hours=24)
         
         # Invalidate all previous tokens
@@ -829,7 +836,9 @@ class PasswordResetToken(models.Model):
         
         reset_token = PasswordResetToken.objects.create(
             user=user,
-            token=token,
+            token=token_hash,
             expires_at=expires_at
         )
+        # Plain token must never be persisted; keep it in-memory for email delivery.
+        reset_token.plain_token = token
         return reset_token
