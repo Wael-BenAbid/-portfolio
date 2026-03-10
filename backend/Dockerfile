@@ -44,7 +44,8 @@ RUN chmod +x /app/entrypoint.sh
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DJANGO_SETTINGS_MODULE=portfolio.settings.prod
 
 # Switch to non-root user
 USER appuser
@@ -58,10 +59,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Use entrypoint script to run migrations before starting
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "portfolio.wsgi:application", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "4", \
-     "--worker-class", "sync", \
-     "--timeout", "30", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+CMD ["gunicorn", "portfolio.wsgi:application", "-c", "/app/gunicorn.conf.py"]

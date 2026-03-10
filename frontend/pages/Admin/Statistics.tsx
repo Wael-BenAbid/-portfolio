@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Users, Eye, Heart, Calendar, BarChart2, Activity, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
 import { BackButton } from '../../components/BackButton';
+import { useAuth } from '../../App';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ const Statistics: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchStatistics();
@@ -141,6 +143,13 @@ const Statistics: React.FC = () => {
   const fetchStatistics = async () => {
     setLoading(true);
     setError(null);
+
+    if (user?.user_type !== 'admin') {
+      setError('Acces refuse: statistiques reservees aux comptes admin.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const [projectsRes, visitorsRes, activityRes] = await Promise.all([
         fetch(`${API_BASE_URL}/projects/`, { credentials: 'include' }),
@@ -170,13 +179,17 @@ const Statistics: React.FC = () => {
       })).sort((a, b) => b.views - a.views);
 
       let visitorsCount = 0;
-      if (visitorsRes.ok) {
+      if (visitorsRes.status === 403) {
+        setError('Acces refuse: impossible de charger les visiteurs sans droits admin.');
+      } else if (visitorsRes.ok) {
         const vData = await visitorsRes.json();
         visitorsCount = vData.count || 0;
       }
 
       let recentActivity: ActivityEntry[] = [];
-      if (activityRes.ok) {
+      if (activityRes.status === 403) {
+        setError('Acces refuse: impossible de charger le journal d\'activite sans droits admin.');
+      } else if (activityRes.ok) {
         const aData = await activityRes.json();
         recentActivity = (aData.results || aData).slice(0, 8);
       }

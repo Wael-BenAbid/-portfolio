@@ -9,7 +9,7 @@ def main():
     # Add the current directory to Python path so 'api' module can be found
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'portfolio.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'portfolio.settings.dev')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

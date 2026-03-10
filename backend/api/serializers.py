@@ -547,6 +547,10 @@ class MediaUploadSerializer(serializers.ModelSerializer):
 
 class VisitorSerializer(serializers.ModelSerializer):
     """Serializer for visitor tracking data."""
+    # Keep `ip_address` in API responses for backward compatibility,
+    # but source it from GDPR-safe anonymized_ip.
+    ip_address = serializers.CharField(source='anonymized_ip', read_only=True)
+
     class Meta:
         model = Visitor
         fields = [

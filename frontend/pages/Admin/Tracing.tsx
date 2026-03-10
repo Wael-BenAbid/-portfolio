@@ -86,7 +86,7 @@ const Tracing: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [detailType, setDetailType] = useState<DetailType>(null);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -95,6 +95,13 @@ const Tracing: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+
+    if (user?.user_type !== 'admin') {
+      setError('Acces refuse: le tracage est reserve aux comptes admin.');
+      setLoading(false);
+      return;
+    }
+
     try {
       if (activeTab === 'logins') {
         await fetchLoginActivities();
@@ -114,6 +121,7 @@ const Tracing: React.FC = () => {
     const response = await fetch(`${API_BASE_URL}/security/login-activities/`, {
       credentials: 'include'
     });
+    if (response.status === 403) throw new Error('Acces refuse: login activities reserve aux admins.');
     if (!response.ok) throw new Error('Failed to fetch login activities');
     const data = await response.json();
     setLoginActivities(data.results || data);
@@ -123,6 +131,7 @@ const Tracing: React.FC = () => {
     const response = await fetch(`${API_BASE_URL}/security/activity-logs/`, {
       credentials: 'include'
     });
+    if (response.status === 403) throw new Error('Acces refuse: activity logs reserves aux admins.');
     if (!response.ok) throw new Error('Failed to fetch activity logs');
     const data = await response.json();
     setActivityLogs(data.results || data);
@@ -132,6 +141,7 @@ const Tracing: React.FC = () => {
     const response = await fetch(`${API_BASE_URL}/security/alerts/`, {
       credentials: 'include'
     });
+    if (response.status === 403) throw new Error('Acces refuse: security alerts reserves aux admins.');
     if (!response.ok) throw new Error('Failed to fetch security alerts');
     const data = await response.json();
     setSecurityAlerts(data.results || data);

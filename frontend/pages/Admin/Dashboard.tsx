@@ -34,7 +34,7 @@ const Dashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { token, logout, isAuthenticated } = useAuth();
+  const { token, logout, isAuthenticated, user } = useAuth();
 
   // View mode: projects or registrations
   const [viewMode, setViewMode] = useState<'projects' | 'registrations'>('projects');
@@ -59,14 +59,32 @@ const Dashboard: React.FC = () => {
   const [regLoading, setRegLoading] = useState(false);
   const [regFilter, setRegFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [regDetail, setRegDetail] = useState<Registration | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [contactTarget, setContactTarget] = useState<Registration | null>(null);
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSending, setContactSending] = useState(false);
 
   const fetchRegistrations = async () => {
+    if (user?.user_type !== 'admin') {
+      setError('Acces refuse: cette section est reservee aux comptes admin.');
+      setRegistrations([]);
+      return;
+    }
+
     setRegLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/projects/registrations/`, { credentials: 'include' });
+      if (res.status === 403) {
+        setError('Acces refuse: vous devez etre connecte avec un compte admin pour voir les inscriptions.');
+        setRegistrations([]);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setRegistrations(data.results || data);
+      } else {
+        setError(`Impossible de charger les inscriptions (status ${res.status}).`);
       }
     } catch {}
     setRegLoading(false);
@@ -74,7 +92,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (viewMode === 'registrations') fetchRegistrations();
-  }, [viewMode]);
+  }, [viewMode, user?.user_type]);
 
   const updateRegistrationStatus = async (id: number, status: Registration['status']) => {
     try {
@@ -89,6 +107,49 @@ const Dashboard: React.FC = () => {
         if (regDetail?.id === id) setRegDetail(prev => prev ? { ...prev, status } : null);
       }
     } catch {}
+  };
+
+  const openContactModal = (reg: Registration) => {
+    setContactTarget(reg);
+    setContactSubject(`Concernant votre inscription: ${reg.project_title}`);
+    setContactMessage('');
+  };
+
+  const sendContactMessage = async () => {
+    if (!contactTarget) return;
+    if (!contactMessage.trim()) {
+      setError('Le message est obligatoire.');
+      return;
+    }
+
+    setContactSending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/registrations/${contactTarget.id}/contact/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: contactSubject, message: contactMessage }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.detail || 'Erreur lors de l\'envoi du message.');
+        return;
+      }
+
+      setSuccessMessage(data.email_sent
+        ? 'Message envoye. Un email de notification a ete envoye automatiquement.'
+        : 'Message envoye dans la plateforme.');
+      setContactTarget(null);
+      setContactSubject('');
+      setContactMessage('');
+      setTimeout(() => setSuccessMessage(null), 4500);
+    } catch {
+      setError('Impossible d\'envoyer le message pour le moment.');
+    } finally {
+      setContactSending(false);
+    }
   };
 
 
@@ -565,6 +626,18 @@ const Dashboard: React.FC = () => {
             <button
               onClick={() => setError(null)}
               className="text-red-400 hover:text-red-300 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center justify-between">
+            <span className="text-green-400 font-display text-sm">{successMessage}</span>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="text-green-400 hover:text-green-300 transition-colors"
             >
               <X size={20} />
             </button>
@@ -1347,12 +1420,12 @@ const Dashboard: React.FC = () => {
                             Annuler
                           </button>
                         )}
-                        <a
-                          href={`mailto:${reg.user_email}?subject=Inscription - ${reg.project_title}`}
+                        <button
+                          onClick={() => openContactModal(reg)}
                           className="px-3 py-1.5 text-[9px] font-display uppercase tracking-widest bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 rounded transition-all text-center"
                         >
                           Contacter
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -1480,6 +1553,59 @@ const Dashboard: React.FC = () => {
                   Delete
                 </button>
               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {contactTarget && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#111] border border-gray-800 p-8 max-w-xl w-full"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display text-lg font-bold uppercase">Envoyer un message</h3>
+              <button onClick={() => setContactTarget(null)} className="hover:text-red-500 transition-colors" aria-label="Close">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 mb-4">
+              Destinataire: <span className="text-blue-400">{contactTarget.user_email}</span>
+            </p>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={contactSubject}
+                onChange={(e) => setContactSubject(e.target.value)}
+                className="w-full bg-transparent border border-gray-800 py-3 px-4 focus:border-blue-500 outline-none font-display text-sm"
+                placeholder="Objet"
+              />
+              <textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                className="w-full bg-transparent border border-gray-800 py-3 px-4 focus:border-blue-500 outline-none font-display h-32 text-sm"
+                placeholder="Votre message..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setContactTarget(null)}
+                className="px-5 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors text-xs font-display uppercase tracking-widest"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={sendContactMessage}
+                disabled={contactSending}
+                className="px-5 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white transition-colors text-xs font-display uppercase tracking-widest flex items-center gap-2"
+              >
+                {contactSending ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} Envoyer
+              </button>
             </div>
           </motion.div>
         </div>

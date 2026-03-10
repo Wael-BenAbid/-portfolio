@@ -7,6 +7,7 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
+from django.conf import settings
 import os
 
 from .models import Project, Skill, MediaItem, ProjectRegistration
@@ -289,4 +290,88 @@ class ProjectRegistrationUpdateView(generics.UpdateAPIView):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class ProjectRegistrationContactView(APIView):
+    """Admin: send a platform message + email notification to a registrant."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        registration = get_object_or_404(
+            ProjectRegistration.objects.select_related('user', 'project'),
+            pk=pk,
+        )
+        recipient = registration.user
+
+        subject = (request.data.get('subject') or '').strip()
+        message_text = (request.data.get('message') or '').strip()
+
+        if not message_text:
+            return Response({'detail': 'Message is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not subject:
+            subject = f"Concernant votre inscription: {registration.project.title}"
+
+        admin_name = request.user.get_full_name().strip() or request.user.email
+
+        # Store message in the platform so the user can read it from settings.
+        try:
+            from content.models import ContactMessage
+
+            ContactMessage.objects.create(
+                name=admin_name,
+                email=request.user.email or settings.DEFAULT_FROM_EMAIL or 'no-reply@localhost',
+                subject=subject,
+                message=message_text,
+                user=recipient,
+                status='new',
+            )
+        except Exception:
+            # Continue with notification/email even if message persistence fails.
+            pass
+
+        try:
+            from interactions.models import Notification
+
+            notif = Notification.objects.create(
+                title='Nouveau message concernant votre inscription',
+                message=f"Vous avez reçu un nouveau message au sujet du projet « {registration.project.title} ».",
+                notification_type='message',
+                link='/settings',
+            )
+            notif.recipients.add(recipient)
+        except Exception:
+            pass
+
+        email_sent = False
+        try:
+            from django.core.mail import send_mail
+
+            if recipient.email:
+                from_email = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER
+                if from_email:
+                    send_mail(
+                        subject=f"Nouveau message sur la plateforme - {registration.project.title}",
+                        message=(
+                            f"Bonjour {recipient.first_name or recipient.email},\n\n"
+                            f"Vous avez reçu un nouveau message concernant votre inscription au projet \"{registration.project.title}\".\n"
+                            "Connectez-vous à la plateforme pour le consulter dans vos messages.\n\n"
+                            f"Objet: {subject}\n\n"
+                            "Ceci est un email de notification automatique."
+                        ),
+                        from_email=from_email,
+                        recipient_list=[recipient.email],
+                        fail_silently=False,
+                    )
+                    email_sent = True
+        except Exception:
+            email_sent = False
+
+        return Response(
+            {
+                'detail': 'Message sent successfully.',
+                'email_sent': email_sent,
+            },
+            status=status.HTTP_200_OK,
+        )
 

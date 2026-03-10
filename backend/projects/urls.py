@@ -16,6 +16,7 @@ urlpatterns = [
     # Registrations (admin list - before slug route)
     path('registrations/', views.ProjectRegistrationListView.as_view(), name='registrations-list'),
     path('registrations/<int:pk>/status/', views.ProjectRegistrationUpdateView.as_view(), name='registration-update'),
+    path('registrations/<int:pk>/contact/', views.ProjectRegistrationContactView.as_view(), name='registration-contact'),
 
     # Projects - Keep at end to avoid URL conflicts
     path('', views.ProjectListCreate.as_view(), name='project-list-create'),
