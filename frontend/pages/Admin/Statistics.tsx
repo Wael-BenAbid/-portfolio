@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Eye, Heart, Calendar, BarChart2, Activity, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
+import { authFetch } from '../../services/api';
 import { BackButton } from '../../components/BackButton';
 import { useAuth } from '../../App';
 
@@ -152,9 +153,9 @@ const Statistics: React.FC = () => {
 
     try {
       const [projectsRes, visitorsRes, activityRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/projects/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/auth/visitors/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/security/activity-logs/?page_size=8`, { credentials: 'include' }),
+        authFetch(`${API_BASE_URL}/projects/`),
+        authFetch(`${API_BASE_URL}/auth/visitors/`),
+        authFetch(`${API_BASE_URL}/security/activity-logs/?page_size=8`),
       ]);
 
       if (!projectsRes.ok) {

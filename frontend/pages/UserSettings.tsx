@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { User, Save, Bell, Lock, Loader2, CheckCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../App';
 import { API_BASE_URL, API_ENDPOINTS } from '../constants';
+import { authFetch } from '../services/api';
 import { getCookie } from '../utils/cookies';
 import { BackButton } from '../components/BackButton';
 
@@ -70,7 +71,7 @@ const UserSettings: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'messages' && messages.length === 0) {
       setMessagesLoading(true);
-      fetch(`${API_BASE_URL}/contact/my-messages/`, { credentials: 'include' })
+      authFetch(`${API_BASE_URL}/contact/my-messages/`)
         .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => setMessages(Array.isArray(data) ? data : data.results ?? []))
         .catch(() => {})
@@ -78,7 +79,7 @@ const UserSettings: React.FC = () => {
     }
     if (activeTab === 'notifications' && notifications.length === 0) {
       setNotifLoading(true);
-      fetch(`${API_BASE_URL}/interactions/notifications/`, { credentials: 'include' })
+      authFetch(`${API_BASE_URL}/interactions/notifications/`)
         .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => setNotifications(Array.isArray(data) ? data : data.results ?? []))
         .catch(() => {})
@@ -88,9 +89,8 @@ const UserSettings: React.FC = () => {
 
   const markNotifRead = async (id: number) => {
     const csrfToken = getCookie('csrftoken') || '';
-    await fetch(`${API_BASE_URL}/interactions/notifications/${id}/read/`, {
+    await authFetch(`${API_BASE_URL}/interactions/notifications/${id}/read/`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'X-CSRFToken': csrfToken },
     }).catch(() => {});
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -111,9 +111,8 @@ const UserSettings: React.FC = () => {
     setSaved(false);
     try {
       const csrfToken = getCookie('csrftoken') || '';
-      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE_UPDATE}`, {
+      const res = await authFetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE_UPDATE}`, {
         method: 'PATCH',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify(form),
       });
@@ -144,9 +143,8 @@ const UserSettings: React.FC = () => {
     setPwSaved(false);
     try {
       const csrfToken = getCookie('csrftoken') || '';
-      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PASSWORD_CHANGE}`, {
+      const res = await authFetch(`${API_BASE_URL}${API_ENDPOINTS.PASSWORD_CHANGE}`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({
           current_password: pwForm.current_password,

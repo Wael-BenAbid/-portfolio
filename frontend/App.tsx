@@ -13,7 +13,7 @@ import { Scene3D } from './components/Scene3D';
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
-import { setAuthToken } from './services/api';
+import { setAuthToken, authFetch } from './services/api';
 import { useSettings } from './hooks/useData';
 
 // Initialize Sentry for error tracking
@@ -165,8 +165,7 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
         if (storedToken) {
           headers['Authorization'] = `Bearer ${storedToken}`;
         }
-        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
-          credentials: 'include',
+        const response = await authFetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
           headers,
         });
         
@@ -215,9 +214,8 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
       if (csrfToken) headers['X-CSRFToken'] = csrfToken;
       if (storedToken) headers['Authorization'] = `Bearer ${storedToken}`;
 
-      await fetch(`${API_BASE_URL}/auth/logout/`, {
+      await authFetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
-        credentials: 'include',
         headers,
       });
     } catch (error) {
@@ -342,7 +340,7 @@ const PasswordChangeModal: React.FC = () => {
     setLoading(true);
     try {
       // Use the same API_BASE_URL as login to ensure cookies are sent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PASSWORD_CHANGE}`, {
+      const response = await authFetch(`${API_BASE_URL}${API_ENDPOINTS.PASSWORD_CHANGE}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -350,7 +348,6 @@ const PasswordChangeModal: React.FC = () => {
           new_password: newPassword,
           confirm_password: confirmPassword
         }),
-        credentials: 'include',  // Include cookies for authentication
       });
 
       if (response.ok) {

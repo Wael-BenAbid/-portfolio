@@ -26,7 +26,13 @@ class Command(BaseCommand):
             user.is_staff = True
             user.is_superuser = True
             user.user_type = 'admin'
-            user.save(update_fields=['is_staff', 'is_superuser', 'user_type'])
+            fields_to_update = ['is_staff', 'is_superuser', 'user_type']
+            # Also set password if provided (useful for Google OAuth users with no password)
+            password = options.get('password')
+            if password:
+                user.set_password(password)
+                fields_to_update.append('password')
+            user.save(update_fields=fields_to_update)
             self.stdout.write(self.style.SUCCESS(
                 f'User "{email}" promoted to admin/superuser.'
             ))

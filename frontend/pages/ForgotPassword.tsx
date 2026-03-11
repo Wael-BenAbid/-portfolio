@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Check, Lock } from 'lucide-react';
 import { API_BASE_URL } from '../constants';
+import { authFetch } from '../services/api';
 import { BackButton } from '../components/BackButton';
 
 const PolygonMesh: React.FC = () => {
@@ -116,10 +117,9 @@ const ForgotPassword: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password/`, {
+      const response = await authFetch(`${API_BASE_URL}/auth/forgot-password/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email })
       });
 
@@ -161,10 +161,9 @@ const ForgotPassword: React.FC = () => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('reset_token');
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password/`, {
+      const response = await authFetch(`${API_BASE_URL}/auth/reset-password/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           token,
           password: newPassword,

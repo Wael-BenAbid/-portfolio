@@ -11,6 +11,7 @@ import LikeButton from '../components/LikeButton';
 import { BackButton } from '../components/BackButton';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
+import { authFetch } from '../services/api';
 
 const ProjectDetail: React.FC = () => {
   const { slug } = useParams();
@@ -35,7 +36,7 @@ const ProjectDetail: React.FC = () => {
   // Check if user is already registered when component loads
   useEffect(() => {
     if (isAuthenticated && slug && project?.show_registration) {
-      fetch(`${API_BASE_URL}/projects/${slug}/register/status/`, { credentials: 'include' })
+      authFetch(`${API_BASE_URL}/projects/${slug}/register/status/`)
         .then(r => r.json())
         .then(data => { if (data.registered) setRegStatus('already'); })
         .catch(() => {});
@@ -54,9 +55,8 @@ const ProjectDetail: React.FC = () => {
     setRegStatus('loading');
     setRegError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/projects/${slug}/register/`, {
+      const res = await authFetch(`${API_BASE_URL}/projects/${slug}/register/`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });

@@ -14,6 +14,7 @@ import {
   Info
 } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
+import { authFetch } from '../../services/api';
 import { useAuth } from '../../App';
 import { BackButton } from '../../components/BackButton';
 
@@ -118,9 +119,7 @@ const Tracing: React.FC = () => {
   };
 
   const fetchLoginActivities = async () => {
-    const response = await fetch(`${API_BASE_URL}/security/login-activities/`, {
-      credentials: 'include'
-    });
+    const response = await authFetch(`${API_BASE_URL}/security/login-activities/`);
     if (response.status === 403) throw new Error('Acces refuse: login activities reserve aux admins.');
     if (!response.ok) throw new Error('Failed to fetch login activities');
     const data = await response.json();
@@ -128,9 +127,7 @@ const Tracing: React.FC = () => {
   };
 
   const fetchActivityLogs = async () => {
-    const response = await fetch(`${API_BASE_URL}/security/activity-logs/`, {
-      credentials: 'include'
-    });
+    const response = await authFetch(`${API_BASE_URL}/security/activity-logs/`);
     if (response.status === 403) throw new Error('Acces refuse: activity logs reserves aux admins.');
     if (!response.ok) throw new Error('Failed to fetch activity logs');
     const data = await response.json();
@@ -138,9 +135,7 @@ const Tracing: React.FC = () => {
   };
 
   const fetchSecurityAlerts = async () => {
-    const response = await fetch(`${API_BASE_URL}/security/alerts/`, {
-      credentials: 'include'
-    });
+    const response = await authFetch(`${API_BASE_URL}/security/alerts/`);
     if (response.status === 403) throw new Error('Acces refuse: security alerts reserves aux admins.');
     if (!response.ok) throw new Error('Failed to fetch security alerts');
     const data = await response.json();

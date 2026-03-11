@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Heart } from 'lucide-react';
 import FloatingHearts from './FloatingHearts';
 import { API_BASE_URL } from '../constants';
+import { authFetch } from '../services/api';
 
 interface LikeButtonProps {
   contentId: number;
@@ -31,11 +32,10 @@ const LikeButton: React.FC<LikeButtonProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE_URL}/interactions/like/${contentType}/${contentId}/`,
         {
           method: 'POST',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },

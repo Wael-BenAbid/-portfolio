@@ -49,6 +49,20 @@ export const setAuthToken = (token: string | null): void => {
 };
 
 /**
+ * Drop-in replacement for native fetch() that automatically injects
+ * the Authorization: Bearer header when a token exists in sessionStorage.
+ * Use this instead of raw fetch() for all API calls that need auth.
+ */
+export const authFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const token = getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(input, { ...init, credentials: 'include', headers });
+};
+
+/**
  * Build full URL with query parameters
  */
 export const buildURL = (endpoint: string, params?: Record<string, string | number>): string => {

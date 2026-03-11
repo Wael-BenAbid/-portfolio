@@ -6,6 +6,7 @@ import { useAuth } from '../../App';
 import { useNavigate } from 'react-router-dom';
 import { BackButton } from '../../components/BackButton';
 import { API_BASE_URL } from '../../constants';
+import { authFetch } from '../../services/api';
 
 interface SiteSettings {
   id?: number;
@@ -158,9 +159,7 @@ const CV: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/`, {
-        credentials: 'include',
-      });
+      const response = await authFetch(`${API_BASE_URL}/settings/`);
       if (response.ok) {
         const data = await response.json();
         // Convert null values to empty strings to prevent controlled/uncontrolled input warnings
@@ -177,13 +176,13 @@ const CV: React.FC = () => {
   const fetchCVData = async () => {
     try {
       const [expRes, eduRes, skillRes, langRes, certRes, projRes, intRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/cv/experiences/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/education/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/skills/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/languages/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/certifications/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/projects/`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/cv/interests/`, { credentials: 'include' })
+        authFetch(`${API_BASE_URL}/cv/experiences/`),
+        authFetch(`${API_BASE_URL}/cv/education/`),
+        authFetch(`${API_BASE_URL}/cv/skills/`),
+        authFetch(`${API_BASE_URL}/cv/languages/`),
+        authFetch(`${API_BASE_URL}/cv/certifications/`),
+        authFetch(`${API_BASE_URL}/cv/projects/`),
+        authFetch(`${API_BASE_URL}/cv/interests/`)
       ]);
       
       if (expRes.ok) {
@@ -233,10 +232,9 @@ const CV: React.FC = () => {
     setUploadingField(field);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/upload/`, {
+      const response = await authFetch(`${API_BASE_URL}/settings/upload/`, {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -253,8 +251,7 @@ const CV: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/`, {
-        credentials: 'include',
+      const response = await authFetch(`${API_BASE_URL}/settings/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -445,13 +442,12 @@ const CV: React.FC = () => {
         ? `${API_BASE_URL}/cv/experiences/${editingExperience.id}/`
         : `${API_BASE_URL}/cv/experiences/`;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingExperience),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -476,8 +472,7 @@ const CV: React.FC = () => {
   const handleDeleteExperience = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/experiences/${id}/`, {
-        credentials: 'include',
+      const response = await authFetch(`${API_BASE_URL}/cv/experiences/${id}/`, {
         method: 'DELETE',
       });
 
@@ -1653,13 +1648,12 @@ const CV: React.FC = () => {
         ? `${API_BASE_URL}/cv/education/${editingEducation.id}/`
         : `${API_BASE_URL}/cv/education/`;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingEducation),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1684,11 +1678,8 @@ const CV: React.FC = () => {
   const handleDeleteEducation = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/education/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/education/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {
@@ -1707,13 +1698,12 @@ const CV: React.FC = () => {
         ? `${API_BASE_URL}/cv/skills/${editingSkill.id}/`
         : `${API_BASE_URL}/cv/skills/`;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingSkill),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1738,11 +1728,8 @@ const CV: React.FC = () => {
   const handleDeleteSkill = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/skills/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/skills/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {
@@ -1761,13 +1748,12 @@ const CV: React.FC = () => {
         ? `${API_BASE_URL}/cv/languages/${editingLanguage.id}/`
         : `${API_BASE_URL}/cv/languages/`;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingLanguage),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1792,11 +1778,8 @@ const CV: React.FC = () => {
   const handleDeleteLanguage = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/languages/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/languages/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {
@@ -1823,13 +1806,12 @@ const CV: React.FC = () => {
         expiry_date: expiration_date,
       };
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(backendData),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1854,11 +1836,8 @@ const CV: React.FC = () => {
   const handleDeleteCertification = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/certifications/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/certifications/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {
@@ -1886,13 +1865,12 @@ const CV: React.FC = () => {
       delete backendData.live_url;
       delete backendData.image_url;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(backendData),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1917,11 +1895,8 @@ const CV: React.FC = () => {
   const handleDeleteProject = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/projects/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/projects/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {
@@ -1940,13 +1915,12 @@ const CV: React.FC = () => {
         ? `${API_BASE_URL}/cv/interests/${editingInterest.id}/`
         : `${API_BASE_URL}/cv/interests/`;
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingInterest),
-        credentials: 'include',
       });
 
       if (response.ok) {
@@ -1971,11 +1945,8 @@ const CV: React.FC = () => {
   const handleDeleteInterest = async (id: number | undefined) => {
     if (!id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/cv/interests/${id}/`, {
-        credentials: 'include',
-        
+      const response = await authFetch(`${API_BASE_URL}/cv/interests/${id}/`, {
         method: 'DELETE',
-        
       });
 
       if (response.ok) {

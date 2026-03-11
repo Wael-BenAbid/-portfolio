@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Save, LayoutDashboard, Globe, Key, Mail, Users, MapPin, Image, Upload, Loader2, Plus, Trash2, Edit2, X, User, Sparkles, Type } from 'lucide-react';
 import { useAuth } from '../../App';
 import { API_BASE_URL } from '../../constants';
+import { authFetch } from '../../services/api';
 
 const API_URL = API_BASE_URL;
 
@@ -203,9 +204,7 @@ const Settings: React.FC = () => {
 
   const fetchContactMessages = async () => {
     try {
-      const response = await fetch(`${API_URL}/settings/contact/messages/`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`${API_URL}/settings/contact/messages/`);
       if (response.ok) {
         const data = await response.json();
         setContactMessages(data.results || data);
@@ -261,9 +260,7 @@ const Settings: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/admin/users/`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`${API_URL}/auth/admin/users/`);
       if (response.ok) {
         const data = await response.json();
         setUsers(data.results || data);
@@ -276,13 +273,11 @@ const Settings: React.FC = () => {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_URL}/settings/`, {
+      const response = await authFetch(`${API_URL}/settings/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify(settings)
       });
       if (response.ok) {
@@ -296,13 +291,11 @@ const Settings: React.FC = () => {
 
   const handleUpdateUserType = async (userId: number, userType: string) => {
     try {
-      const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
+      const response = await authFetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify({ user_type: userType })
       });
       if (response.ok) {
@@ -357,13 +350,11 @@ const Settings: React.FC = () => {
         }
       });
       
-      const response = await fetch(`${API_URL}/auth/admin/users/${editingUser.id}/`, {
+      const response = await authFetch(`${API_URL}/auth/admin/users/${editingUser.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify(dataToSend)
       });
       
@@ -396,12 +387,8 @@ const Settings: React.FC = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/auth/admin/users/${userId}/`, {
+      const response = await authFetch(`${API_URL}/auth/admin/users/${userId}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include'
       });
       
       if (response.ok) {
@@ -436,12 +423,8 @@ const Settings: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`${API_URL}/settings/upload/`, {
+      const response = await authFetch(`${API_URL}/settings/upload/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include',
         body: formData
       });
 
@@ -491,13 +474,11 @@ const Settings: React.FC = () => {
     if (!selectedMessage) return;
     
     try {
-      const response = await fetch(`${API_URL}/settings/contact/${selectedMessage.id}/reply/`, {
+      const response = await authFetch(`${API_URL}/settings/contact/${selectedMessage.id}/reply/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify({ reply: replyText })
       });
       

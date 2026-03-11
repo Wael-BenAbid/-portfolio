@@ -5,6 +5,7 @@ import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity, ClipboardList, ChevronDown, Mail, Phone, MessageSquare } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
+import { authFetch } from '../../services/api';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
 import { NotificationBell } from '../../components/NotificationBell';
@@ -74,7 +75,7 @@ const Dashboard: React.FC = () => {
 
     setRegLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/projects/registrations/`, { credentials: 'include' });
+      const res = await authFetch(`${API_BASE_URL}/projects/registrations/`);
       if (res.status === 403) {
         setError('Acces refuse: vous devez etre connecte avec un compte admin pour voir les inscriptions.');
         setRegistrations([]);
@@ -96,9 +97,8 @@ const Dashboard: React.FC = () => {
 
   const updateRegistrationStatus = async (id: number, status: Registration['status']) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/projects/registrations/${id}/status/`, {
+      const res = await authFetch(`${API_BASE_URL}/projects/registrations/${id}/status/`, {
         method: 'PATCH',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
@@ -125,9 +125,8 @@ const Dashboard: React.FC = () => {
     setContactSending(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/projects/registrations/${contactTarget.id}/contact/`, {
+      const res = await authFetch(`${API_BASE_URL}/projects/registrations/${contactTarget.id}/contact/`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject: contactSubject, message: contactMessage }),
       });
@@ -159,9 +158,7 @@ const Dashboard: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`${API_BASE_URL}/projects/`);
       
       if (response.ok) {
         const data = await response.json();
@@ -193,9 +190,8 @@ const Dashboard: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${API_BASE_URL}/auth/upload/`, {
+      const response = await authFetch(`${API_BASE_URL}/auth/upload/`, {
         method: 'POST',
-        credentials: 'include',
         body: formData
       });
       
@@ -264,9 +260,8 @@ const Dashboard: React.FC = () => {
       const mediaLength = isEdit && editingProject ? editingProject.media?.length ?? 0 : newProject.media?.length ?? 0;
       formData.append('order', String(mediaLength));
       
-      const response = await fetch(`${API_BASE_URL}/projects/media/create/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/media/create/`, {
         method: 'POST',
-        credentials: 'include',
         body: formData
       });
       
@@ -333,9 +328,8 @@ const Dashboard: React.FC = () => {
       const project = projects.find(p => p.id === deleteProjectId);
       if (!project) return;
       
-      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'DELETE',
-        credentials: 'include'
       });
       if (response.ok) {
         setProjects(projects.filter(p => p.id !== deleteProjectId));
@@ -359,10 +353,9 @@ const Dashboard: React.FC = () => {
     if (!project) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ is_active: !project.is_active })
       });
       if (response.ok) {
@@ -390,10 +383,9 @@ const Dashboard: React.FC = () => {
     if (!project) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${project.slug}/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/${project.slug}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ featured: !project.featured })
       });
       if (response.ok) {
@@ -487,12 +479,11 @@ const Dashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify(project)
       });
       if (response.ok) {
@@ -535,19 +526,16 @@ const Dashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
+      const response = await authFetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify(projectWithoutMedia)
       });
       if (response.ok) {
         // Fetch the updated project from API to get fresh data
-        const getResponse = await fetch(`${API_BASE_URL}/projects/${editingProject.slug}/`, {
-          credentials: 'include'
-        });
+        const getResponse = await authFetch(`${API_BASE_URL}/projects/${editingProject.slug}/`);
         if (getResponse.ok) {
           const updatedProject = await getResponse.json();
           const updated = projects.map(p => p.id === editingProject.id ? updatedProject : p);
@@ -1095,9 +1083,8 @@ const Dashboard: React.FC = () => {
                           // Only attempt to delete from backend if it has a real ID that exists in the database
                           if (mediaItem.id && !String(mediaItem.id).startsWith('m-')) {
                             try {
-                              const response = await fetch(`${API_BASE_URL}/projects/media/delete/${mediaItem.id}/`, {
+                              const response = await authFetch(`${API_BASE_URL}/projects/media/delete/${mediaItem.id}/`, {
                                 method: 'DELETE',
-                                credentials: 'include'
                               });
                               
                               if (!response.ok) {
