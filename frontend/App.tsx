@@ -129,19 +129,19 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
    */
   const getUserFromSession = (): User | null => {
     try {
-      const stored = sessionStorage.getItem('auth_user');
+      const stored = localStorage.getItem('auth_user');
       if (!stored) return null;
       
       const user = JSON.parse(stored);
       // Validate minimum required fields
       if (!user.id || !user.email) {
-        sessionStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_user');
         return null;
       }
       return user;
     } catch (error) {
       console.error('Failed to parse stored user:', error);
-      sessionStorage.removeItem('auth_user');
+      localStorage.removeItem('auth_user');
       return null;
     }
   };
@@ -154,7 +154,7 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   useEffect(() => {
     // Verify authentication with backend on initial load
     const verifyAuth = async () => {
-      const storedToken = sessionStorage.getItem('access_token');
+      const storedToken = localStorage.getItem('access_token');
       if (!storedToken && !initialUser) {
         // No token and no stored user — skip verification
         setIsInitializing(false);
@@ -173,19 +173,27 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
           const data = await response.json();
           setUser(data);
           setToken(storedToken || 'http-only-cookie');
-          sessionStorage.setItem('auth_user', JSON.stringify(data));
-        } else {
+          localStorage.setItem('auth_user', JSON.stringify(data));
+        } else if (response.status === 401 || response.status === 403) {
+          // Token is invalid/expired — clear auth
           setUser(null);
           setToken(null);
-          sessionStorage.removeItem('auth_user');
-          sessionStorage.removeItem('access_token');
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('access_token');
+        } else {
+          // Server error (5xx) or other — keep cached user, don't log out
+          if (initialUser) {
+            setUser(initialUser);
+            setToken(storedToken || 'http-only-cookie');
+          }
         }
       } catch (error) {
+        // Network error (backend sleeping/cold start) — keep cached user
         console.error('Auth verification error:', error);
-        setUser(null);
-        setToken(null);
-        sessionStorage.removeItem('auth_user');
-        sessionStorage.removeItem('access_token');
+        if (initialUser) {
+          setUser(initialUser);
+          setToken(storedToken || 'http-only-cookie');
+        }
       } finally {
         setIsInitializing(false);
       }
@@ -197,7 +205,7 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    sessionStorage.setItem('auth_user', JSON.stringify(userData));
+    localStorage.setItem('auth_user', JSON.stringify(userData));
     // Persist access token for cross-origin API calls (Bearer header)
     if (authToken && authToken !== 'http-only-cookie') {
       setAuthToken(authToken);
@@ -207,7 +215,7 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const logout = async () => {
     try {
       const csrfToken = getCookie('csrftoken');
-      const storedToken = sessionStorage.getItem('access_token');
+      const storedToken = localStorage.getItem('access_token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
@@ -223,21 +231,21 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
     }
     setUser(null);
     setToken(null);
-    sessionStorage.removeItem('auth_user');
-    sessionStorage.removeItem('access_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('access_token');
   };
 
   const clearPasswordChangeRequired = () => {
     if (user) {
       const updatedUser = { ...user, requires_password_change: false };
       setUser(updatedUser);
-      sessionStorage.setItem('auth_user', JSON.stringify(updatedUser));
+      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
     }
   };
 
   const updateUser = (userData: User) => {
     setUser(userData);
-    sessionStorage.setItem('auth_user', JSON.stringify(userData));
+    localStorage.setItem('auth_user', JSON.stringify(userData));
   };
 
   return (

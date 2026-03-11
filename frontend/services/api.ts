@@ -33,24 +33,24 @@ interface RequestOptions {
 
 /**
  * Get the access token for API authentication.
- * Stored in sessionStorage (cleared when tab closes).
+ * Stored in localStorage (persists across browser sessions).
  */
 export const getAuthToken = (): string | null => {
-  return sessionStorage.getItem('access_token');
+  return localStorage.getItem('access_token');
 };
 
 /** Persist access token (called after login/register/social-auth). */
 export const setAuthToken = (token: string | null): void => {
   if (token) {
-    sessionStorage.setItem('access_token', token);
+    localStorage.setItem('access_token', token);
   } else {
-    sessionStorage.removeItem('access_token');
+    localStorage.removeItem('access_token');
   }
 };
 
 /**
  * Drop-in replacement for native fetch() that automatically injects
- * the Authorization: Bearer header when a token exists in sessionStorage.
+ * the Authorization: Bearer header when a token exists in localStorage.
  * Use this instead of raw fetch() for all API calls that need auth.
  */
 export const authFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
