@@ -26,16 +26,25 @@ class Command(BaseCommand):
             ))
             return
 
-        # Use a simple check: if any CV data already exists, skip loading
+        # Use a simple check: if all expected CV data already exists, skip loading
+        # The fixture has 4 experiences, 9 skills, 3 languages - check all are present
         with connection.cursor() as cursor:
             try:
                 cursor.execute("SELECT COUNT(*) FROM cv_cvexperience")
-                count = cursor.fetchone()[0]
-                if count > 0:
+                exp_count = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM cv_cvskill")
+                skill_count = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM cv_cvlanguage")
+                lang_count = cursor.fetchone()[0]
+                if exp_count >= 4 and skill_count >= 9 and lang_count >= 3:
                     self.stdout.write(self.style.SUCCESS(
-                        f'Data already loaded ({count} CV experiences found). Skipping fixture load.'
+                        f'Data already fully loaded ({exp_count} experiences, {skill_count} skills, {lang_count} languages). Skipping.'
                     ))
                     return
+                else:
+                    self.stdout.write(
+                        f'Partial data found ({exp_count} exp, {skill_count} skills, {lang_count} langs). Loading full fixture...'
+                    )
             except Exception:
                 # Table doesn't exist yet — migrations may not have run
                 self.stdout.write(self.style.WARNING(
