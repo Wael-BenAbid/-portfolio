@@ -25,10 +25,12 @@ jobs:
           --health-retries 5
     env:
       DJANGO_SETTINGS_MODULE: portfolio.settings.dev
-      DJANGO_SECRET_KEY: test-secret-key
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DJANGO_DEBUG: True
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/portfolio_test
       REDIS_URL: redis://localhost:6379/1
+      EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+      EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,5 +67,5 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          VITE_API_URL: https://api.wael-ben-abid.me/api
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.wael-ben-abid.me/api' }}
         run: npm run build
