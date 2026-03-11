@@ -17,11 +17,15 @@ X_FRAME_OPTIONS = 'DENY'
 CORS_ALLOW_ALL_ORIGINS = False
 
 # Enforce production hosts for the reserved domain and backend host.
-ALLOWED_HOSTS = [
+_env_hosts = [
     h.strip()
     for h in os.getenv(
         'DJANGO_ALLOWED_HOSTS',
-        'wael-ben-abid.me,www.wael-ben-abid.me,api.wael-ben-abid.me,.onrender.com',
+        'wael-ben-abid.me,www.wael-ben-abid.me,api.wael-ben-abid.me',
     ).split(',')
     if h.strip()
 ]
+# Always allow .onrender.com for Render deployments
+if '.onrender.com' not in _env_hosts:
+    _env_hosts.append('.onrender.com')
+ALLOWED_HOSTS = _env_hosts
