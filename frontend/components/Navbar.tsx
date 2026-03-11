@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../App';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Settings, Menu, X } from 'lucide-react';
 import { useSettings } from '../hooks/useData';
 import { NotificationBell } from './NotificationBell';
 import { API_BASE_URL } from '../constants';
@@ -14,6 +14,7 @@ export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { data: settings } = useSettings();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Navigation links - show login only when not authenticated
@@ -34,6 +35,11 @@ export const Navbar: React.FC = () => {
       .catch(error => console.error('Error fetching settings:', error));
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -52,7 +58,8 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-[100] px-8 py-10 flex justify-between items-center pointer-events-none">
+    <>
+    <nav className="fixed top-0 left-0 w-full z-[100] px-4 sm:px-8 py-4 sm:py-10 flex justify-between items-center pointer-events-none">
       <Link to="/" className="pointer-events-auto">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -70,7 +77,8 @@ export const Navbar: React.FC = () => {
         </motion.div>
       </Link>
 
-      <div className="relative flex gap-12 pointer-events-auto items-center">
+      {/* Desktop navigation */}
+      <div className="hidden md:flex relative gap-12 pointer-events-auto items-center">
         {links.map((link, i) => (
           <motion.div
             key={link.path}
@@ -82,7 +90,6 @@ export const Navbar: React.FC = () => {
               to={link.path} 
               className="relative group overflow-hidden h-6 block"
               onClick={() => {
-                // Mark that user intentionally navigated to auth
                 if (link.path === '/auth') {
                   sessionStorage.setItem('redirected_to_auth', 'true');
                 }
@@ -104,7 +111,7 @@ export const Navbar: React.FC = () => {
           </motion.div>
         ))}
         
-        {/* User Status */}
+        {/* User Status - Desktop */}
         {isAuthenticated ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
@@ -112,7 +119,6 @@ export const Navbar: React.FC = () => {
             className="flex items-center gap-4"
           >
             {user?.user_type === 'admin' ? (
-              // Admin: direct link to admin panel + separate logout
               <>
                 <NotificationBell />
                 <Link to="/admin" className="flex items-center gap-2 group">
@@ -136,7 +142,6 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              // Regular user: dropdown with Settings + Logout
               <div ref={dropdownRef} className="relative flex items-center gap-3">
                 <NotificationBell />
                 <button
@@ -198,6 +203,112 @@ export const Navbar: React.FC = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Mobile hamburger button */}
+      <button
+        className="md:hidden pointer-events-auto text-gray-400 hover:text-white transition-colors z-[110]"
+        onClick={() => setMobileMenuOpen(prev => !prev)}
+        aria-label="Menu"
+      >
+        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
     </nav>
+
+    {/* Mobile Menu Overlay */}
+    <AnimatePresence>
+      {mobileMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[99] bg-black/90 backdrop-blur-md md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="flex flex-col items-center justify-center min-h-screen gap-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {links.map((link, i) => (
+              <motion.div
+                key={link.path}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+              >
+                <Link
+                  to={link.path}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (link.path === '/auth') {
+                      sessionStorage.setItem('redirected_to_auth', 'true');
+                    }
+                  }}
+                  className={`text-sm font-display tracking-[0.4em] uppercase transition-colors ${
+                    location.pathname === link.path ? 'text-blue-500' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              </motion.div>
+            ))}
+
+            {/* Mobile user actions */}
+            {isAuthenticated && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: links.length * 0.08 }}
+                className="flex flex-col items-center gap-4 mt-4 pt-4 border-t border-white/10"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                    {user?.profile_image ? (
+                      <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={18} className="text-white" />
+                    )}
+                  </div>
+                  <span className="text-xs font-display uppercase tracking-widest text-gray-300">
+                    {user?.first_name || user?.email?.split('@')[0]}
+                  </span>
+                </div>
+                {user?.user_type === 'admin' && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-display tracking-[0.4em] uppercase text-gray-300 hover:text-white transition-colors"
+                  >
+                    Admin
+                  </Link>
+                )}
+                {user?.user_type !== 'admin' && (
+                  <Link
+                    to="/settings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-display tracking-[0.4em] uppercase text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <Settings size={14} />
+                    Paramètres
+                  </Link>
+                )}
+                <button
+                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                  className="text-sm font-display tracking-[0.4em] uppercase text-gray-400 hover:text-red-400 transition-colors flex items-center gap-2"
+                >
+                  <LogOut size={14} />
+                  Déconnexion
+                </button>
+              </motion.div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };

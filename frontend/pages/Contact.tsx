@@ -223,7 +223,7 @@ const Contact: React.FC = () => {
       <div className="fixed top-[-200px] left-[10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="fixed bottom-[-150px] right-[5%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-16 pt-36 pb-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 md:px-16 pt-24 md:pt-36 pb-20">
 
         {/* ── header ── */}
         <motion.div

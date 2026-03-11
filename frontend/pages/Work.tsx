@@ -30,18 +30,18 @@ const Work: React.FC = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+        className="min-h-screen pt-24 md:pt-40 px-4 sm:px-8 md:px-24 pb-24"
       >
-        <header className="mb-24">
+        <header className="mb-12 md:mb-24">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
+            className="text-4xl sm:text-6xl md:text-8xl font-display font-bold uppercase mb-8 md:mb-12"
           >
             Projets <br /> Sélectionnés
           </motion.h1>
 
-          <div className="flex flex-wrap gap-8 border-b border-gray-800 pb-8">
+          <div className="flex flex-wrap gap-4 sm:gap-8 border-b border-gray-800 pb-8">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -64,10 +64,10 @@ const Work: React.FC = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+        className="min-h-screen pt-24 md:pt-40 px-4 sm:px-8 md:px-24 pb-24"
       >
-        <header className="mb-24">
-          <h1 className="text-6xl md:text-8xl font-display font-bold uppercase mb-12">
+        <header className="mb-12 md:mb-24">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-display font-bold uppercase mb-8 md:mb-12">
               Projets <br /> Sélectionnés
             </h1>
          </header>
@@ -81,13 +81,13 @@ const Work: React.FC = () => {
        initial={{ opacity: 0 }}
        animate={{ opacity: 1 }}
        exit={{ opacity: 0 }}
-       className="min-h-screen pt-40 px-8 md:px-24 pb-24"
+       className="min-h-screen pt-24 md:pt-40 px-4 sm:px-8 md:px-24 pb-24"
      >
-       <header className="mb-24">
+       <header className="mb-12 md:mb-24">
          <motion.h1 
            initial={{ opacity: 0, y: 20 }}
            animate={{ opacity: 1, y: 0 }}
-           className="text-6xl md:text-8xl font-display font-bold uppercase mb-12"
+           className="text-4xl sm:text-6xl md:text-8xl font-display font-bold uppercase mb-8 md:mb-12"
          >
            Projets <br /> Sélectionnés
          </motion.h1>

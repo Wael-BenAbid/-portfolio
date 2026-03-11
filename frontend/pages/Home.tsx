@@ -50,7 +50,7 @@ const Home: React.FC = () => {
     <div className="relative bg-transparent selection:bg-blue-500">
 
       {/* 1. HERO SECTION */}
-      <section className="relative h-[120vh] flex flex-col items-center justify-center px-8 text-center overflow-hidden">
+      <section className="relative h-[120vh] flex flex-col items-center justify-center px-4 sm:px-8 text-center overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -60,7 +60,7 @@ const Home: React.FC = () => {
           <p className="font-display text-[10px] md:text-xs tracking-[0.8em] uppercase text-blue-500 mb-8">
             {heroTagline}
           </p>
-          <h1 className="text-7xl md:text-[12rem] font-display font-bold leading-none tracking-tighter uppercase mb-12">
+          <h1 className="text-5xl sm:text-7xl md:text-[12rem] font-display font-bold leading-none tracking-tighter uppercase mb-12">
             {heroTitle} <br />
             <span className="text-transparent" style={{ WebkitTextStroke: '1.5px white' }}>{heroSubtitle}</span>
           </h1>
@@ -88,11 +88,11 @@ const Home: React.FC = () => {
       </section>
 
       {/* 2. PROJECTS SECTION - Vertical Layout */}
-      <section className="py-24 md:py-48 px-8 md:px-24">
+      <section className="py-16 sm:py-24 md:py-48 px-4 sm:px-8 md:px-24">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="mb-16 md:mb-24">
-            <h3 className="text-4xl md:text-7xl font-display font-bold uppercase mb-8 leading-tight">
+            <h3 className="text-3xl sm:text-4xl md:text-7xl font-display font-bold uppercase mb-8 leading-tight">
               SELECTED <br /> <span className="text-blue-500">PROJECTS</span>
             </h3>
             <p className="text-gray-400 text-lg max-w-sm mb-8">
@@ -242,7 +242,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* 3. ABOUT MINI SECTION - Scroll-based Image Transition */}
-      <section ref={aboutSectionRef} className="py-48 px-8 md:px-24 bg-black/80 backdrop-blur-sm relative z-10 border-t border-gray-900">
+      <section ref={aboutSectionRef} className="py-24 sm:py-48 px-4 sm:px-8 md:px-24 bg-black/80 backdrop-blur-sm relative z-10 border-t border-gray-900">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -262,7 +262,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* 4. CONTACT CTA */}
-      <section className="py-48 px-8 md:px-24 text-center">
+      <section className="py-24 sm:py-48 px-4 sm:px-8 md:px-24 text-center">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -277,7 +277,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* 5. FOOTER */}
-      <footer className={`py-24 px-8 md:px-24 border-t border-gray-900 ${footerBackgroundVideo ? 'relative overflow-hidden' : ''}`}>
+      <footer className={`py-16 sm:py-24 px-4 sm:px-8 md:px-24 border-t border-gray-900 ${footerBackgroundVideo ? 'relative overflow-hidden' : ''}`}>
         {footerBackgroundVideo && (
           <video
             src={footerBackgroundVideo}

@@ -375,7 +375,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       {/* Content */}
       <motion.div 
         style={{ y, opacity }}
-        className="relative z-20 min-h-screen flex items-center justify-center px-4 py-20"
+        className="relative z-20 min-h-screen flex items-center justify-center px-4 py-12 sm:py-20"
       >
         <div className="w-full max-w-md">
           {/* Back Button */}
@@ -407,7 +407,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-8 shadow-2xl"
           >
             {/* Tab Switcher */}
             <div className="flex mb-8 bg-white/5 rounded-xl p-1">

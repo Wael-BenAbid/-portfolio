@@ -120,7 +120,7 @@ const About: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] pt-40 px-8 md:px-24">
+      <div className="min-h-screen bg-[#0a0a0a] pt-24 md:pt-40 px-4 sm:px-8 md:px-24">
         <ErrorDisplay error={error} onRetry={refetch} />
       </div>
     );
@@ -166,15 +166,15 @@ const About: React.FC = () => {
       <div className="fixed bottom-[-100px] left-[5%] w-[400px] h-[400px] bg-indigo-700/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="relative z-10">
       {/* Header / Personal Info */}
-      <div className="px-8 md:px-24 mb-20">
-        <div className="flex flex-col md:flex-row gap-12 items-start">
+      <div className="px-4 sm:px-8 md:px-24 mb-20">
+        <div className="flex flex-col md:flex-row gap-8 sm:gap-12 items-center md:items-start">
           {/* Profile Image */}
           {personal_info.profile_image && (
             <motion.div
               initial={{ opacity: 0, x: -50, rotateY: 45 }}
               animate={{ opacity: 1, x: 0, rotateY: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="w-48 h-48 rounded-full overflow-hidden bg-gray-900 flex-shrink-0 border-4 border-blue-500/20"
+              className="w-32 h-32 sm:w-48 sm:h-48 rounded-full overflow-hidden bg-gray-900 flex-shrink-0 border-4 border-blue-500/20"
             >
               <img 
                 src={personal_info.profile_image} 
@@ -192,10 +192,10 @@ const About: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             className="flex-1"
           >
-            <h1 className="text-5xl md:text-7xl font-display font-bold uppercase mb-4">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-display font-bold uppercase mb-4">
               {personal_info.full_name || 'Your Name'}
             </h1>
-            <p className="text-2xl text-blue-500 font-display uppercase tracking-widest mb-6">
+            <p className="text-lg sm:text-2xl text-blue-500 font-display uppercase tracking-widest mb-6">
               {personal_info.job_title || 'Your Job Title'}
             </p>
             
@@ -252,7 +252,7 @@ const About: React.FC = () => {
       </div>
 
       {/* All Content Sections Displayed Together */}
-      <div className="px-8 md:px-24 space-y-24">
+      <div className="px-4 sm:px-8 md:px-24 space-y-16 sm:space-y-24">
         {/* Experience Section */}
         {experiences.length > 0 && (
           <motion.div
