@@ -56,7 +56,7 @@ class RegisterView(generics.CreateAPIView):
             refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600 * 24 * 7,  # 7 days
             path='/api/auth/refresh/'
         )
@@ -169,7 +169,7 @@ class LoginView(APIView):
             refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',  # Stricter than Lax for better CSRF protection
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600 * 24 * 7,  # 7 days
             path='/api/auth/refresh/'  # Only sent to refresh endpoint
         )
@@ -180,7 +180,7 @@ class LoginView(APIView):
             access_token.key,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600,  # 1 hour
             path='/api/'  # Sent to all API endpoints
         )
@@ -352,7 +352,7 @@ class SocialAuthView(APIView):
             refresh_token.token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600 * 24 * 7,  # 7 days
             path='/api/auth/refresh/'
         )
@@ -363,7 +363,7 @@ class SocialAuthView(APIView):
             access_token.key,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600,  # 1 hour
             path='/api/'  # Sent to all API endpoints
         )
@@ -481,7 +481,7 @@ class RefreshTokenView(APIView):
             access_token.key,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=3600,  # 1 hour
             path='/api/'  # Sent to all API endpoints
         )

@@ -1,0 +1,740 @@
+[
+  {
+    "model": "cv.cvexperience",
+    "pk": 2,
+    "fields": {
+      "title": "Stagiaire PFE - Développeur Full Stack & DevOps",
+      "company": "Tunisie Telecom",
+      "location": "Tunis, Tunisie",
+      "start_date": "2025-01-01",
+      "end_date": "2025-05-15",
+      "is_current": false,
+      "description": "Conception et réalisation d'une plateforme de gestion des ressources humaines (RH).\nDéveloppement Frontend avec React et Backend avec Django.\n\nMise en place d'un système de monitoring en temps réel avec Grafana.\n\nAutomatisation du cycle de vie logiciel via des pipelines CI/CD (DevOps).",
+      "order": 0,
+      "created_at": "2026-03-05T03:21:12.507Z",
+      "updated_at": "2026-03-05T03:21:27.392Z"
+    }
+  },
+  {
+    "model": "cv.cvexperience",
+    "pk": 3,
+    "fields": {
+      "title": "Développeur Mobile Flutter",
+      "company": "GalacTech (T7D Gaming)",
+      "location": "Lac 2, Tunis / Abu Dhabi",
+      "start_date": "2024-01-01",
+      "end_date": "2024-02-01",
+      "is_current": false,
+      "description": "Développement d'une application de jeu Tic-Tac-Toe professionnelle.\n\nImplémentation d'un mode multijoueur en ligne en temps réel.\n\nIntégration de services Cloud et Firebase pour la gestion des données.",
+      "order": 1,
+      "created_at": "2026-03-05T03:22:35.895Z",
+      "updated_at": "2026-03-05T03:22:35.895Z"
+    }
+  },
+  {
+    "model": "cv.cvexperience",
+    "pk": 4,
+    "fields": {
+      "title": "Développeur Full Stack Java",
+      "company": "CIAM SOLUTION",
+      "location": "Tunis, Tunisie",
+      "start_date": "2023-01-01",
+      "end_date": "2023-02-01",
+      "is_current": false,
+      "description": "Création d'une application de gestion scolaire complète pour les cycles collège, lycée et université.\n\nDéveloppement des modules de gestion des notes, absences et emplois du temps.\n\nStack technique : Java, Spring Boot, Angular, MySQL.",
+      "order": 2,
+      "created_at": "2026-03-05T03:23:40.636Z",
+      "updated_at": "2026-03-05T03:23:40.636Z"
+    }
+  },
+  {
+    "model": "cv.cvexperience",
+    "pk": 5,
+    "fields": {
+      "title": "Stagiaire Technique",
+      "company": "SKIDATA",
+      "location": "Tunis, Tunisie",
+      "start_date": "2023-01-01",
+      "end_date": "2023-02-02",
+      "is_current": false,
+      "description": "Installation et configuration de systèmes de contrôle d'accès et de surveillance.\n\nMaintenance de serveurs en Haute Disponibilité (HA).\n\nGestion d'environnements virtualisés et réseaux.",
+      "order": 3,
+      "created_at": "2026-03-05T03:26:36.284Z",
+      "updated_at": "2026-03-05T03:26:36.284Z"
+    }
+  },
+  {
+    "model": "cv.cveducation",
+    "pk": 1,
+    "fields": {
+      "degree": "Diplôme en Génie Logiciel",
+      "institution": "ISET Bizerte",
+      "location": "Bizerte, Tunisie",
+      "start_date": "2022-09-09",
+      "end_date": "2026-03-01",
+      "is_current": false,
+      "description": "Programme axé sur le développement logiciel, les architectures distribuées et les systèmes d'information.\n\nDéveloppement d’applications Full Stack (Spring Boot, React, Django).\n\nConception d’architectures Microservices & SOA.\n\nBases de données SQL & NoSQL.\n\nDevOps, Linux et virtualisation.\n\nRéalisation de projets académiques et professionnels orientés performance et scalabilité.",
+      "gpa": "11/20",
+      "order": 0,
+      "created_at": "2026-03-04T17:59:25.962Z",
+      "updated_at": "2026-03-04T17:59:25.962Z"
+    }
+  },
+  {
+    "model": "cv.cveducation",
+    "pk": 2,
+    "fields": {
+      "degree": "Baccalauréat Technique",
+      "institution": "Lycée Med Ali Annabi",
+      "location": "Ras Jebal, Tunisie",
+      "start_date": "2018-09-04",
+      "end_date": "2021-06-30",
+      "is_current": false,
+      "description": "Spécialisation en sciences techniques et technologies industrielles.",
+      "gpa": "12/20",
+      "order": 1,
+      "created_at": "2026-03-04T18:01:52.417Z",
+      "updated_at": "2026-03-04T18:01:52.417Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 1,
+    "fields": {
+      "name": "Django",
+      "level": "advanced",
+      "category": "backend",
+      "percentage": 75,
+      "order": 0,
+      "created_at": "2026-03-05T01:23:07.045Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 2,
+    "fields": {
+      "name": "Spring Boot",
+      "level": "advanced",
+      "category": "backend",
+      "percentage": 75,
+      "order": 1,
+      "created_at": "2026-03-05T01:36:07.328Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 3,
+    "fields": {
+      "name": "React",
+      "level": "advanced",
+      "category": "frontend",
+      "percentage": 75,
+      "order": 2,
+      "created_at": "2026-03-05T01:36:46.211Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 4,
+    "fields": {
+      "name": "Angular",
+      "level": "intermediate",
+      "category": "frontend",
+      "percentage": 60,
+      "order": 3,
+      "created_at": "2026-03-05T01:37:07.696Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 5,
+    "fields": {
+      "name": "TypeScript",
+      "level": "intermediate",
+      "category": "Web Development",
+      "percentage": 60,
+      "order": 4,
+      "created_at": "2026-03-05T01:37:47.539Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 6,
+    "fields": {
+      "name": "Flutter",
+      "level": "intermediate",
+      "category": "Mobile Development",
+      "percentage": 60,
+      "order": 5,
+      "created_at": "2026-03-05T01:38:55.898Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 7,
+    "fields": {
+      "name": "Grafana & Monitoring",
+      "level": "intermediate",
+      "category": "DevOps",
+      "percentage": 60,
+      "order": 6,
+      "created_at": "2026-03-05T01:39:33.796Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 8,
+    "fields": {
+      "name": "CI/CD (GitHub Actions / GitLab)",
+      "level": "beginner",
+      "category": "monitoring",
+      "percentage": 30,
+      "order": 7,
+      "created_at": "2026-03-05T01:40:02.704Z"
+    }
+  },
+  {
+    "model": "cv.cvskill",
+    "pk": 9,
+    "fields": {
+      "name": "PostgreSQL / MySQL",
+      "level": "intermediate",
+      "category": "Database",
+      "percentage": 60,
+      "order": 8,
+      "created_at": "2026-03-05T01:40:39.587Z"
+    }
+  },
+  {
+    "model": "cv.cvlanguage",
+    "pk": 1,
+    "fields": {
+      "name": "français",
+      "level": "intermediate",
+      "percentage": 60,
+      "order": 0,
+      "created_at": "2026-03-04T18:24:45.026Z"
+    }
+  },
+  {
+    "model": "cv.cvlanguage",
+    "pk": 2,
+    "fields": {
+      "name": "anglais",
+      "level": "basic",
+      "percentage": 50,
+      "order": 1,
+      "created_at": "2026-03-04T18:25:03.707Z"
+    }
+  },
+  {
+    "model": "cv.cvlanguage",
+    "pk": 3,
+    "fields": {
+      "name": "arabic",
+      "level": "advanced",
+      "percentage": 100,
+      "order": 2,
+      "created_at": "2026-03-04T18:25:24.597Z"
+    }
+  },
+  {
+    "model": "cv.cvproject",
+    "pk": 1,
+    "fields": {
+      "title": "Plateforme de Gestion RH & Monitoring DevOps",
+      "description": "Projet de fin d'études réalisé chez Tunisie Telecom. Développement d'une application complète de gestion des ressources humaines intégrant un tableau de bord de monitoring en temps réel et des pipelines d'automatisation.",
+      "technologies": "Django,React,PostgreSQL,Grafana,CI/CD,DevOps",
+      "url": "",
+      "github_url": "",
+      "start_date": null,
+      "end_date": null,
+      "is_ongoing": false,
+      "order": 0,
+      "created_at": "2026-03-05T01:52:46.157Z"
+    }
+  },
+  {
+    "model": "cv.cvproject",
+    "pk": 2,
+    "fields": {
+      "title": "Projet Billard Pro",
+      "description": "Application moderne et performante pour la gestion complète d'une salle de billard, incluant la réservation de tables et le suivi des sessions en temps réel",
+      "technologies": "React,TypeScript,Django,Tailwind CSS",
+      "url": "",
+      "github_url": "",
+      "start_date": null,
+      "end_date": null,
+      "is_ongoing": false,
+      "order": 1,
+      "created_at": "2026-03-05T02:01:30.686Z"
+    }
+  },
+  {
+    "model": "cv.cvproject",
+    "pk": 4,
+    "fields": {
+      "title": "Tic-Tac-Toe Pro Online",
+      "description": "Jeu mobile professionnel développé lors de mon stage chez GalacTech. Comprend un mode de jeu local et un mode multijoueur en ligne avec synchronisation en temps réel.",
+      "technologies": "Flutter,Dart,Firebase",
+      "url": "",
+      "github_url": "",
+      "start_date": null,
+      "end_date": null,
+      "is_ongoing": false,
+      "order": 2,
+      "created_at": "2026-03-05T02:54:22.799Z"
+    }
+  },
+  {
+    "model": "cv.cvinterest",
+    "pk": 1,
+    "fields": {
+      "name": "Photographie",
+      "icon": "📸",
+      "description": "",
+      "order": 0,
+      "created_at": "2026-03-05T03:04:10.981Z"
+    }
+  },
+  {
+    "model": "cv.cvinterest",
+    "pk": 2,
+    "fields": {
+      "name": "Gaming",
+      "icon": "🕹",
+      "description": "",
+      "order": 1,
+      "created_at": "2026-03-05T03:07:09.026Z"
+    }
+  },
+  {
+    "model": "cv.cvinterest",
+    "pk": 3,
+    "fields": {
+      "name": "Football",
+      "icon": "⚽️",
+      "description": "",
+      "order": 2,
+      "created_at": "2026-03-05T03:08:07.505Z"
+    }
+  },
+  {
+    "model": "cv.cvinterest",
+    "pk": 4,
+    "fields": {
+      "name": "Technologie",
+      "icon": "🖥",
+      "description": "",
+      "order": 3,
+      "created_at": "2026-03-05T03:08:32.841Z"
+    }
+  },
+  {
+    "model": "projects.project",
+    "pk": 1,
+    "fields": {
+      "title": "iphone 17 pro",
+      "slug": "bb",
+      "description": "voila c'est la formation payant pour le sponsoring",
+      "category": "Développement",
+      "thumbnail": "http://localhost:8000/media/uploads/16_pro_max.jpeg",
+      "video_url": null,
+      "project_url": null,
+      "github_url": null,
+      "featured": false,
+      "is_active": true,
+      "show_registration": false,
+      "created_by": 2,
+      "created_at": "2026-02-26T05:37:48.912Z",
+      "updated_at": "2026-03-06T04:24:23.862Z",
+      "likes_count": 2,
+      "views_count": 10
+    }
+  },
+  {
+    "model": "projects.project",
+    "pk": 2,
+    "fields": {
+      "title": "aaa",
+      "slug": "aaa",
+      "description": "cc",
+      "category": "Développement",
+      "thumbnail": "http://localhost:8000/media/uploads/2026/03/06/6d377c39-pasue.png",
+      "video_url": null,
+      "project_url": null,
+      "github_url": null,
+      "featured": false,
+      "is_active": true,
+      "show_registration": true,
+      "created_by": 2,
+      "created_at": "2026-03-01T02:29:53.624Z",
+      "updated_at": "2026-03-10T04:49:39.389Z",
+      "likes_count": 2,
+      "views_count": 23
+    }
+  },
+  {
+    "model": "projects.project",
+    "pk": 8,
+    "fields": {
+      "title": "Ghar el melh",
+      "slug": "ghar-el-melh",
+      "description": "Ocean El bounta",
+      "category": "Drone",
+      "thumbnail": "http://localhost:8000/media/uploads/2026/03/06/94f74c0d-creati_20251218235742_ef9d6ba256f044f28cdd92599bad8ac5.mp4",
+      "video_url": null,
+      "project_url": null,
+      "github_url": null,
+      "featured": false,
+      "is_active": true,
+      "show_registration": true,
+      "created_by": 2,
+      "created_at": "2026-03-06T03:03:17.376Z",
+      "updated_at": "2026-03-06T18:14:36.142Z",
+      "likes_count": 1,
+      "views_count": 19
+    }
+  },
+  {
+    "model": "projects.projectregistration",
+    "pk": 1,
+    "fields": {
+      "project": 2,
+      "user": 5,
+      "phone": "",
+      "message": "",
+      "status": "pending",
+      "created_at": "2026-03-10T04:38:49.226Z",
+      "updated_at": "2026-03-10T04:38:49.226Z"
+    }
+  },
+  {
+    "model": "content.sitesettings",
+    "pk": 1,
+    "fields": {
+      "site_name": "Portfolio",
+      "site_title": "wael",
+      "logo_url": "http://localhost:8000/media/uploads/galaxy_watch.jpeg",
+      "favicon_url": "http://localhost:8000/media/uploads/ecran_msi.jpeg",
+      "site_description": "",
+      "primary_color": "#d2d2ea",
+      "secondary_color": "#312f37",
+      "accent_color": "#c59bb0",
+      "background_color": "#0a0a0a",
+      "cursor_theme": "custom",
+      "cursor_size": 21,
+      "custom_cursor_color": "#e8c0d3",
+      "hero_title": "Test Title from API",
+      "hero_subtitle": "your drime",
+      "hero_tagline": "",
+      "about_title": "THE MIND BEHIND",
+      "about_quote": "Développeur Full Stack, expert en solutions performantes.",
+      "profile_image": "http://localhost:8000/media/uploads/2026/03/05/c956f57b-0ff1-42f1-bc5c-bf016122e770.jpeg",
+      "drone_image": "http://localhost:8000/media/uploads/2026/03/05/f1e83570-fedc-406f-a55a-f22718514fcb.jpeg",
+      "drone_video_url": "",
+      "nav_work_label": "Work",
+      "nav_about_label": "About",
+      "nav_contact_label": "Contact",
+      "cv_full_name": "wael ben abid",
+      "cv_job_title": "Photographe",
+      "cv_email": "waelbenabid1@gmail.com",
+      "cv_phone": "+21628713038",
+      "cv_location": "Ghar El Melh",
+      "cv_profile_image": "http://localhost:8000/media/uploads/2026/03/04/6a797968-2331-4187-aac7-9d3178dee631.jpeg",
+      "cv_summary": "Voici une proposition de résumé professionnel (Professional Summary) optimisée pour votre profil, basée sur vos expériences récentes chez Tunisie Telecom et GalacTech ainsi que sur vos nombreux projets Full Stack:Version Française :\nDéveloppeur Full Stack passionné et rigoureux, spécialisé dans les architectures Microservices (Spring Boot) et les interfaces modernes (React/TypeScript). Récemment diplômé de l'ISET Bizerte, j'allie une expertise en développement web et mobile (Flutter) à des compétences avancées en DevOps (CI/CD, Grafana) acquises lors de mon stage PFE chez Tunisie Telecom. Fort d'une expérience pratique en gestion de projets complexes et d'un sens aigu du service client, je suis capable de concevoir, maintenir et optimiser des solutions digitales performantes.",
+      "location": "Gar El Melh",
+      "latitude": "37.166917",
+      "longitude": "10.186944",
+      "instagram_url": "https://www.instagram.com/wael_ben_abid",
+      "linkedin_url": "https://www.linkedin.com/in/wael-benabid",
+      "github_url": "https://github.com/Wael-BenAbid",
+      "twitter_url": "https://www.facebook.com/waelbenabid",
+      "google_client_id": "64475552515-1agdo4tviffo2sit07v941un8kmuf6p0.apps.googleusercontent.com",
+      "_google_client_secret": "gAAAAABprNUh5Ze_VAxEfvNUnC3r-enFPyBgCY2IZofaw4qCo74JfS3f5WLOLc7i4xd4PWzGQJDSAPV55cHQslIAmFDt48KOFqd4bjjF4MXuCoU_ZpuiNN4jtykpPP82YJTORKy6IpbJ",
+      "facebook_app_id": "",
+      "_facebook_app_secret": "",
+      "email_host": "",
+      "email_port": 587,
+      "email_host_user": "waelbenabid1@gmail.com",
+      "_email_host_password": "gAAAAABprNUhZAKSR7HKu_LOTb14XCrYSW55iK6PahBXgB8ILP2w8-a-pQgGTAoKsQ09ls86IUKNEFUtDR4h-p4EXxOpqLcn1PgOgf5cO7FgV8an-5AzWAQ=",
+      "default_from_email": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "contact_title": "Créons Ensemble",
+      "contact_subtitle": "Que vous ayez besoin d'un ingénieur full-stack ou d'un cinéaste drone, je suis prêt pour le prochain défi.",
+      "contact_form_placeholder_name": "Votre Nom",
+      "contact_form_placeholder_email": "nom@email.com",
+      "contact_form_placeholder_subject": "Sujet",
+      "contact_form_placeholder_message": "Parlez-moi de votre vision...",
+      "contact_form_button_text": "Envoyer le Message",
+      "footer_text": "ben abid",
+      "copyright_year": 2026,
+      "version": "1.0.0",
+      "designer_name": "wael",
+      "copyright_text": "azerty",
+      "show_location": true,
+      "footer_background_video": "",
+      "meta_title": "abidos",
+      "meta_description": "vallo",
+      "meta_keywords": "vollaranT",
+      "created_at": "2026-02-25T02:20:42.972Z",
+      "updated_at": "2026-03-08T01:47:13.549Z"
+    }
+  },
+  {
+    "model": "content.contactmessage",
+    "pk": 1,
+    "fields": {
+      "name": "Test User",
+      "email": "test@example.com",
+      "subject": "Test Message",
+      "message": "This is a test message from the contact form.",
+      "user": null,
+      "status": "new",
+      "admin_reply": "",
+      "replied_at": null,
+      "created_at": "2026-03-07T04:00:20.201Z"
+    }
+  },
+  {
+    "model": "content.contactmessage",
+    "pk": 2,
+    "fields": {
+      "name": "Wael Ben Abid",
+      "email": "waelbenabid1@gmail.com",
+      "subject": "Concernant votre inscription: aaa",
+      "message": "salut",
+      "user": 5,
+      "status": "new",
+      "admin_reply": "",
+      "replied_at": null,
+      "created_at": "2026-03-10T05:04:27.960Z"
+    }
+  },
+  {
+    "model": "content.emailsubscription",
+    "pk": 1,
+    "fields": {
+      "email": "qa@example.com",
+      "is_active": false,
+      "subscribed_at": "2026-03-05T06:12:20.901Z"
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$Tp5Wb3183kqC6TmfnnsqKT$IVsyWvgzztEV3Cu+bDYPP9r+qfyueWPAhCEs2En/TRw=",
+      "last_login": null,
+      "is_superuser": true,
+      "first_name": "Wael",
+      "last_name": "Ben Abid",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2026-02-25T02:19:15.318Z",
+      "email": "waelbenabid1@gmail.com",
+      "user_type": "admin",
+      "profile_image": "https://lh3.googleusercontent.com/a/ACg8ocINC47PJB0XimoPsCIpIKUYJ7rCa6qxqrfSRq3AwhfTjstV2NjQ=s96-c",
+      "bio": "",
+      "phone": "28713038",
+      "google_id": "101942946988504855813",
+      "facebook_id": null,
+      "auth_provider": "google",
+      "email_notifications": true,
+      "notify_new_projects": true,
+      "notify_updates": true,
+      "requires_password_change": false,
+      "created_at": "2026-02-25T02:19:15.318Z",
+      "updated_at": "2026-03-10T02:04:31.088Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$PLkavAvkENTvaA9daHn6at$4jJkFYFmqHyspfqOCwE1uiAjwSLq9QMy1qkVBaHyLyQ=",
+      "last_login": null,
+      "is_superuser": false,
+      "first_name": "test",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-03-07T05:16:59.690Z",
+      "email": "test@test.com",
+      "user_type": "registered",
+      "profile_image": null,
+      "bio": "",
+      "phone": "",
+      "google_id": null,
+      "facebook_id": null,
+      "auth_provider": "email",
+      "email_notifications": true,
+      "notify_new_projects": true,
+      "notify_updates": true,
+      "requires_password_change": false,
+      "created_at": "2026-03-07T05:17:00.035Z",
+      "updated_at": "2026-03-07T05:17:00.035Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$p9Xyb5ZFT0G49gg3bnrmdB$94NPdrzab1bRESw1ObbpxjoXiW7UIxNEppUdRrUR0gE=",
+      "last_login": null,
+      "is_superuser": false,
+      "first_name": "user",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-03-10T03:28:45.310Z",
+      "email": "waelbenabid10@gmail.com",
+      "user_type": "registered",
+      "profile_image": null,
+      "bio": "",
+      "phone": "",
+      "google_id": null,
+      "facebook_id": null,
+      "auth_provider": "email",
+      "email_notifications": true,
+      "notify_new_projects": true,
+      "notify_updates": true,
+      "requires_password_change": false,
+      "created_at": "2026-03-10T03:28:45.630Z",
+      "updated_at": "2026-03-10T04:48:47.788Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 1,
+    "fields": {
+      "file": "uploads/2026/02/28/ff042afa-clavier_msi.jpeg",
+      "uploaded_at": "2026-02-28T07:26:54.218Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 2,
+    "fields": {
+      "file": "uploads/2026/02/28/3062e8b1-clavier_msi.jpeg",
+      "uploaded_at": "2026-02-28T07:28:56.348Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 3,
+    "fields": {
+      "file": "uploads/2026/02/28/9104011f-clavier_msi.jpeg",
+      "uploaded_at": "2026-02-28T07:46:34.760Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 4,
+    "fields": {
+      "file": "uploads/2026/02/28/49cbe893-ki_mi.jpeg",
+      "uploaded_at": "2026-02-28T07:46:40.279Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 5,
+    "fields": {
+      "file": "uploads/2026/02/28/94d7f652-clavier_msi.jpeg",
+      "uploaded_at": "2026-02-28T08:02:19.783Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 6,
+    "fields": {
+      "file": "uploads/2026/02/28/457b7854-clavier_msi.jpeg",
+      "uploaded_at": "2026-02-28T08:05:48.002Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 7,
+    "fields": {
+      "file": "uploads/2026/02/28/6472dfea-jbl_kit.jpeg",
+      "uploaded_at": "2026-02-28T08:05:54.609Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 8,
+    "fields": {
+      "file": "uploads/2026/02/28/4fd25136-galaxy_watch.jpeg",
+      "uploaded_at": "2026-02-28T08:32:54.306Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 9,
+    "fields": {
+      "file": "uploads/2026/02/28/f06e0a8c-galaxy_watch.jpeg",
+      "uploaded_at": "2026-02-28T08:48:14.834Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 10,
+    "fields": {
+      "file": "uploads/2026/03/01/52aa756e-17_pro_max.jpeg",
+      "uploaded_at": "2026-03-01T02:29:38.609Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 11,
+    "fields": {
+      "file": "uploads/2026/03/06/b4f52362-creati_20251218235742_ef9d6ba256f044f28cdd92599bad8ac5.mp4",
+      "uploaded_at": "2026-03-06T02:03:34.976Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 12,
+    "fields": {
+      "file": "uploads/2026/03/06/94f74c0d-creati_20251218235742_ef9d6ba256f044f28cdd92599bad8ac5.mp4",
+      "uploaded_at": "2026-03-06T03:02:52.282Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 13,
+    "fields": {
+      "file": "uploads/2026/03/06/4867f4d6-pause_strem.png",
+      "uploaded_at": "2026-03-06T04:48:14.864Z",
+      "uploaded_by": 2
+    }
+  },
+  {
+    "model": "api.mediaupload",
+    "pk": 14,
+    "fields": {
+      "file": "uploads/2026/03/06/6d377c39-pasue.png",
+      "uploaded_at": "2026-03-06T04:50:00.799Z",
+      "uploaded_by": 2
+    }
+  }
+]
