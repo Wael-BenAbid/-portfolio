@@ -54,7 +54,35 @@ class Command(BaseCommand):
 
         self.stdout.write('Loading production fixture data...')
         try:
-            call_command('loaddata', fixture_path, verbosity=1)
+            # Filter out user objects that may conflict with existing users
+            import json
+            import tempfile
+            with open(fixture_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Remove CustomUser objects — admin is created by promote_admin
+            # Keep non-user objects; for user FK refs, the user must already exist
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            existing_emails = set(User.objects.values_list('email', flat=True))
+
+            filtered = []
+            for obj in data:
+                if obj['model'].lower() == 'api.customuser':
+                    email = obj['fields'].get('email', '')
+                    if email in existing_emails:
+                        self.stdout.write(f'  Skipping existing user: {email}')
+                        continue
+                filtered.append(obj)
+
+            with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.json', delete=False, encoding='utf-8'
+            ) as tmp:
+                json.dump(filtered, tmp)
+                tmp_path = tmp.name
+
+            call_command('loaddata', tmp_path, verbosity=1)
+            os.unlink(tmp_path)
             self.stdout.write(self.style.SUCCESS('Production data loaded successfully!'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Failed to load fixture: {e}'))
