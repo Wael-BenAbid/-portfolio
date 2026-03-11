@@ -88,9 +88,38 @@ class ContactMessageCreate(generics.CreateAPIView):
     
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
-            serializer.save(user=self.request.user)
+            instance = serializer.save(user=self.request.user)
         else:
-            serializer.save()
+            instance = serializer.save()
+        self._send_notification_email(instance)
+
+    def _send_notification_email(self, message):
+        """Send email notification to admin when a contact message is received."""
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings as django_settings
+            from content.models import SiteSettings
+
+            site = SiteSettings.get_settings()
+            from_email = site.default_from_email or site.email_host_user
+            admin_email = site.contact_email or site.email_host_user
+            if not from_email or not admin_email:
+                return
+
+            send_mail(
+                subject=f'Nouveau message de contact: {message.subject}',
+                message=(
+                    f'Nom: {message.name}\n'
+                    f'Email: {message.email}\n'
+                    f'Sujet: {message.subject}\n\n'
+                    f'{message.message}'
+                ),
+                from_email=from_email,
+                recipient_list=[admin_email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
 
 
 class UserContactMessagesView(generics.ListAPIView):

@@ -91,6 +91,7 @@ export const SiteSettingsSchema = z.object({
   cursor_theme: z.string().default('default'),
   cursor_size: z.number().default(20),
   custom_cursor_color: z.string().default('#6366f1'),
+  cursor_enabled_mobile: z.boolean().default(false),
   
   hero_title: z.string().default('ACTIVE'),
   hero_subtitle: z.string().default('THEORY'),

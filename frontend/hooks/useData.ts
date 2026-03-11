@@ -286,6 +286,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   cursor_theme: 'default',
   cursor_size: 20,
   custom_cursor_color: '#6366f1',
+  cursor_enabled_mobile: false,
   
   hero_title: 'ACTIVE',
   hero_subtitle: 'THEORY',

@@ -136,7 +136,6 @@ class SocialAuthSerializer(serializers.Serializer):
         
         try:
             if provider == 'google':
-                # Verify Google ID token
                 # SECURITY: Client ID is REQUIRED - fail closed if not configured
                 client_id = OAuthSecurityManager.get_oauth_client_id('google')
                 if not client_id:
@@ -147,7 +146,9 @@ class SocialAuthSerializer(serializers.Serializer):
                     )
                     return False, None
                 
-                # Use params for safe URL encoding instead of f-string interpolation
+                clean_client_id = client_id.strip()
+                
+                # Try ID token verification first (from GoogleLogin component)
                 response = requests.get(
                     'https://oauth2.googleapis.com/tokeninfo',
                     params={'id_token': token},
@@ -155,22 +156,16 @@ class SocialAuthSerializer(serializers.Serializer):
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    # Verify the token's audience matches our client ID
-                    # Strip whitespace to handle CRLF env files on Windows
                     token_aud = data.get('aud', '')
-                    clean_client_id = client_id.strip()
                     if token_aud != clean_client_id:
                         logger.warning(f"Google token audience mismatch: token_aud={repr(token_aud)} client_id={repr(clean_client_id)}")
                         return False, None
-                    # Verify the user ID matches
                     if expected_id and data.get('sub') != expected_id:
                         logger.warning("Google token user ID mismatch")
                         return False, None
-                    # Verify the email matches
                     if expected_email and data.get('email') != expected_email:
                         logger.warning("Google token email mismatch")
                         return False, None
-                    # Extract user information from Google token
                     user_info = {
                         'provider_id': data.get('sub'),
                         'email': data.get('email'),
@@ -179,9 +174,32 @@ class SocialAuthSerializer(serializers.Serializer):
                         'profile_image': data.get('picture')
                     }
                     return True, user_info
-                else:
-                    logger.warning(f"Google token verification failed: {response.status_code}")
-                    return False, None
+                
+                # Fallback: try as access_token via userinfo endpoint (from useGoogleLogin)
+                userinfo_response = requests.get(
+                    'https://www.googleapis.com/oauth2/v3/userinfo',
+                    headers={'Authorization': f'Bearer {token}'},
+                    timeout=5
+                )
+                if userinfo_response.status_code == 200:
+                    data = userinfo_response.json()
+                    if expected_id and data.get('sub') != expected_id:
+                        logger.warning("Google access_token user ID mismatch")
+                        return False, None
+                    if expected_email and data.get('email') != expected_email:
+                        logger.warning("Google access_token email mismatch")
+                        return False, None
+                    user_info = {
+                        'provider_id': data.get('sub'),
+                        'email': data.get('email'),
+                        'first_name': data.get('given_name'),
+                        'last_name': data.get('family_name'),
+                        'profile_image': data.get('picture')
+                    }
+                    return True, user_info
+                
+                logger.warning(f"Google token verification failed (both id_token and access_token)")
+                return False, None
                     
             elif provider == 'facebook':
                 # Verify Facebook access token

@@ -498,6 +498,7 @@ const App: React.FC = () => {
         cursorSize={settings?.cursor_size}
         customCursorColor={settings?.custom_cursor_color}
         primaryColor={settings?.primary_color}
+        cursorEnabledMobile={settings?.cursor_enabled_mobile}
       />
       {!hideNavPaths.includes(location.pathname) && !isAdminPath && <Navbar />}
       

@@ -17,7 +17,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
         fields = [
             'site_name', 'site_title', 'logo_url', 'favicon_url', 'site_description',
             'primary_color', 'secondary_color', 'accent_color', 'background_color',
-            'cursor_theme', 'cursor_size', 'custom_cursor_color',
+            'cursor_theme', 'cursor_size', 'custom_cursor_color', 'cursor_enabled_mobile',
             'hero_title', 'hero_subtitle', 'hero_tagline',
             'about_title', 'about_quote', 'profile_image', 'drone_image', 'drone_video_url',
             'nav_work_label', 'nav_about_label', 'nav_contact_label',
@@ -49,7 +49,7 @@ class SiteSettingsPublicSerializer(serializers.ModelSerializer):
         fields = [
             'site_name', 'site_title', 'logo_url', 'favicon_url', 'site_description',
             'primary_color', 'secondary_color', 'accent_color', 'background_color',
-            'cursor_theme', 'cursor_size', 'custom_cursor_color',
+            'cursor_theme', 'cursor_size', 'custom_cursor_color', 'cursor_enabled_mobile',
             'hero_title', 'hero_subtitle', 'hero_tagline',
             'about_title', 'about_quote', 'profile_image', 'drone_image', 'drone_video_url',
             'nav_work_label', 'nav_about_label', 'nav_contact_label',

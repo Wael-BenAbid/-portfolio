@@ -181,7 +181,7 @@ const Contact: React.FC = () => {
     setSubmitError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/content/contact/`, {
+      const response = await fetch(`${API_BASE_URL}/settings/contact/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

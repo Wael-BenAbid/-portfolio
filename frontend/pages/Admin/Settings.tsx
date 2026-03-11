@@ -25,6 +25,7 @@ interface SiteSettings {
   cursor_theme?: string;
   cursor_size?: number;
   custom_cursor_color?: string;
+  cursor_enabled_mobile?: boolean;
   // Hero Section
   hero_title: string;
   hero_subtitle: string;
@@ -116,6 +117,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   logo_url: '',
   favicon_url: '',
   site_description: '',
+  cursor_enabled_mobile: false,
   hero_title: '',
   hero_subtitle: '',
   hero_tagline: '',
@@ -1053,6 +1055,20 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-display uppercase tracking-widest text-gray-500">Curseur sur Mobile</label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setSettings({...settings, cursor_enabled_mobile: !settings.cursor_enabled_mobile})}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${settings.cursor_enabled_mobile ? 'bg-blue-500' : 'bg-gray-700'}`}
+                    >
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.cursor_enabled_mobile ? 'left-7' : 'left-1'}`} />
+                    </button>
+                    <span className="text-xs text-gray-400">{settings.cursor_enabled_mobile ? 'Activé' : 'Désactivé'}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-600">Active ou désactive le curseur personnalisé sur les appareils mobiles et tactiles</p>
+                </div>
               </div>
             </section>
 

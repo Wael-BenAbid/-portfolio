@@ -7,6 +7,7 @@ interface CustomCursorProps {
   cursorSize?: number;
   customCursorColor?: string;
   primaryColor?: string;
+  cursorEnabledMobile?: boolean;
 }
 
 export const CustomCursor: React.FC<CustomCursorProps> = ({
@@ -14,6 +15,7 @@ export const CustomCursor: React.FC<CustomCursorProps> = ({
   cursorSize = 20,
   customCursorColor = '#6366f1',
   primaryColor = '#6366f1',
+  cursorEnabledMobile = false,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -34,7 +36,7 @@ export const CustomCursor: React.FC<CustomCursorProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isTouchDevice) return;
+    if (isTouchDevice && !cursorEnabledMobile) return;
     const moveCursor = (e: MouseEvent) => {
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
@@ -62,10 +64,10 @@ export const CustomCursor: React.FC<CustomCursorProps> = ({
       window.removeEventListener('mousemove', moveCursor);
       window.removeEventListener('mouseover', handleHoverStart);
     };
-  }, [cursorX, cursorY, isTouchDevice]);
+  }, [cursorX, cursorY, isTouchDevice, cursorEnabledMobile]);
 
   // Don't render custom cursor on touch devices
-  if (isTouchDevice) return null;
+  if (isTouchDevice && !cursorEnabledMobile) return null;
 
   // Determine cursor color based on theme
   const getCursorColor = () => {

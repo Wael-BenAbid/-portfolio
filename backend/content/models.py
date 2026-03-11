@@ -22,6 +22,7 @@ class SiteSettings(models.Model):
     cursor_theme = models.CharField(max_length=20, default='default', help_text="Cursor theme (default, neon, minimal, custom)")
     cursor_size = models.IntegerField(default=20, help_text="Cursor size in pixels (10-50)")
     custom_cursor_color = models.CharField(max_length=7, default='#6366f1', help_text="Custom cursor color hex code (only applicable if cursor theme is custom)")
+    cursor_enabled_mobile = models.BooleanField(default=False, help_text="Enable custom cursor on mobile/touch devices")
     
     # Hero Section
     hero_title = models.CharField(max_length=100, default='CREATIVE DEVELOPER')
