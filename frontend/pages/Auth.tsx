@@ -286,7 +286,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       const data = await response.json();
       
       if (response.ok) {
-        onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
+        onLogin(data.user, data.access_token || 'http-only-cookie');
         // Check if user was trying to access admin page before login
         const searchParams = new URLSearchParams(window.location.search);
         const from = searchParams.get('from') || '/';
@@ -339,7 +339,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       const data = await response.json();
       
       if (response.ok) {
-        onLogin(data.user, 'http-only-cookie'); // Use placeholder since token is in cookie
+        onLogin(data.user, data.access_token || 'http-only-cookie');
         navigate('/');
       } else {
         setError(extractError(data, 'Registration failed'));
@@ -580,7 +580,7 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
                     
                     if (res.ok) {
                       const data = await res.json();
-                      onLogin(data.user, 'http-only-cookie');
+                      onLogin(data.user, data.access_token || 'http-only-cookie');
                       navigate('/');
                     } else {
                       const errorData = await res.json();

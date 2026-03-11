@@ -32,14 +32,20 @@ interface RequestOptions {
 }
 
 /**
- * Check if user is authenticated (has user data in sessionStorage)
- * Note: The actual authentication is done via HttpOnly cookie set by backend
- * We do NOT store or retrieve the auth token from sessionStorage for security
+ * Get the access token for API authentication.
+ * Stored in sessionStorage (cleared when tab closes).
  */
 export const getAuthToken = (): string | null => {
-  // Token is stored in HttpOnly cookie only - not accessible to JavaScript
-  // Return null to indicate we rely on cookie-based authentication
-  return null;
+  return sessionStorage.getItem('access_token');
+};
+
+/** Persist access token (called after login/register/social-auth). */
+export const setAuthToken = (token: string | null): void => {
+  if (token) {
+    sessionStorage.setItem('access_token', token);
+  } else {
+    sessionStorage.removeItem('access_token');
+  }
 };
 
 /**

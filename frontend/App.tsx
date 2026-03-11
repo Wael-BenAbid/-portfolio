@@ -13,6 +13,7 @@ import { Scene3D } from './components/Scene3D';
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
+import { setAuthToken } from './services/api';
 import { useSettings } from './hooks/useData';
 
 // Initialize Sentry for error tracking
@@ -153,32 +154,39 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   useEffect(() => {
     // Verify authentication with backend on initial load
     const verifyAuth = async () => {
+      const storedToken = sessionStorage.getItem('access_token');
+      if (!storedToken && !initialUser) {
+        // No token and no stored user — skip verification
+        setIsInitializing(false);
+        return;
+      }
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (storedToken) {
+          headers['Authorization'] = `Bearer ${storedToken}`;
+        }
         const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers,
         });
         
         if (response.ok) {
           const data = await response.json();
-          // Update user state with fresh data from backend
           setUser(data);
-          setToken('http-only-cookie'); // Ensure token state is consistent with authenticated user
+          setToken(storedToken || 'http-only-cookie');
           sessionStorage.setItem('auth_user', JSON.stringify(data));
         } else {
-          // Backend says not authenticated, clear local state
           setUser(null);
           setToken(null);
           sessionStorage.removeItem('auth_user');
+          sessionStorage.removeItem('access_token');
         }
       } catch (error) {
         console.error('Auth verification error:', error);
-        // If we can't reach backend, assume not authenticated to avoid stale state
         setUser(null);
         setToken(null);
         sessionStorage.removeItem('auth_user');
+        sessionStorage.removeItem('access_token');
       } finally {
         setIsInitializing(false);
       }
@@ -190,39 +198,35 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    // Store only user info in sessionStorage (non-sensitive data)
-    // IMPORTANT: The auth token is handled via HttpOnly cookie by the backend
-    // We do NOT store the token in sessionStorage to prevent XSS token theft
-    // The token parameter is only used for React state, not persisted
     sessionStorage.setItem('auth_user', JSON.stringify(userData));
+    // Persist access token for cross-origin API calls (Bearer header)
+    if (authToken && authToken !== 'http-only-cookie') {
+      setAuthToken(authToken);
+    }
   };
 
   const logout = async () => {
     try {
-      // Get CSRF token from cookie
       const csrfToken = getCookie('csrftoken');
-      
-      if (!csrfToken) {
-        console.warn('CSRF token not found, proceeding with logout');
-      }
-      
-      // Call backend logout endpoint to properly invalidate the token
+      const storedToken = sessionStorage.getItem('access_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+      if (storedToken) headers['Authorization'] = `Bearer ${storedToken}`;
+
       await fetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'X-CSRFToken': csrfToken || '',
-          'Content-Type': 'application/json'
-        }
+        headers,
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Continue with local cleanup even if backend call fails
     }
     setUser(null);
     setToken(null);
-    // Clear sessionStorage (only user info, no token stored)
     sessionStorage.removeItem('auth_user');
+    sessionStorage.removeItem('access_token');
   };
 
   const clearPasswordChangeRequired = () => {

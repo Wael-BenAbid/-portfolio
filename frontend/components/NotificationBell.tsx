@@ -4,6 +4,13 @@ import { Bell, X, CheckCheck, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../constants';
 import { useAuth } from '../App';
+import { getAuthToken } from '../services/api';
+
+/** Build headers with Bearer token if available */
+const authHeaders = (): Record<string, string> => {
+  const token = getAuthToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
 
 interface Notification {
   id: number;
@@ -46,7 +53,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/interactions/notifications/unread-count/`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/interactions/notifications/unread-count/`, { credentials: 'include', headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setUnreadCount(data.unread_count ?? 0);
@@ -57,7 +64,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/interactions/notifications/`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/interactions/notifications/`, { credentials: 'include', headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         const list: Notification[] = (data.results || data).slice(0, 20);
@@ -96,6 +103,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     await fetch(`${API_BASE_URL}/interactions/notifications/${id}/read/`, {
       method: 'POST',
       credentials: 'include',
+      headers: authHeaders(),
     });
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
@@ -105,6 +113,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     await fetch(`${API_BASE_URL}/interactions/notifications/mark-all-read/`, {
       method: 'POST',
       credentials: 'include',
+      headers: authHeaders(),
     });
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);

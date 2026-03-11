@@ -9,24 +9,32 @@ from django.middleware.csrf import CsrfViewMiddleware
 
 class CookieTokenAuthentication(TokenAuthentication):
     """
-    Authentication class that extracts token from HttpOnly cookie
-    instead of Authorization header
+    Authentication class that extracts token from:
+    1. HttpOnly cookie (same-origin)
+    2. Authorization: Bearer <token> header (cross-origin)
     """
+    keyword = 'Bearer'
+
     def authenticate(self, request):
-        # Try to get token from HttpOnly cookie
+        # 1. Try HttpOnly cookie first (same-origin deployments)
         token = request.COOKIES.get('auth_token')
-        
-        if not token:
-            return None
-            
-        try:
-            # Call TokenAuthentication's authenticate_credentials with the raw token string
-            return self.authenticate_credentials(token)
-        except Exception:
-            # Token is invalid or expired — treat as anonymous so that public
-            # endpoints (AllowAny) remain accessible.  Protected endpoints will
-            # still return 401 because IsAuthenticated rejects anonymous users.
-            return None
+        if token:
+            try:
+                return self.authenticate_credentials(token)
+            except Exception:
+                pass
+
+        # 2. Fall back to Authorization header (cross-origin deployments)
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0] in ('Bearer', 'Token'):
+                try:
+                    return self.authenticate_credentials(parts[1])
+                except Exception:
+                    pass
+
+        return None
 
 
 # Add this to REST_FRAMEWORK in settings.py:
