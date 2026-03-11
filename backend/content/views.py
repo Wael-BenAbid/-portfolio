@@ -227,15 +227,14 @@ class ImageUploadView(APIView):
         ext = image.name.split('.')[-1].lower()
         filename = f'uploads/{now.year}/{now.month:02d}/{now.day:02d}/{uuid.uuid4()}.{ext}'
         
-        # Save file
-        saved_path = default_storage.save(filename, ContentFile(image.read()))
+        # Reset file pointer after Pillow verification
+        image.seek(0)
         
-        # Return the full URL
-        from django.conf import settings
-        # Use the actual host from the request
-        scheme = request.scheme
-        host = request.get_host()
-        image_url = f'{scheme}://{host}{settings.MEDIA_URL}{saved_path}'
+        # Save file (uses Cloudinary in production, local filesystem in dev)
+        saved_path = default_storage.save(filename, image)
+        
+        # Get the URL from the storage backend
+        image_url = default_storage.url(saved_path)
         
         return Response({
             'url': image_url,
