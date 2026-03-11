@@ -1,2 +1,3 @@
-# Default settings module exports development settings.
-from .dev import *  # noqa: F401,F403
+# Settings are loaded via DJANGO_SETTINGS_MODULE env var.
+# Do NOT import dev/prod here to avoid double-loading.
+# Set DJANGO_SETTINGS_MODULE=portfolio.settings.dev (or .prod) in your env.
