@@ -6,6 +6,7 @@ import { useAuth } from '../App';
 import { User, LogOut, Settings } from 'lucide-react';
 import { useSettings } from '../hooks/useData';
 import { NotificationBell } from './NotificationBell';
+import { API_BASE_URL } from '../constants';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -27,7 +28,7 @@ export const Navbar: React.FC = () => {
   const [siteTitle, setSiteTitle] = useState('ABIDOS');
   
   useEffect(() => {
-    fetch('/api/settings/')
+    fetch(`${API_BASE_URL}/settings/`)
       .then(response => response.json())
       .then(data => setSiteTitle(data.hero_title || 'ABIDOS'))
       .catch(error => console.error('Error fetching settings:', error));
