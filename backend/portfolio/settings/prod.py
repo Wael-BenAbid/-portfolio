@@ -21,7 +21,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in os.getenv(
         'DJANGO_ALLOWED_HOSTS',
-        'wael-ben-abid.me,www.wael-ben-abid.me,api.wael-ben-abid.me',
+        'wael-ben-abid.me,www.wael-ben-abid.me,api.wael-ben-abid.me,.onrender.com',
     ).split(',')
     if h.strip()
 ]
