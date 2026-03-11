@@ -12,28 +12,35 @@ class Command(BaseCommand):
     help = 'Remove localhost URLs from production database fields'
 
     def handle(self, *args, **options):
-        url_fields = [
-            'logo_url', 'favicon_url', 'profile_image', 'drone_image',
-            'cv_profile_image', 'footer_background_video',
-        ]
-
         with connection.cursor() as cursor:
-            try:
-                cursor.execute("SELECT COUNT(*) FROM content_sitesettings")
-                if cursor.fetchone()[0] == 0:
-                    self.stdout.write('No SiteSettings found, skipping.')
-                    return
+            # Fix SiteSettings localhost URLs
+            self._fix_table(cursor, 'content_sitesettings', [
+                'logo_url', 'favicon_url', 'profile_image', 'drone_image',
+                'cv_profile_image', 'footer_background_video', 'drone_video_url',
+            ])
 
-                updates = []
-                for field in url_fields:
-                    updates.append(
-                        f"{field} = CASE WHEN {field} LIKE 'http://localhost%%' THEN '' ELSE {field} END"
-                    )
+            # Fix Project localhost URLs
+            self._fix_table(cursor, 'projects_project', [
+                'thumbnail', 'video_url',
+            ])
 
-                sql = f"UPDATE content_sitesettings SET {', '.join(updates)}"
-                cursor.execute(sql)
-                self.stdout.write(self.style.SUCCESS(
-                    f'Fixed localhost URLs in SiteSettings ({cursor.rowcount} row(s) updated).'
-                ))
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f'Could not fix URLs: {e}'))
+    def _fix_table(self, cursor, table, fields):
+        try:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            if cursor.fetchone()[0] == 0:
+                self.stdout.write(f'No rows in {table}, skipping.')
+                return
+
+            updates = []
+            for field in fields:
+                updates.append(
+                    f"{field} = CASE WHEN {field} LIKE 'http://localhost%%' THEN '' ELSE {field} END"
+                )
+
+            sql = f"UPDATE {table} SET {', '.join(updates)}"
+            cursor.execute(sql)
+            self.stdout.write(self.style.SUCCESS(
+                f'Fixed localhost URLs in {table} ({cursor.rowcount} row(s) updated).'
+            ))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'Could not fix {table}: {e}'))
