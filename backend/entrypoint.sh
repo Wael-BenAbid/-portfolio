@@ -9,6 +9,9 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "Loading production data (if needed)..."
+python manage.py load_fixture_once || true
+
 # Auto-promote or create admin from env vars (runs on every deploy, idempotent)
 if [ -n "$ADMIN_EMAIL" ]; then
   echo "Ensuring admin user: $ADMIN_EMAIL"
