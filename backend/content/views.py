@@ -153,9 +153,51 @@ class ContactMessageReplyView(APIView):
         
         message.admin_reply = reply
         message.status = 'replied'
+        from django.utils import timezone
+        message.replied_at = timezone.now()
         message.save()
         
+        # Send reply email to user
+        self._send_reply_email(message, reply)
+        
         return Response({'message': 'Reply sent successfully'})
+
+    def _send_reply_email(self, message, reply):
+        """Send reply email to the user who sent the contact message."""
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings as django_settings
+            from content.models import SiteSettings
+
+            site = SiteSettings.get_settings()
+            from_email = site.default_from_email or site.email_host_user
+            recipient_email = message.email
+            
+            if not from_email or not recipient_email:
+                return
+
+            subject = f'Re: {message.subject}'
+            email_body = (
+                f'Bonjour {message.name},\n\n'
+                f'Merci de votre message. Voici la réponse :\n\n'
+                f'{reply}\n\n'
+                f'---\n'
+                f'Message Original:\n'
+                f'Sujet: {message.subject}\n'
+                f'Date: {message.created_at.strftime("%d/%m/%Y à %H:%M")}\n'
+            )
+
+            send_mail(
+                subject=subject,
+                message=email_body,
+                from_email=from_email,
+                recipient_list=[recipient_email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Failed to send reply email: {str(e)}')
 
 
 # ============ Email Subscription Views ============
