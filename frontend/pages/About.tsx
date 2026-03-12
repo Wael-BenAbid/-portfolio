@@ -107,19 +107,36 @@ const StarField: React.FC = () => {
 const About: React.FC = () => {
   const { data: cvData, loading, error, refetch } = useCV();
   const [retrying, setRetrying] = useState(false);
+  const retryCountRef = useRef(0);
 
-  // Auto-retry when backend is waking up (network error with empty fallback data)
-  const isBackendWaking = error?.status === 0 && cvData?.experiences?.length === 0;
+  // Debug: log CV data state for troubleshooting
+  useEffect(() => {
+    console.log('[About] CV data state:', {
+      loading,
+      error: error ? { message: error.message, status: error.status } : null,
+      hasData: !!cvData,
+      experiences: cvData?.experiences?.length ?? 0,
+      education: cvData?.education?.length ?? 0,
+      skills: cvData?.skills?.length ?? 0,
+      languages: cvData?.languages?.length ?? 0,
+    });
+  }, [cvData, loading, error]);
+
+  // Auto-retry when CV data loaded but all sections are empty (likely cold start fallback)
+  const hasNoSections = !loading && cvData && 
+    cvData.experiences.length === 0 && cvData.education.length === 0 && 
+    cvData.skills.length === 0 && cvData.languages.length === 0;
   
   useEffect(() => {
-    if (!isBackendWaking) return;
+    if (!hasNoSections || retryCountRef.current >= 6) return;
     const timer = setTimeout(async () => {
+      retryCountRef.current++;
       setRetrying(true);
       await refetch();
       setRetrying(false);
-    }, 10000); // Auto-retry every 10 seconds
+    }, 8000);
     return () => clearTimeout(timer);
-  }, [isBackendWaking, refetch, error]);
+  }, [hasNoSections, refetch, cvData]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -127,39 +144,12 @@ const About: React.FC = () => {
   };
 
   // Loading state
-  if (loading && !cvData) {
+  if (loading) {
     return <AboutSkeleton />;
   }
 
-  // Backend waking up state — show a clear message with retry
-  if (isBackendWaking) {
-    return (
-      <div className="min-h-screen bg-[#030508] flex flex-col items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="mb-6">
-            <div className="w-16 h-16 mx-auto border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-          </div>
-          <h2 className="text-2xl font-display font-bold mb-3 text-white">
-            Server is waking up...
-          </h2>
-          <p className="text-gray-400 mb-6">
-            The backend is hosted on a free tier and may take up to a minute to start. 
-            {retrying ? ' Retrying now...' : ' Retrying automatically...'}
-          </p>
-          <button
-            onClick={async () => { setRetrying(true); await refetch(); setRetrying(false); }}
-            disabled={retrying}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 rounded-lg transition-colors text-white font-medium"
-          >
-            {retrying ? 'Retrying...' : 'Retry Now'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state (real API errors, not network/cold-start)
-  if (error && error.status !== 0) {
+  // Error state
+  if (error) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] pt-24 md:pt-40 px-4 sm:px-8 md:px-24">
         <ErrorDisplay error={error} onRetry={refetch} />

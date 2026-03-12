@@ -85,9 +85,12 @@ export function useQuery<T>(
           ? err 
           : new APIError('An unexpected error occurred', 500, err);
         
-        // Always report the error so the UI can show a retry option
-        setError(apiError);
-        onError?.(apiError);
+        // Don't set error for network failures when we have fallback data
+        // This prevents showing error UI when the backend is just waking up
+        if (apiError.status !== 0 || !validatedFallbackData) {
+          setError(apiError);
+          onError?.(apiError);
+        }
         
         // Use fallback data if available when API fails
         if (validatedFallbackData) {
