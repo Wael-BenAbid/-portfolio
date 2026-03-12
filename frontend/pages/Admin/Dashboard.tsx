@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity, ClipboardList, ChevronDown, Mail, Phone, MessageSquare } from 'lucide-react';
-import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
+import { STORAGE_KEYS, API_BASE_URL, isVideoUrl } from '../../constants';
 import { authFetch, api, APIError } from '../../services/api';
 import { compressImageIfNeeded } from '../../utils/imageCompression';
 import { Project, MediaItem } from '../../types';
@@ -718,7 +718,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 {newProject.thumbnail && (
                   <div className="mt-2 w-32 h-20 object-cover rounded overflow-hidden">
-                    {newProject.thumbnail?.endsWith('.mp4') || newProject.thumbnail?.endsWith('.webm') || newProject.thumbnail?.endsWith('.ogg') ? (
+                    {isVideoUrl(newProject.thumbnail) ? (
                       <video
                         src={newProject.thumbnail}
                         autoPlay
@@ -1019,7 +1019,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 {editingProject.thumbnail && (
                   <div className="mt-2 w-32 h-20 object-cover rounded overflow-hidden">
-                    {editingProject.thumbnail?.endsWith('.mp4') || editingProject.thumbnail?.endsWith('.webm') || editingProject.thumbnail?.endsWith('.ogg') ? (
+                    {isVideoUrl(editingProject.thumbnail) ? (
                       <video
                         src={editingProject.thumbnail}
                         autoPlay

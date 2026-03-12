@@ -11,6 +11,7 @@ import {
   PageLoading 
 } from '../components/Loading';
 import { APIError } from '../services/api';
+import { isVideoUrl } from '../constants';
 
 const Work: React.FC = () => {
   const { data, loading, error, refetch } = useProjects();
@@ -123,7 +124,7 @@ const Work: React.FC = () => {
                   <div className="relative bg-gray-900 mb-6 rounded-sm">
                     {/* Affichage conditionnel selon le type de média */}
                     {/* Check if thumbnail is a video file */}
-                    {project.thumbnail?.endsWith('.mp4') || project.thumbnail?.endsWith('.webm') || project.thumbnail?.endsWith('.ogg') ? (
+                    {isVideoUrl(project.thumbnail) ? (
                       <OptimizedVideo
                         src={project.thumbnail}
                         alt={project.title}

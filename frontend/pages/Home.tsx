@@ -8,6 +8,7 @@ import LikeButton from '../components/LikeButton';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { OptimizedVideo } from '../components/OptimizedVideo';
 import type { Project } from '../types';
+import { isVideoUrl } from '../constants';
 
 const Home: React.FC = () => {
   const aboutSectionRef = useRef<HTMLDivElement>(null);
@@ -135,7 +136,7 @@ const Home: React.FC = () => {
               >
                  <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
                     {/* Check if thumbnail is a video */}
-                    {project.thumbnail?.endsWith('.mp4') || project.thumbnail?.endsWith('.webm') || project.thumbnail?.endsWith('.ogg') ? (
+                    {isVideoUrl(project.thumbnail) ? (
                       <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
                          <motion.div className="w-full h-full overflow-hidden rounded-2xl">
                            <OptimizedVideo

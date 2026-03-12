@@ -78,6 +78,24 @@ export const DEFAULT_ABOUT: AboutData = {
   socials: {}
 };
 
+/**
+ * Returns true if the URL points to a video.
+ * Handles:
+ *  - Standard extensions (.mp4, .webm, .ogg, .mov)
+ *  - Cloudinary video delivery URLs (/video/upload/)
+ */
+export const isVideoUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.ogg') ||
+    lower.endsWith('.mov') ||
+    lower.includes('/video/upload/')
+  );
+};
+
 // Image optimization helper
 export const getOptimizedImageUrl = (url: string | null | undefined, width: number = 800): string | null => {
   if (!url || typeof url !== 'string' || url.trim() === '') return null;

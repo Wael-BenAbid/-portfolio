@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { getOptimizedImageUrl } from '../constants';
+import { getOptimizedImageUrl, isVideoUrl } from '../constants';
 
 interface OptimizedImageProps {
   src: string | null | undefined;
@@ -161,8 +161,8 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Check if src is a video file
-  const isVideo = src && (src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.ogg'));
+  // Check if src is a video file (including extension-less Cloudinary /video/upload/ URLs)
+  const isVideo = isVideoUrl(src);
   
   const optimizedSrc = isVideo ? src : getOptimizedImageUrl(src, 800);
   const optimizedSrcSet = srcSet
@@ -247,8 +247,8 @@ export const BackgroundImage: React.FC<BackgroundImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const [scrollY, setScrollY] = useState(0);
 
-  // Check if src is a video file
-  const isVideo = src && (src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.ogg'));
+  // Check if src is a video file (including extension-less Cloudinary /video/upload/ URLs)
+  const isVideo = isVideoUrl(src);
 
   const optimizedSrc = isVideo ? src : getOptimizedImageUrl(src, 1920);
 

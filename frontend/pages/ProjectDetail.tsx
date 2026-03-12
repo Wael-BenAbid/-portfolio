@@ -10,7 +10,7 @@ import { ImageCarousel } from '../components/ImageCarousel';
 import LikeButton from '../components/LikeButton';
 import { BackButton } from '../components/BackButton';
 import { useAuth } from '../App';
-import { API_BASE_URL } from '../constants';
+import { API_BASE_URL, isVideoUrl } from '../constants';
 import { authFetch } from '../services/api';
 
 const ProjectDetail: React.FC = () => {
@@ -125,9 +125,7 @@ const ProjectDetail: React.FC = () => {
       <section className="relative h-screen w-full overflow-hidden">
         <motion.div style={{ opacity, scale }} className="absolute inset-0">
           {project.thumbnail && (
-            (project.thumbnail.endsWith('.mp4') || 
-             project.thumbnail.endsWith('.webm') || 
-             project.thumbnail.endsWith('.ogg')) ? (
+            isVideoUrl(project.thumbnail) ? (
               <OptimizedVideo
                 src={project.thumbnail}
                 alt={project.title}
