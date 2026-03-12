@@ -135,7 +135,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* 2. PROJECTS SECTION - Vertical Layout */}
-      <section className="py-16 sm:py-24 md:py-48 px-4 sm:px-8 md:px-24">
+      <section className="py-24 sm:py-32 md:py-56 px-4 sm:px-8 md:px-24">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <motion.div 
@@ -143,31 +143,23 @@ const Home: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8 }}
-            className="mb-16 md:mb-24"
+            className="mb-24 md:mb-32"
           >
-            <h3 className="text-4xl sm:text-5xl md:text-7xl font-display font-black uppercase mb-8 leading-tight">
+            <h3 className="text-5xl sm:text-6xl md:text-8xl font-display font-black uppercase mb-10 leading-tight">
               SELECTED <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">PROJECTS</span>
             </h3>
             <motion.p 
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-gray-400 text-base md:text-lg max-w-2xl mb-8 leading-relaxed"
+              className="text-gray-400 text-lg md:text-xl max-w-3xl leading-relaxed"
             >
               A curation of high-performance digital platforms and cinematic drone captures that push the boundaries of what's possible.
             </motion.p>
-            <motion.div
-              whileHover={{ x: 8 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Link to="/work" className="group inline-flex items-center gap-3 text-xs font-display tracking-[0.3em] uppercase border-b border-blue-500/30 hover:border-blue-500 pb-1 transition-colors duration-300">
-                Explore All Works <ChevronRight size={16} className="group-hover:translate-x-2 transition-transform" />
-              </Link>
-            </motion.div>
           </motion.div>
 
           {/* Project Cards - Vertical Stack */}
-          <div className="space-y-16 md:space-y-24">
+          <div className="space-y-20 md:space-y-32">
             {projectsLoading && (
               <>
                 {[1, 2, 3, 4].map((i) => (
@@ -194,15 +186,15 @@ const Home: React.FC = () => {
                 transition={{ duration: 0.8, delay: i * 0.15 }}
                 className="relative group cursor-pointer"
               >
-                 <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-500">
+                 <div className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all duration-500 shadow-2xl group-hover:shadow-blue-500/20 group-hover:shadow-2xl">
                     {/* Check if thumbnail is a video */}
                     {isVideoUrl(project.thumbnail) ? (
-                      <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
+                      <div className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9]">
                          <motion.div 
-                          className="w-full h-full overflow-hidden rounded-2xl"
+                          className="w-full h-full overflow-hidden rounded-3xl"
                           whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                         >
+                        >
                            <OptimizedVideo
                              src={project.thumbnail}
                              alt={project.title}
@@ -220,7 +212,7 @@ const Home: React.FC = () => {
                           initial={{ opacity: 0 }}
                           whileHover={{ opacity: 1 }}
                           transition={{ duration: 0.4 }}
-                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-2xl"
+                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-3xl"
                         >
                           <motion.p 
                             initial={{ y: 10, opacity: 0 }}
@@ -234,7 +226,7 @@ const Home: React.FC = () => {
                             initial={{ y: 10, opacity: 0 }}
                             whileHover={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.15, duration: 0.4 }}
-                            className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6"
+                            className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-8"
                           >
                             {project.title}
                           </motion.h4>
@@ -242,7 +234,7 @@ const Home: React.FC = () => {
                             initial={{ y: 10, opacity: 0 }}
                             whileHover={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.2, duration: 0.4 }}
-                            className="flex flex-wrap gap-2 md:gap-3"
+                            className="flex flex-wrap gap-3 md:gap-4"
                           >
                             {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
                               <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
@@ -263,9 +255,9 @@ const Home: React.FC = () => {
                      </div>
                    ) : (
                      /* For images, keep the link */
-                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-500">
+                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all duration-500 shadow-2xl group-hover:shadow-blue-500/20 group-hover:shadow-2xl">
                         <motion.div 
-                          className="w-full h-full overflow-hidden rounded-2xl"
+                          className="w-full h-full overflow-hidden rounded-3xl"
                           whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
                         >
@@ -286,7 +278,7 @@ const Home: React.FC = () => {
                           initial={{ opacity: 0 }}
                           whileHover={{ opacity: 1 }}
                           transition={{ duration: 0.4 }}
-                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-2xl"
+                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-3xl"
                         >
                           <motion.p 
                             initial={{ y: 10, opacity: 0 }}
@@ -300,7 +292,7 @@ const Home: React.FC = () => {
                             initial={{ y: 10, opacity: 0 }}
                             whileHover={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.15, duration: 0.4 }}
-                            className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6"
+                            className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-8"
                           >
                             {project.title}
                           </motion.h4>
@@ -308,7 +300,7 @@ const Home: React.FC = () => {
                             initial={{ y: 10, opacity: 0 }}
                             whileHover={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.2, duration: 0.4 }}
-                            className="flex flex-wrap gap-2 md:gap-3"
+                            className="flex flex-wrap gap-3 md:gap-4"
                           >
                             {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
                               <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
