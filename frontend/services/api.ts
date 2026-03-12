@@ -142,7 +142,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 const retryWithExponentialBackoff = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delay: number = 1000
+  delay: number = 3000
 ): Promise<T> => {
   try {
     return await fn();
@@ -170,26 +170,33 @@ export const api = {
   /**
    * GET request
    */
-  async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions & { maxRetries?: number; timeoutMs?: number }): Promise<T> {
     const maxRetries = options?.maxRetries ?? 3;
+    const timeoutMs = options?.timeoutMs ?? 90000; // 90s default to survive cold starts
     
     return retryWithExponentialBackoff(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetch(buildURL(endpoint, params), {
           method: 'GET',
           headers: getDefaultHeaders(options?.token),
           credentials: 'include',  // Include HttpOnly cookies for authentication
-          ...options,
+          signal: controller.signal,
         });
         
         return handleResponse<T>(response);
       } catch (error) {
-        // Silently handle network errors - return empty response
-        // This allows the app to work offline or when backend is unavailable
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new APIError('Request timed out - backend may be starting up', 0, { networkError: true, timeout: true });
+        }
+        // Handle network errors (backend unavailable / cold start)
         if (error instanceof TypeError && error.message.includes('fetch')) {
           throw new APIError('Network error - backend unavailable', 0, { networkError: true });
         }
         throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
     }, maxRetries);
   },

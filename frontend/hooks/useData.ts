@@ -85,11 +85,9 @@ export function useQuery<T>(
           ? err 
           : new APIError('An unexpected error occurred', 500, err);
         
-        // Don't set error for network failures when we have fallback data
-        if (apiError.status !== 0 || !validatedFallbackData) {
-          setError(apiError);
-          onError?.(apiError);
-        }
+        // Always report the error so the UI can show a retry option
+        setError(apiError);
+        onError?.(apiError);
         
         // Use fallback data if available when API fails
         if (validatedFallbackData) {
@@ -252,6 +250,7 @@ export function useProjects() {
   return useQuery<ProjectsResponse>('/projects/', {
     fallbackData: EMPTY_PROJECTS_RESPONSE,
     schema: ProjectsResponseSchema,
+    maxRetries: 5,
   });
 }
 
@@ -352,6 +351,7 @@ export function useSettings() {
   const { data, ...rest } = useQuery<SiteSettings>('/settings/', {
     fallbackData: DEFAULT_SETTINGS,
     schema: SiteSettingsSchema,
+    maxRetries: 5,
   });
 
   // Dynamically update browser title and favicon when settings change
@@ -405,6 +405,7 @@ const DEFAULT_CV_DATA: CVData = {
 export function useCV() {
   return useQuery<CVData>('/cv/', {
     fallbackData: DEFAULT_CV_DATA,
+    maxRetries: 5, // More retries to survive Render free-tier cold starts (~50s)
   });
 }
 
