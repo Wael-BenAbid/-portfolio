@@ -43,6 +43,8 @@ const Home: React.FC = () => {
   const footerBackgroundVideo = settings?.footer_background_video;
   const copyrightYear = settings?.copyright_year || 2026;
   const version = settings?.version || '1.0';
+  const profileImage = settings?.profile_image;
+  const droneImage = settings?.drone_image;
   
 
 
@@ -243,7 +245,7 @@ const Home: React.FC = () => {
 
       {/* 3. ABOUT MINI SECTION - Scroll-based Image Transition */}
       <section ref={aboutSectionRef} className="py-24 sm:py-48 px-4 sm:px-8 md:px-24 bg-black/80 backdrop-blur-sm relative z-10 border-t border-gray-900">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 md:gap-24 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -258,6 +260,42 @@ const Home: React.FC = () => {
               Meet WAEL <div className="p-4 border border-gray-800 rounded-full group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16}/></div>
             </Link>
           </motion.div>
+
+          {/* Images column */}
+          {(profileImage || droneImage) && (
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative flex flex-col gap-4"
+            >
+              {profileImage && (
+                <div className="relative overflow-hidden rounded-2xl aspect-square w-2/3 self-end">
+                  <OptimizedImage
+                    src={profileImage}
+                    alt="Profile"
+                    objectFit="cover"
+                    className="w-full h-full"
+                    grayscale={true}
+                    hoverEffects={true}
+                  />
+                </div>
+              )}
+              {droneImage && (
+                <div className="relative overflow-hidden rounded-2xl aspect-video w-2/3 self-start -mt-8">
+                  <OptimizedImage
+                    src={droneImage}
+                    alt="Work / Drone"
+                    objectFit="cover"
+                    className="w-full h-full"
+                    grayscale={true}
+                    hoverEffects={true}
+                  />
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
       </section>
 
