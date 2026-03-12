@@ -69,6 +69,10 @@ export function useQuery<T>(
     setLoading(true);
     setError(null);
     
+    if (import.meta.env.DEV) {
+      console.log(`[useQuery] Fetching ${endpoint}...`);
+    }
+    
     try {
       const result = await api.get<T>(endpoint, undefined, { maxRetries });
       
@@ -78,12 +82,19 @@ export function useQuery<T>(
       if (isMounted.current) {
         setData(validatedData);
         onSuccess?.(validatedData);
+        if (import.meta.env.DEV) {
+          console.log(`[useQuery] ${endpoint} success:`, validatedData);
+        }
       }
     } catch (err) {
       if (isMounted.current) {
         const apiError = err instanceof APIError 
           ? err 
           : new APIError('An unexpected error occurred', 500, err);
+        
+        if (import.meta.env.DEV) {
+          console.log(`[useQuery] ${endpoint} error:`, apiError);
+        }
         
         // Don't set error for network failures when we have fallback data
         // This prevents showing error UI when the backend is just waking up
@@ -95,11 +106,17 @@ export function useQuery<T>(
         // Use fallback data if available when API fails
         if (validatedFallbackData) {
           setData(validatedFallbackData);
+          if (import.meta.env.DEV) {
+            console.log(`[useQuery] Using fallback data for ${endpoint}`);
+          }
         }
       }
     } finally {
       if (isMounted.current) {
         setLoading(false);
+        if (import.meta.env.DEV) {
+          console.log(`[useQuery] ${endpoint} loading complete`);
+        }
       }
     }
   }, [endpoint, schema, onSuccess, onError, validatedFallbackData, maxRetries]);
@@ -275,6 +292,10 @@ export function useProjects() {
   // Initialize with cached data if available, otherwise empty
   const cachedData = getCachedProjects();
   
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+    console.log('[useProjects] Cached data:', cachedData);
+  }
+  
   const { data, error, loading, refetch } = useQuery<ProjectsResponse>('/projects/', {
     initialData: cachedData || undefined,
     fallbackData: cachedData || EMPTY_PROJECTS_RESPONSE, // Use cache as fallback, not empty
@@ -283,8 +304,20 @@ export function useProjects() {
     onSuccess: (data) => {
       // Cache projects when successfully loaded
       setCachedProjects(data);
+      if (typeof window !== 'undefined' && import.meta.env.DEV) {
+        console.log('[useProjects] Successfully loaded and cached:', data);
+      }
     },
+    onError: (error) => {
+      if (typeof window !== 'undefined' && import.meta.env.DEV) {
+        console.log('[useProjects] Error loading projects:', error);
+      }
+    }
   });
+
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+    console.log('[useProjects] State:', { data: !!data, loading, error: !!error, count: data?.results.length || 0 });
+  }
 
   return { data, error, loading, refetch };
 }
