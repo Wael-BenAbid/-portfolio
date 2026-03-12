@@ -94,7 +94,45 @@ const getDefaultHeaders = (token?: string): any => {
 };
 
 /**
- * Handle API response
+ * Attempt to refresh the access token using the refresh_token cookie.
+ * Returns the new token string, or null if refresh fails.
+ */
+let _isRefreshing = false;
+let _refreshPromise: Promise<string | null> | null = null;
+
+export const refreshAccessToken = async (): Promise<string | null> => {
+  // Deduplicate concurrent refresh calls
+  if (_isRefreshing && _refreshPromise) return _refreshPromise;
+  
+  _isRefreshing = true;
+  _refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.access_token) {
+          setAuthToken(data.access_token);
+          return data.access_token as string;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      _isRefreshing = false;
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
+};
+
+/**
+ * Handle API response — on 401, signal that a token refresh is needed.
  */
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
@@ -134,6 +172,28 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
   }
   
   return response.json();
+};
+
+/**
+ * Execute a fetch call, and if it returns 401, refresh the token and retry once.
+ */
+const fetchWithAutoRefresh = async <T>(
+  buildRequest: (token: string | null) => Promise<Response>
+): Promise<T> => {
+  const response = await buildRequest(getAuthToken());
+  
+  if (response.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      // Retry once with the new token
+      const retryResponse = await buildRequest(newToken);
+      return handleResponse<T>(retryResponse);
+    }
+    // Refresh failed — clear stale token
+    setAuthToken(null);
+  }
+  
+  return handleResponse<T>(response);
 };
 
 /**
@@ -178,15 +238,13 @@ export const api = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetch(buildURL(endpoint, params), {
+        return await fetchWithAutoRefresh<T>(token => fetch(buildURL(endpoint, params), {
           method: 'GET',
-          headers: getDefaultHeaders(options?.token),
-          credentials: 'include',  // Include HttpOnly cookies for authentication
-          cache: 'no-store',       // Always fetch fresh - never use browser HTTP cache
+          headers: getDefaultHeaders(options?.token ?? token ?? undefined),
+          credentials: 'include',
+          cache: 'no-store',
           signal: controller.signal,
-        });
-        
-        return handleResponse<T>(response);
+        }));
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           throw new APIError('Request timed out - backend may be starting up', 0, { networkError: true, timeout: true });
@@ -208,61 +266,49 @@ export const api = {
    async post<T>(endpoint: string, body?: unknown, options?: RequestOptions & { maxRetries?: number }): Promise<T> {
     const maxRetries = options?.maxRetries ?? 0; // Don't retry POST by default to avoid duplicates
     
-    return retryWithExponentialBackoff(async () => {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return retryWithExponentialBackoff(() =>
+      fetchWithAutoRefresh<T>(token => fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: getDefaultHeaders(options?.token),
+        headers: getDefaultHeaders(options?.token ?? token ?? undefined),
         body: body ? JSON.stringify(body) : undefined,
-        credentials: 'include',  // Include HttpOnly cookies for authentication
-        ...options,
-      });
-      
-      return handleResponse<T>(response);
-    }, maxRetries);
+        credentials: 'include',
+      }))
+    , maxRetries);
   },
 
   /**
    * PUT request
    */
   async put<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return fetchWithAutoRefresh<T>(token => fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: getDefaultHeaders(options?.token),
+      headers: getDefaultHeaders(options?.token ?? token ?? undefined),
       body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include',  // Include HttpOnly cookies for authentication
-      ...options,
-    });
-    
-    return handleResponse<T>(response);
+      credentials: 'include',
+    }));
   },
 
   /**
    * PATCH request
    */
   async patch<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return fetchWithAutoRefresh<T>(token => fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: getDefaultHeaders(options?.token),
+      headers: getDefaultHeaders(options?.token ?? token ?? undefined),
       body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include',  // Include HttpOnly cookies for authentication
-      ...options,
-    });
-    
-    return handleResponse<T>(response);
+      credentials: 'include',
+    }));
   },
 
   /**
    * DELETE request
    */
   async delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return fetchWithAutoRefresh<T>(token => fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
-      headers: getDefaultHeaders(options?.token),
-      credentials: 'include',  // Include HttpOnly cookies for authentication
-      ...options,
-    });
-    
-    return handleResponse<T>(response);
+      headers: getDefaultHeaders(options?.token ?? token ?? undefined),
+      credentials: 'include',
+    }));
   },
 
   /**
