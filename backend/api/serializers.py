@@ -20,6 +20,8 @@ ALLOWED_IMAGE_MIME_TYPES = [
     'image/png',
     'image/webp',
     'image/gif',
+    'image/heic',
+    'image/heif',
 ]
 
 # Allowed video MIME types for upload validation
@@ -30,7 +32,7 @@ ALLOWED_VIDEO_MIME_TYPES = [
 ]
 
 # Allowed file extensions
-ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif']
 ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg']
 
 # Combined allowed types
@@ -427,7 +429,15 @@ class MediaUploadSerializer(serializers.ModelSerializer):
         # WebP: RIFF...WEBP
         if b'WEBP' in file_bytes[:32]:
             return 'image/webp'
-        
+
+        # HEIC/HEIF: ISO Base Media File Format with 'ftyp' atom.
+        # Must be checked BEFORE the generic MP4 ftyp check.
+        # Brand is at bytes 8-12 of the ftyp box.
+        if b'ftyp' in file_bytes[:12]:
+            brand = file_bytes[8:12]
+            if brand in (b'heic', b'heix', b'mif1', b'msf1', b'hevc', b'hevx'):
+                return 'image/heic'
+
         # MP4: (usually has 'ftyp' atom)
         if b'ftyp' in file_bytes[:32]:
             return 'video/mp4'
@@ -508,7 +518,10 @@ class MediaUploadSerializer(serializers.ModelSerializer):
             )
         
         # 4. Validate content based on detected media type
-        if detected_mime in ALLOWED_IMAGE_MIME_TYPES:
+        # Skip Pillow validation for HEIC/HEIF — Pillow cannot read them without
+        # the optional pillow-heif plugin, and the frontend re-encodes them as JPEG.
+        heic_types = {'image/heic', 'image/heif'}
+        if detected_mime in ALLOWED_IMAGE_MIME_TYPES and detected_mime not in heic_types:
             # Validate image content using Pillow
             try:
                 from PIL import Image

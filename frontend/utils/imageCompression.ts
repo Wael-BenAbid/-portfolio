@@ -19,7 +19,30 @@ export async function compressImageIfNeeded(
     return file;
   }
 
-  const bitmap = await createImageBitmap(file);
+  // HEIC/HEIF (iPhone photos) cannot be decoded by Chrome or Firefox.
+  // Try createImageBitmap and catch the failure with a clear message.
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.heic?$/i.test(file.name);
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    if (isHeic) {
+      throw new Error(
+        'HEIC/HEIF photos are not supported by this browser. ' +
+        'Please convert to JPEG or PNG before uploading. ' +
+        'On iPhone: tap Share → Save as File and choose JPEG. ' +
+        'On Mac: open in Preview → File → Export and choose JPEG.',
+      );
+    }
+    // Unknown format the browser can't decode — return original and let
+    // the backend produce a clear validation error.
+    return file;
+  }
+
   const { width: origW, height: origH } = bitmap;
 
   const canvas = document.createElement('canvas');
