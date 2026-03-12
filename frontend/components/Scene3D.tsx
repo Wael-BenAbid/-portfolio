@@ -8,8 +8,8 @@ const NebulaCloud = () => {
   const pointsRef = useRef<THREE.Points>(null!);
   const { viewport } = useThree();
   
-  // Create a denser, more cloud-like particle system
-  const count = 5000;
+  // Reduce particle count for better performance (was 5000, now 1500)
+  const count = 1500;
   const [positions, colors] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const cols = new Float32Array(count * 3);
@@ -35,16 +35,21 @@ const NebulaCloud = () => {
     return [pos, cols];
   }, []);
 
+  // Debounce scroll calculations to avoid blocking main thread
+  const scrollRef = useRef({ lastScroll: 0, timeout: null as NodeJS.Timeout | null });
+
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    const scroll = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-
-    // Subtle drift
-    pointsRef.current.rotation.y = t * 0.02 + scroll * 0.5;
-    pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.1 + scroll * 0.2;
     
-    // Parallax: shift position based on scroll
-    pointsRef.current.position.y = -scroll * 5;
+    // Only recalculate scroll every 100ms to prevent resize jank
+    const now = Date.now();
+    if (now - (scrollRef.current.lastScroll || 0) > 100) {
+      const scroll = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+      pointsRef.current.rotation.y = t * 0.02 + scroll * 0.5;
+      pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.1 + scroll * 0.2;
+      pointsRef.current.position.y = -scroll * 5;
+      scrollRef.current.lastScroll = now;
+    }
   });
 
   return (
@@ -53,7 +58,7 @@ const NebulaCloud = () => {
         <PointMaterial
           transparent
           vertexColors
-          size={0.05}
+          size={0.03}
           sizeAttenuation={true}
           depthWrite={false}
           opacity={0.4}
@@ -63,7 +68,7 @@ const NebulaCloud = () => {
 
       {/* Distant glowing cores */}
       <Float speed={1.5} rotationIntensity={2} floatIntensity={2}>
-        <Sphere args={[2, 64, 64]} position={[-5, 2, -10]}>
+        <Sphere args={[2, 32, 32]} position={[-5, 2, -10]}>
           <MeshDistortMaterial
             color="#1e40af"
             speed={2}
@@ -76,7 +81,7 @@ const NebulaCloud = () => {
       </Float>
       
       <Float speed={2} rotationIntensity={1} floatIntensity={4}>
-        <Sphere args={[1.5, 64, 64]} position={[6, -3, -8]}>
+        <Sphere args={[1.5, 32, 32]} position={[6, -3, -8]}>
           <MeshDistortMaterial
             color="#3b82f6"
             speed={3}
@@ -92,6 +97,19 @@ const NebulaCloud = () => {
 };
 
 export const Scene3D: React.FC = () => {
+  // Disable 3D scene on mobile devices (< 768px) for better performance
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+  
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  if (isMobile) {
+    return null; // Don't render 3D scene on mobile
+  }
+  
   return (
     <div className="w-full h-full">
       <Canvas 

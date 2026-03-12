@@ -8,7 +8,9 @@ import { AnimatePresence } from 'framer-motion';
 import { CustomCursor } from './components/CustomCursor';
 import { Navbar } from './components/Navbar';
 import { LoadingScreen } from './components/LoadingScreen';
-import { Scene3D } from './components/Scene3D';
+
+// Lazy load 3D scene to prevent Three.js (1GB) from blocking initial load
+const Scene3D = lazy(() => import('./components/Scene3D').then(m => ({ default: m.Scene3D })));
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
@@ -507,10 +509,12 @@ const App: React.FC = () => {
       />
       {!hideNavPaths.includes(location.pathname) && !isAdminPath && <Navbar />}
       
-      {/* Only show 3D background on public pages */}
+      {/* Only show 3D background on public pages - lazy loaded to prevent Three.js from blocking */}
       {!isAdminPath && (
         <div className="fixed inset-0 pointer-events-none z-0">
-          <Scene3D />
+          <Suspense fallback={null}>
+            <Scene3D />
+          </Suspense>
         </div>
       )}
 
