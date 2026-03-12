@@ -5,7 +5,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
     startCommand: python manage.py migrate --noinput && python manage.py load_fixture_once && gunicorn portfolio.wsgi:application --config gunicorn.conf.py
-    healthCheckPath: /health/
+    healthCheckPath: /api/auth/health/
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: portfolio.settings.prod
