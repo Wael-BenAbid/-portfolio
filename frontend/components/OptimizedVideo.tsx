@@ -75,7 +75,8 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
   };
 
   const handleError = () => {
-    // Ignore video loading errors
+    console.error('OptimizedVideo error:', src);
+    setHasError(true);
     onError?.();
   };
 
