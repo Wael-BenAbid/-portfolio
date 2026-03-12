@@ -160,7 +160,7 @@ const Home: React.FC = () => {
 
           {/* Project Cards - Vertical Stack */}
           <div className="space-y-20 md:space-y-32">
-            {projectsLoading && (
+            {projectsLoading && featuredWorks.length === 0 && (
               <>
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="relative">
@@ -170,14 +170,14 @@ const Home: React.FC = () => {
               </>
             )}
             
-            {projectsError && (
+            {projectsError && featuredWorks.length === 0 && (
               <ErrorDisplay 
                 error={projectsError} 
                 onRetry={() => window.location.reload()}
               />
             )}
             
-            {!projectsLoading && !projectsError && featuredWorks.map((project, i) => (
+            {featuredWorks.length > 0 && featuredWorks.map((project, i) => (
               <motion.div 
                 key={project.id}
                 initial={{ opacity: 0, y: 50 }}
