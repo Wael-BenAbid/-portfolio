@@ -11,8 +11,6 @@ env:
   REGISTRY: ghcr.io
   PYTHON_VERSION: '3.13'
   NODE_VERSION: '22'
-  SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-  SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
 jobs:
   # Backend Testing
