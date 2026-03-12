@@ -125,3 +125,5 @@ export const Scene3D: React.FC = () => {
     </div>
   );
 };
+
+export default Scene3D;

@@ -10,7 +10,7 @@ import { Navbar } from './components/Navbar';
 import { LoadingScreen } from './components/LoadingScreen';
 
 // Lazy load 3D scene to prevent Three.js (1GB) from blocking initial load
-const Scene3D = lazy(() => import('./components/Scene3D').then(m => ({ default: m.Scene3D })));
+const Scene3D = lazy(() => import('./components/Scene3D'));
 import { AlertTriangle, Lock, X } from 'lucide-react';
 import { API_BASE_URL, API_ENDPOINTS } from './constants';
 import { getCookie } from './utils/cookies';
