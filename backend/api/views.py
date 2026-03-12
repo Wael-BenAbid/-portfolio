@@ -576,7 +576,14 @@ class MediaUploadView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        try:
+            self.perform_create(serializer)
+        except Exception as e:
+            logger.error("Cloudinary upload failed in MediaUploadView: %s", str(e), exc_info=True)
+            return Response(
+                {'error': {'code': 'UPLOAD_FAILED', 'message': str(e)}},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 

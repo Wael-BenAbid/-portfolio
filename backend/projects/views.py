@@ -1,6 +1,7 @@
 """
 Projects App - Views for projects and media management
 """
+import logging
 from rest_framework import generics, permissions, pagination, status
 from rest_framework.response import Response
 from django.views.decorators.cache import cache_page
@@ -9,6 +10,8 @@ from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
 from django.conf import settings
 import os
+
+logger = logging.getLogger(__name__)
 
 from .models import Project, Skill, MediaItem, ProjectRegistration
 from .serializers import ProjectSerializer, SkillSerializer, MediaItemCreateSerializer, ProjectRegistrationSerializer
@@ -164,8 +167,15 @@ class MediaItemCreate(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Get the saved instance directly from save() method
-        media_item = self.perform_create(serializer)
+        try:
+            # Get the saved instance directly from save() method
+            media_item = self.perform_create(serializer)
+        except Exception as e:
+            logger.error("Cloudinary upload failed in MediaItemCreate: %s", str(e), exc_info=True)
+            return Response(
+                {'error': {'code': 'UPLOAD_FAILED', 'message': str(e)}},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         # Return data in format matching MediaItemSerializer
         from .serializers import MediaItemSerializer
         response_serializer = MediaItemSerializer(media_item, context={'request': request})

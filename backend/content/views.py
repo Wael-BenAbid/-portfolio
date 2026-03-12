@@ -260,10 +260,16 @@ class ImageUploadView(APIView):
         image.seek(0)
         
         # Save file (uses Cloudinary in production, local filesystem in dev)
-        saved_path = default_storage.save(filename, image)
-        
-        # Get the URL from the storage backend
-        image_url = default_storage.url(saved_path)
+        try:
+            saved_path = default_storage.save(filename, image)
+            image_url = default_storage.url(saved_path)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Cloudinary save failed in ImageUploadView: %s", str(e), exc_info=True)
+            return Response(
+                {'error': {'code': 'UPLOAD_FAILED', 'message': str(e)}},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         
         return Response({
             'url': image_url,
