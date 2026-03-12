@@ -1,10 +1,12 @@
 """
 Projects App - Serializers for projects and media
 """
+import os
 from rest_framework import serializers
 from django.conf import settings
 from .models import Project, MediaItem, Skill, ProjectRegistration
 from interactions.models import Like
+from api.serializers import compress_image_for_cloudinary
 
 
 class MediaItemCreateSerializer(serializers.ModelSerializer):
@@ -43,15 +45,18 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
             
             # Size limit depends on media type (Cloudinary handles actual storage)
             if media_type == 'video':
-                import os as _os
-                max_size = int(_os.environ.get('MAX_VIDEO_SIZE_MB', 100)) * 1024 * 1024
-                limit_label = f"{int(_os.environ.get('MAX_VIDEO_SIZE_MB', 100))}MB"
+                max_size = int(os.environ.get('MAX_VIDEO_SIZE_MB', 100)) * 1024 * 1024
+                limit_label = f"{int(os.environ.get('MAX_VIDEO_SIZE_MB', 100))}MB"
             else:
-                import os as _os
-                max_size = int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
-                limit_label = f"{int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"
+                max_size = int(os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
+                limit_label = f"{int(os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"
             if file.size > max_size:
                 raise serializers.ValidationError({"file": f"File too large. Maximum size is {limit_label}"})
+
+            # Auto-compress images exceeding Cloudinary's per-asset limit
+            cloudinary_max = int(os.environ.get('CLOUDINARY_IMAGE_MAX_MB', 10)) * 1024 * 1024
+            if media_type == 'image' and file.size > cloudinary_max:
+                attrs['file'] = compress_image_for_cloudinary(file, cloudinary_max)
         
         # Validate thumbnail type and size
         if thumbnail:
@@ -59,10 +64,14 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
             if thumbnail.content_type not in allowed_types:
                 raise serializers.ValidationError({"thumbnail": "Invalid thumbnail type. Allowed: JPEG, PNG, GIF, WebP"})
             
-            import os as _os
-            max_size = int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
+            max_size = int(os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
             if thumbnail.size > max_size:
-                raise serializers.ValidationError({"thumbnail": f"Thumbnail too large. Maximum size is {int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"})
+                raise serializers.ValidationError({"thumbnail": f"Thumbnail too large. Maximum size is {int(os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"})
+
+            # Auto-compress thumbnails exceeding Cloudinary's per-asset limit
+            cloudinary_max = int(os.environ.get('CLOUDINARY_IMAGE_MAX_MB', 10)) * 1024 * 1024
+            if thumbnail.size > cloudinary_max:
+                attrs['thumbnail'] = compress_image_for_cloudinary(thumbnail, cloudinary_max)
         
         return attrs
 
