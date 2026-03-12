@@ -144,6 +144,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {
             'media': {'read_only': True},
+            'slug': {'read_only': True},
         }
     
     def get_is_liked(self, obj):

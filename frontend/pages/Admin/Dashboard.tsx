@@ -438,17 +438,13 @@ const Dashboard: React.FC = () => {
 
   const addProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Create project without media field
-    const { media, ...projectWithoutMedia } = newProject as any;
-    const project: Project = {
-      ...projectWithoutMedia,
-      id: Date.now().toString(),
-      slug: newProject.title?.toLowerCase().replace(/\s+/g, '-') || '',
-      created_at: new Date().toISOString(),
+    // Strip media (added via separate endpoint) and server-generated fields
+    const { media, id, slug, created_at, updated_at, likes_count, views_count, is_liked, ...rest } = newProject as any;
+    const project = {
+      ...rest,
       featured: newProject.featured || false,
       is_active: newProject.is_active || true,
       thumbnail: newProject.thumbnail || 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop',
-      media: [] // Initialize with empty media array - will be added through separate API endpoint
     };
     
     // Fix category encoding issue
@@ -466,24 +462,30 @@ const Dashboard: React.FC = () => {
       });
       if (response.ok) {
         const created = await response.json();
-        // If there were media items to add, add them through the media endpoint
-        if (media && media.length > 0) {
-          for (const mediaItem of media) {
-            // For new projects, we need to handle media upload differently
-            // This is just a placeholder - you would need to implement actual media upload
-          }
-        }
         setProjects([created, ...projects]);
         setError(null);
         setShowAddForm(false);
       } else {
-        // Handle API errors - show error to user
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.detail || errorData.error || `Failed to create project (Status: ${response.status})`;
+        // DRF can return errors as: { field: [msg] }, { detail: msg }, { error: { message: msg } }
+        let errorMessage: string;
+        if (errorData?.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (typeof errorData?.error === 'string') {
+          errorMessage = errorData.error;
+        } else {
+          // Collect field-level validation errors
+          const fieldErrors = Object.entries(errorData)
+            .filter(([, v]) => Array.isArray(v))
+            .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+            .join('; ');
+          errorMessage = fieldErrors || `Failed to create project (Status: ${response.status})`;
+        }
         setError(errorMessage);
       }
     } catch (error) {
-      // Handle network errors - show error to user
       console.error('Error creating project:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to the server. Please check your connection.';
       setError(errorMessage);
