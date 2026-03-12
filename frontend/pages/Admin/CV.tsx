@@ -6,7 +6,7 @@ import { useAuth } from '../../App';
 import { useNavigate } from 'react-router-dom';
 import { BackButton } from '../../components/BackButton';
 import { API_BASE_URL } from '../../constants';
-import { authFetch } from '../../services/api';
+import { authFetch, api, APIError } from '../../services/api';
 
 interface SiteSettings {
   id?: number;
@@ -232,17 +232,12 @@ const CV: React.FC = () => {
     setUploadingField(field);
 
     try {
-      const response = await authFetch(`${API_BASE_URL}/settings/upload/`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(prev => ({ ...prev, [field]: data.url }));
-      }
+      const data = await api.upload<{ url: string }>('/settings/upload/', formData);
+      setSettings(prev => ({ ...prev, [field]: data.url }));
     } catch (error) {
-      console.error('Image upload failed:', error);
+      const msg = error instanceof APIError ? error.message : 'Image upload failed';
+      console.error('Image upload failed:', msg);
+      showToast(msg, 'error');
     } finally {
       setUploading(false);
       setUploadingField(null);

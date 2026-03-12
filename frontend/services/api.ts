@@ -146,9 +146,14 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
     // Create user-friendly error message
     let errorMessage = 'An unexpected error occurred';
     if (errorData?.message) {
-      errorMessage = errorData.message;
+      const msg = errorData.message;
+      errorMessage = typeof msg === 'string' ? msg : Object.values(msg as Record<string, string[]>).flat().join(', ');
     } else if (errorData?.detail) {
       errorMessage = errorData.detail;
+    } else if (errorData?.error?.message) {
+      // Backend wraps errors as {error: {message: string|object, code: string}}
+      const msg = errorData.error.message;
+      errorMessage = typeof msg === 'string' ? msg : Object.values(msg as Record<string, string[]>).flat().join(', ');
     } else if (response.status === 401) {
       errorMessage = 'Authentication required. Please log in.';
     } else if (response.status === 403) {
@@ -312,24 +317,23 @@ export const api = {
   },
 
   /**
-   * Upload file with multipart/form-data
+   * Upload file with multipart/form-data — auto-refreshes token on 401.
+   * Do NOT set Content-Type manually; the browser sets it with the correct boundary.
    */
   async upload<T>(endpoint: string, formData: FormData, options?: RequestOptions): Promise<T> {
-    const headers: any = {};
-    const authToken = options?.token || getAuthToken();
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
-    }
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',  // Include HttpOnly cookies for authentication
-      ...options,
+    return fetchWithAutoRefresh<T>(token => {
+      const headers: Record<string, string> = {};
+      const authToken = options?.token ?? token;
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      return fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
     });
-    
-    return handleResponse<T>(response);
   },
 };
 

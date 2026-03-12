@@ -5,7 +5,7 @@ import '../../components/OnOffSwitch.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity, ClipboardList, ChevronDown, Mail, Phone, MessageSquare } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
-import { authFetch } from '../../services/api';
+import { authFetch, api, APIError } from '../../services/api';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
 import { NotificationBell } from '../../components/NotificationBell';
@@ -190,25 +190,12 @@ const Dashboard: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await authFetch(`${API_BASE_URL}/auth/upload/`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setError(null);
-        return data.url;
-      } else {
-        const error = await response.json();
-        console.error('Upload error:', error);
-        const errorMessage = error.error || error.detail || 'Failed to upload image';
-        setError(errorMessage);
-        return null;
-      }
+      const data = await api.upload<{ url: string }>('/auth/upload/', formData);
+      setError(null);
+      return data.url;
     } catch (error) {
-      console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image. Please try again.';
+      const errorMessage = error instanceof APIError ? error.message : 'Failed to upload image. Please try again.';
+      console.error('Upload error:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -260,49 +247,37 @@ const Dashboard: React.FC = () => {
       const mediaLength = isEdit && editingProject ? editingProject.media?.length ?? 0 : newProject.media?.length ?? 0;
       formData.append('order', String(mediaLength));
       
-      const response = await authFetch(`${API_BASE_URL}/projects/media/create/`, {
-        method: 'POST',
-        body: formData
-      });
+      const data = await api.upload<any>('/projects/media/create/', formData);
+      const newMediaItem: MediaItem = {
+        id: data.id,
+        type: data.type,
+        url: data.url,
+        thumbnail_url: data.thumbnail_url,
+        caption: data.caption,
+        order: data.order,
+        likes_count: data.likes_count || 0,
+        is_liked: data.is_liked || false
+      };
       
-      if (response.ok) {
-        const data = await response.json();
-        const newMediaItem: MediaItem = {
-          id: data.id,
-          type: data.type,
-          url: data.url,
-          thumbnail_url: data.thumbnail_url,
-          caption: data.caption,
-          order: data.order,
-          likes_count: data.likes_count || 0,
-          is_liked: data.is_liked || false
-        };
-        
-        if (isEdit && editingProject) {
-          const currentMedia = editingProject.media || [];
-          setEditingProject({
-            ...editingProject,
-            media: [...currentMedia, newMediaItem],
-            thumbnail: editingProject.thumbnail || data.url
-          });
-        } else {
-          const currentMedia = newProject.media || [];
-          setNewProject({
-            ...newProject,
-            media: [...currentMedia, newMediaItem],
-            thumbnail: newProject.thumbnail || data.url
-          });
-        }
-        setError(null);
+      if (isEdit && editingProject) {
+        const currentMedia = editingProject.media || [];
+        setEditingProject({
+          ...editingProject,
+          media: [...currentMedia, newMediaItem],
+          thumbnail: editingProject.thumbnail || data.url
+        });
       } else {
-        const error = await response.json();
-        console.error('Upload error:', error);
-        const errorMessage = error.error || error.detail || 'Failed to upload media';
-        setError(errorMessage);
+        const currentMedia = newProject.media || [];
+        setNewProject({
+          ...newProject,
+          media: [...currentMedia, newMediaItem],
+          thumbnail: newProject.thumbnail || data.url
+        });
       }
+      setError(null);
     } catch (error) {
-      console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload media. Please try again.';
+      const errorMessage = error instanceof APIError ? error.message : 'Failed to upload media. Please try again.';
+      console.error('Upload error:', errorMessage);
       setError(errorMessage);
     } finally {
       setUploadingField(null);
