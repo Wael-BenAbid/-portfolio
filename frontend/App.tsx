@@ -4,7 +4,6 @@ import * as Sentry from "@sentry/react";
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/Toast';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AnimatePresence } from 'framer-motion';
 import { CustomCursor } from './components/CustomCursor';
 import { Navbar } from './components/Navbar';
@@ -523,16 +522,14 @@ const App: React.FC = () => {
 
 // Root Component with Router and Auth Provider
 const Root = () => (
-  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_OAUTH2_CLIENT_ID}>
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <App />
-          <ToastContainer />
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </GoogleOAuthProvider>
+  <BrowserRouter>
+    <AuthProvider>
+      <ToastProvider>
+        <App />
+        <ToastContainer />
+      </ToastProvider>
+    </AuthProvider>
+  </BrowserRouter>
 );
 
 export default Root;
