@@ -109,19 +109,6 @@ const About: React.FC = () => {
   const [retrying, setRetrying] = useState(false);
   const retryCountRef = useRef(0);
 
-  // Debug: log CV data state for troubleshooting
-  useEffect(() => {
-    console.log('[About] CV data state:', {
-      loading,
-      error: error ? { message: error.message, status: error.status } : null,
-      hasData: !!cvData,
-      experiences: cvData?.experiences?.length ?? 0,
-      education: cvData?.education?.length ?? 0,
-      skills: cvData?.skills?.length ?? 0,
-      languages: cvData?.languages?.length ?? 0,
-    });
-  }, [cvData, loading, error]);
-
   // Auto-retry when CV data loaded but all sections are empty (likely cold start fallback)
   const hasNoSections = !loading && cvData && 
     cvData.experiences.length === 0 && cvData.education.length === 0 && 
