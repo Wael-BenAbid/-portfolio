@@ -15,6 +15,9 @@ python manage.py load_fixture_once || true
 echo "Fixing localhost URLs in production data..."
 python manage.py fix_localhost_urls || true
 
+echo "Fixing bad /auto/upload/ Cloudinary URLs in DB (idempotent)..."
+python manage.py fix_cloudinary_auto_urls --apply || true
+
 # Auto-promote or create admin from env vars (runs on every deploy, idempotent)
 if [ -n "$ADMIN_EMAIL" ]; then
   echo "Ensuring admin user: $ADMIN_EMAIL"
