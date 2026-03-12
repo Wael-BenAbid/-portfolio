@@ -314,7 +314,7 @@ class MediaUpload(models.Model):
     - Organized by date for better management
     - Prevents path traversal and filename collisions
     """
-    file = models.FileField(upload_to=get_media_upload_path)
+    file = models.FileField(upload_to=get_media_upload_path, max_length=500)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
         CustomUser,

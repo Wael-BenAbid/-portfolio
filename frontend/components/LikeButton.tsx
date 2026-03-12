@@ -1,8 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import FloatingHearts from './FloatingHearts';
 import { API_BASE_URL } from '../constants';
 import { authFetch } from '../services/api';
+import { useAuth } from '../App';
+import { useToast } from '../contexts/ToastContext';
 
 interface LikeButtonProps {
   contentId: number;
@@ -26,8 +29,16 @@ const LikeButton: React.FC<LikeButtonProps> = ({
   const [showHearts, setShowHearts] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const animationRef = useRef<number | null>(null);
+  const { isAuthenticated } = useAuth();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const handleLike = async () => {
+    if (!isAuthenticated) {
+      showToast('Connectez-vous pour j\'adorer ce projet !', 'info');
+      navigate('/auth');
+      return;
+    }
     if (isLoading) return;
     setIsLoading(true);
 
@@ -55,9 +66,15 @@ const LikeButton: React.FC<LikeButtonProps> = ({
         if (onLike) {
           onLike(data.liked, data.likes_count);
         }
+      } else if (response.status === 401) {
+        showToast('Connectez-vous pour j\'adorer ce projet !', 'info');
+        navigate('/auth');
+      } else {
+        showToast('Impossible de mettre à jour le j\'adore.', 'error');
       }
     } catch (error) {
       console.error('Error toggling like:', error);
+      showToast('Erreur réseau, réessayez.', 'error');
     } finally {
       setIsLoading(false);
     }

@@ -48,8 +48,11 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isInView, setIsInView] = useState(!lazy);
   const imgRef = useRef<HTMLDivElement>(null);
 
+  // Check if src is a video (including extension-less Cloudinary /video/upload/ URLs)
+  const isVideo = isVideoUrl(src);
+
   // Get optimized URL
-  const optimizedSrc = getOptimizedImageUrl(src, width || 800);
+  const optimizedSrc = isVideo ? src : getOptimizedImageUrl(src, width || 800);
   
   // Get WebP version for modern browsers (only for images)
   const webpSrc = src && src.includes('unsplash.com') && optimizedSrc 
@@ -110,8 +113,21 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         </div>
       )}
 
-      {/* Actual Image */}
+      {/* Actual Image or Video */}
       {isInView && !hasError && optimizedSrc ? (
+        isVideo ? (
+          <video
+            src={optimizedSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onLoadedData={handleLoad}
+            onError={() => { setHasError(true); onError?.(); }}
+            style={{ width: '100%', height: 'auto', objectFit, objectPosition }}
+            className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+          />
+        ) : (
          <motion.img
           src={optimizedSrc}
           alt={alt}
@@ -133,6 +149,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
               ${className}
             `}
         />
+        )
       ) : null}
     </div>
   );
