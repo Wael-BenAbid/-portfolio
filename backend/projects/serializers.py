@@ -41,10 +41,17 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
                 if file.content_type not in allowed_types:
                     raise serializers.ValidationError({"file": "Invalid video type. Allowed: MP4, WebM, OGG"})
             
-            # Validate file size (max 10MB)
-            max_size = 10 * 1024 * 1024  # 10MB
+            # Size limit depends on media type (Cloudinary handles actual storage)
+            if media_type == 'video':
+                import os as _os
+                max_size = int(_os.environ.get('MAX_VIDEO_SIZE_MB', 100)) * 1024 * 1024
+                limit_label = f"{int(_os.environ.get('MAX_VIDEO_SIZE_MB', 100))}MB"
+            else:
+                import os as _os
+                max_size = int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
+                limit_label = f"{int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"
             if file.size > max_size:
-                raise serializers.ValidationError({"file": "File too large. Maximum size is 10MB"})
+                raise serializers.ValidationError({"file": f"File too large. Maximum size is {limit_label}"})
         
         # Validate thumbnail type and size
         if thumbnail:
@@ -52,9 +59,10 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
             if thumbnail.content_type not in allowed_types:
                 raise serializers.ValidationError({"thumbnail": "Invalid thumbnail type. Allowed: JPEG, PNG, GIF, WebP"})
             
-            max_size = 2 * 1024 * 1024  # 2MB
+            import os as _os
+            max_size = int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20)) * 1024 * 1024
             if thumbnail.size > max_size:
-                raise serializers.ValidationError({"thumbnail": "Thumbnail too large. Maximum size is 2MB"})
+                raise serializers.ValidationError({"thumbnail": f"Thumbnail too large. Maximum size is {int(_os.environ.get('MAX_IMAGE_SIZE_MB', 20))}MB"})
         
         return attrs
 

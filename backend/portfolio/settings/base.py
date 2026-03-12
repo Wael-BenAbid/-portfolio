@@ -125,8 +125,8 @@ if os.getenv('CLOUDINARY_CLOUD_NAME'):
     }
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
-FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800
+DATA_UPLOAD_MAX_MEMORY_SIZE = 115343360  # 110MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 115343360  # 110MB
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Optional: serve React build from Django

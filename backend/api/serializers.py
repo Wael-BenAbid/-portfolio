@@ -448,30 +448,15 @@ class MediaUploadSerializer(serializers.ModelSerializer):
     def validate_file(self, value):
         """
         Validate media file with comprehensive security checks:
-        1. File size limit (10MB max for images, 50MB for videos)
-        2. MIME type validation (from magic bytes, not extension)
+        1. MIME type validation (from magic bytes, not extension)
+        2. File size limit (20MB images, 100MB videos — Cloudinary handles actual storage)
         3. File extension validation
         4. Content validation using Pillow (for images)
         
         Raises:
             serializers.ValidationError: If file fails validation
         """
-        # 1. Validate file size
-        # Smaller default (10MB) but configurable per environment
-        max_size_mb = 10  # Default: 10MB
-        
-        # Allow larger for videos if explicitly configured
-        filename = value.name.lower()
-        if any(filename.endswith(ext) for ext in ALLOWED_VIDEO_EXTENSIONS):
-            max_size_mb = int(os.environ.get('MAX_VIDEO_SIZE_MB', 50))
-        
-        max_size = max_size_mb * 1024 * 1024
-        if value.size > max_size:
-            raise serializers.ValidationError(
-                f"File size cannot exceed {max_size_mb}MB. "
-                f"Current size: {value.size / (1024 * 1024):.2f}MB"
-            )
-        
+        # 1. Detect MIME type first — size limit depends on file type
         # 2. Detect MIME type from file content (magic bytes)
         # This prevents fake extensions like malware.exe renamed to image.jpg
         value.seek(0)
@@ -492,6 +477,19 @@ class MediaUploadSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"File type '{detected_mime}' is not allowed. "
                 f"Allowed types: Images (JPEG, PNG, WebP, GIF) and Videos (MP4, WebM, OGG)"
+            )
+        
+        # 2. Validate file size based on detected type (Cloudinary handles actual storage)
+        if detected_mime in ALLOWED_VIDEO_MIME_TYPES:
+            max_size_mb = int(os.environ.get('MAX_VIDEO_SIZE_MB', 100))
+        else:
+            max_size_mb = int(os.environ.get('MAX_IMAGE_SIZE_MB', 20))
+        
+        max_size = max_size_mb * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(
+                f"File size cannot exceed {max_size_mb}MB. "
+                f"Current size: {value.size / (1024 * 1024):.2f}MB"
             )
         
         # 3. Validate file extension matches detected MIME type
