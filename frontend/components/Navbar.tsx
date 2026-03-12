@@ -6,7 +6,6 @@ import { useAuth } from '../App';
 import { User, LogOut, Settings, Menu, X } from 'lucide-react';
 import { useSettings } from '../hooks/useData';
 import { NotificationBell } from './NotificationBell';
-import { API_BASE_URL } from '../constants';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -25,15 +24,8 @@ export const Navbar: React.FC = () => {
     { name: 'Contact', path: '/contact' },
   ];
 
-  // Temporary fix to bypass cache - force re-fetch settings
-  const [siteTitle, setSiteTitle] = useState('ABIDOS');
-  
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/settings/`)
-      .then(response => response.json())
-      .then(data => setSiteTitle(data.hero_title || 'ABIDOS'))
-      .catch(error => console.error('Error fetching settings:', error));
-  }, []);
+  // Use settings from the hook (already has maxRetries + fallbackData)
+  const siteTitle = settings?.hero_title || 'ABIDOS';
 
   // Close mobile menu on route change
   useEffect(() => {
