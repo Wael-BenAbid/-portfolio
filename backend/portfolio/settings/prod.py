@@ -22,32 +22,63 @@ X_FRAME_OPTIONS = 'DENY'
 CORS_ALLOW_ALL_ORIGINS = False
 
 # CORS Configuration for cross-origin requests (Frontend on Vercel, Backend on Render)
-# Read from environment variable if set, otherwise use production defaults
-_cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '').strip()
-if _cors_origins:
-    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
-else:
-    # Fallback to production domains if env var not set
-    CORS_ALLOWED_ORIGINS = [
-        'https://wael-ben-abid.me',
-        'https://www.wael-ben-abid.me',
-    ]
+# Always allow the production frontend domains, regardless of env vars
+# This ensures CORS works even if environment variables aren't configured
+CORS_ALLOWED_ORIGINS = [
+    'https://wael-ben-abid.me',
+    'https://www.wael-ben-abid.me',
+    'http://localhost:3000',      # Local development
+    'http://localhost:5173',      # Vite dev server
+]
+
+# Add any additional origins from environment variable (comma-separated)
+_cors_env = os.getenv('CORS_ALLOWED_ORIGINS', '').strip()
+if _cors_env:
+    extra_origins = [o.strip() for o in _cors_env.split(',') if o.strip()]
+    CORS_ALLOWED_ORIGINS.extend(extra_origins)
 
 # Always enable credentials for CORS (required for auth cookies)
 CORS_ALLOW_CREDENTIALS = True
 
+# Allow these HTTP methods for CORS
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+    'HEAD'
+]
+
+# Allow these headers in CORS requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 # CSRF Trusted Origins for cross-origin form submissions
 # Need to include both frontend origins and backend origin for proper CSRF protection
-_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '').strip()
-if _csrf_origins:
-    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()]
-else:
-    # Fallback to production domains if env var not set
-    CSRF_TRUSTED_ORIGINS = [
-        'https://wael-ben-abid.me',
-        'https://www.wael-ben-abid.me',
-        'https://portfolio-4kcq.onrender.com',
-    ]
+CSRF_TRUSTED_ORIGINS = [
+    'https://wael-ben-abid.me',
+    'https://www.wael-ben-abid.me',
+    'https://portfolio-4kcq.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+
+# Add any additional CSRF origins from environment variable
+_csrf_env = os.getenv('CSRF_TRUSTED_ORIGINS', '').strip()
+if _csrf_env:
+    extra_csrf = [o.strip() for o in _csrf_env.split(',') if o.strip()]
+    CSRF_TRUSTED_ORIGINS.extend(extra_csrf)
 
 # Enforce production hosts for the reserved domain and backend host.
 _env_hosts = [
