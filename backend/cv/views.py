@@ -1,6 +1,7 @@
 """
 CV App - Views for CV data management
 """
+from django.core.cache import cache
 from rest_framework import generics, permissions, pagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,6 +17,10 @@ from .serializers import (
     CVInterestSerializer
 )
 from api.permissions import IsAdminUser, IsAdminOrReadOnly
+
+
+# ============ Cache Keys ============
+CV_FULL_CACHE_KEY = 'cv:full'
 
 
 # ============ Pagination ============

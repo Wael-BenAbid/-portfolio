@@ -10,9 +10,10 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parents[2]
 ROOT_DIR = BASE_DIR.parent
 
-# Load env from project root first, then backend/.env
+# Load env from project root first, then backend/.env (override=True so
+# backend-specific settings take precedence over root docker-compose defaults)
 load_dotenv(ROOT_DIR / '.env')
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
 
 logger = logging.getLogger(__name__)
 
