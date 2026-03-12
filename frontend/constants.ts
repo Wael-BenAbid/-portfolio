@@ -1,7 +1,8 @@
 import { Project, Skill, AboutData } from './types';
 
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const PRODUCTION_API_URL = 'https://portfolio-4kcq.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PRODUCTION_API_URL : '/api');
 
 // API Endpoints
 export const API_ENDPOINTS = {
