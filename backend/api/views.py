@@ -768,6 +768,8 @@ class HealthCheckView(APIView):
     
     def get(self, request, *args, **kwargs):
         """Check health of application and critical dependencies."""
+        from django.utils import timezone
+        
         # Simplified health check for Render free tier - don't do heavy operations
         # Just return 200 OK to indicate the app is running
         # Detailed checks (DB, Redis) can timeout on cold starts
