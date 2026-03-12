@@ -56,7 +56,17 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
             # Auto-compress images exceeding Cloudinary's per-asset limit
             cloudinary_max = int(os.environ.get('CLOUDINARY_IMAGE_MAX_MB', 10)) * 1024 * 1024
             if media_type == 'image' and file.size > cloudinary_max:
-                attrs['file'] = compress_image_for_cloudinary(file, cloudinary_max)
+                original_mb = round(file.size / (1024 * 1024), 1)
+                compressed = compress_image_for_cloudinary(file, cloudinary_max)
+                if compressed is None:
+                    raise serializers.ValidationError({
+                        "file": (
+                            f"Image is too large ({original_mb} MB). "
+                            f"Maximum allowed is {cloudinary_max // (1024 * 1024)} MB. "
+                            "Please resize the image before uploading."
+                        )
+                    })
+                attrs['file'] = compressed
         
         # Validate thumbnail type and size
         if thumbnail:
@@ -71,7 +81,17 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
             # Auto-compress thumbnails exceeding Cloudinary's per-asset limit
             cloudinary_max = int(os.environ.get('CLOUDINARY_IMAGE_MAX_MB', 10)) * 1024 * 1024
             if thumbnail.size > cloudinary_max:
-                attrs['thumbnail'] = compress_image_for_cloudinary(thumbnail, cloudinary_max)
+                original_mb = round(thumbnail.size / (1024 * 1024), 1)
+                compressed = compress_image_for_cloudinary(thumbnail, cloudinary_max)
+                if compressed is None:
+                    raise serializers.ValidationError({
+                        "thumbnail": (
+                            f"Thumbnail is too large ({original_mb} MB). "
+                            f"Maximum allowed is {cloudinary_max // (1024 * 1024)} MB. "
+                            "Please resize the image before uploading."
+                        )
+                    })
+                attrs['thumbnail'] = compressed
         
         return attrs
 
