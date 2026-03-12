@@ -279,7 +279,7 @@ export function useProjects() {
     initialData: cachedData || undefined,
     fallbackData: cachedData || EMPTY_PROJECTS_RESPONSE, // Use cache as fallback, not empty
     schema: ProjectsResponseSchema,
-    maxRetries: 5,
+    maxRetries: 2, // Reduced from 5 to prevent browser resource exhaustion on slow backends
     onSuccess: (data) => {
       // Cache projects when successfully loaded
       setCachedProjects(data);

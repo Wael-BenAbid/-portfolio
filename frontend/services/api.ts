@@ -202,12 +202,13 @@ const fetchWithAutoRefresh = async <T>(
 };
 
 /**
- * Retry logic for API calls
+ * Retry logic for API calls with exponential backoff
+ * Starts with 2s delay and increases by 1.5x each retry to be gentle on resources
  */
 const retryWithExponentialBackoff = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delay: number = 3000
+  delay: number = 2000
 ): Promise<T> => {
   try {
     return await fn();
@@ -224,7 +225,7 @@ const retryWithExponentialBackoff = async <T>(
     // Wait with exponential backoff before retrying network/server errors
     await new Promise(resolve => setTimeout(resolve, delay));
     
-    return retryWithExponentialBackoff(fn, maxRetries - 1, delay * 2);
+    return retryWithExponentialBackoff(fn, maxRetries - 1, Math.ceil(delay * 1.5));
   }
 };
 
@@ -237,7 +238,7 @@ export const api = {
    */
   async get<T>(endpoint: string, params?: Record<string, string | number>, options?: RequestOptions & { maxRetries?: number; timeoutMs?: number }): Promise<T> {
     const maxRetries = options?.maxRetries ?? 3;
-    const timeoutMs = options?.timeoutMs ?? 90000; // 90s default to survive cold starts
+    const timeoutMs = options?.timeoutMs ?? 120000; // 120s to handle cold starts on free-tier backends
     
     return retryWithExponentialBackoff(async () => {
       const controller = new AbortController();
