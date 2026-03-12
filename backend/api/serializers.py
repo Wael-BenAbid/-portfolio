@@ -3,13 +3,11 @@ API Serializers - Authentication and User Management
 """
 import logging
 import os
-from io import BytesIO
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils.text import get_valid_filename
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from .models import MediaUpload, Visitor
 
 logger = logging.getLogger(__name__)
@@ -38,85 +36,6 @@ ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg']
 # Combined allowed types
 ALLOWED_MIME_TYPES = ALLOWED_IMAGE_MIME_TYPES + ALLOWED_VIDEO_MIME_TYPES
 ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS + ALLOWED_VIDEO_EXTENSIONS
-
-
-def compress_image_for_cloudinary(image_file, max_bytes):
-    """
-    Compress an image to fit within max_bytes using Pillow.
-    Tries JPEG quality reduction first (85→70→55→40), then caps the
-    longest side at 2000 px and retries.
-
-    Returns:
-        InMemoryUploadedFile  — compressed file on success
-        None                  — if the image is animated (GIF), if Pillow
-                                raises an error, or if it cannot be
-                                compressed under max_bytes even at minimum
-                                quality + dimension cap.
-    The caller is responsible for raising a ValidationError when None
-    is returned.
-    """
-    if image_file.size <= max_bytes:
-        image_file.seek(0)
-        return image_file
-    try:
-        from PIL import Image
-        image_file.seek(0)
-        img = Image.open(image_file)
-        # Load pixel data fully now so later seek(0) doesn't affect reads
-        img.load()
-
-        # Skip animated GIFs — frame-by-frame recompression is out of scope
-        if getattr(img, 'n_frames', 1) > 1:
-            return None
-
-        # Flatten transparency for JPEG output
-        if img.mode in ('RGBA', 'P', 'LA'):
-            bg = Image.new('RGB', img.size, (255, 255, 255))
-            src = img.convert('RGBA')
-            bg.paste(src, mask=src.split()[3])
-            img = bg
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
-
-        # Step 1: quality reduction (85 → 70 → 55 → 40)
-        buffer = BytesIO()
-        for quality in (85, 70, 55, 40):
-            buffer = BytesIO()
-            img.save(buffer, format='JPEG', quality=quality, optimize=True)
-            if buffer.tell() <= max_bytes:
-                break
-
-        # Step 2: if still too large, cap longest side at 2000 px and retry
-        if buffer.tell() > max_bytes:
-            img.thumbnail((2000, 2000), Image.LANCZOS)
-            for quality in (85, 70, 55, 40):
-                buffer = BytesIO()
-                img.save(buffer, format='JPEG', quality=quality, optimize=True)
-                if buffer.tell() <= max_bytes:
-                    break
-
-        # If we still exceed the limit after all compressions, give up
-        if buffer.tell() > max_bytes:
-            logger.warning(
-                "Could not compress '%s' (%d bytes) under %d bytes",
-                image_file.name, image_file.size, max_bytes,
-            )
-            return None
-
-        buffer.seek(0)
-        new_size = buffer.getbuffer().nbytes
-        new_name = os.path.splitext(image_file.name)[0] + '.jpg'
-        logger.info(
-            "Compressed image '%s': %d → %d bytes for Cloudinary",
-            image_file.name, image_file.size, new_size,
-        )
-        return InMemoryUploadedFile(buffer, 'file', new_name, 'image/jpeg', new_size, None)
-    except Exception as exc:
-        logger.error(
-            "Image compression failed for '%s': %s",
-            image_file.name, exc, exc_info=True,
-        )
-        return None
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -625,18 +544,16 @@ class MediaUploadSerializer(serializers.ModelSerializer):
             # Video validation - basic checks only
             pass
         
-        # Auto-compress images that exceed Cloudinary's per-asset upload limit
+        # Images above Cloudinary's free-tier 10 MB per-asset limit are rejected
+        # here as a safety net. The frontend compresses before upload so this
+        # path should only be hit by direct API calls.
         cloudinary_max = int(os.environ.get('CLOUDINARY_IMAGE_MAX_MB', 10)) * 1024 * 1024
         if detected_mime in ALLOWED_IMAGE_MIME_TYPES and value.size > cloudinary_max:
-            original_mb = round(value.size / (1024 * 1024), 1)
-            compressed = compress_image_for_cloudinary(value, cloudinary_max)
-            if compressed is None:
-                raise serializers.ValidationError(
-                    f"Image is too large ({original_mb} MB). "
-                    f"Maximum allowed is {cloudinary_max // (1024 * 1024)} MB. "
-                    "Please resize the image before uploading."
-                )
-            value = compressed
+            raise serializers.ValidationError(
+                f"Image is too large ({round(value.size / (1024*1024), 1)} MB). "
+                f"Maximum allowed is {cloudinary_max // (1024*1024)} MB. "
+                "Please resize the image before uploading."
+            )
 
         # Reset file pointer so storage backend (Cloudinary) reads from the start
         value.seek(0)

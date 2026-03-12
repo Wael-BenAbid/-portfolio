@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, LogOut, Settings as SettingsIcon, Home as HomeIcon, Star, X, Save, Image as ImageIcon, Upload, Loader2, User, TrendingUp, Activity, ClipboardList, ChevronDown, Mail, Phone, MessageSquare } from 'lucide-react';
 import { STORAGE_KEYS, API_BASE_URL } from '../../constants';
 import { authFetch, api, APIError } from '../../services/api';
+import { compressImageIfNeeded } from '../../utils/imageCompression';
 import { Project, MediaItem } from '../../types';
 import { useAuth } from '../../App';
 import { NotificationBell } from '../../components/NotificationBell';
@@ -187,8 +188,9 @@ const Dashboard: React.FC = () => {
     
     setUploading(true);
     try {
+      const compressed = await compressImageIfNeeded(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       
       const data = await api.upload<{ url: string }>('/auth/upload/', formData);
       setError(null);
@@ -243,7 +245,8 @@ const Dashboard: React.FC = () => {
       const formData = new FormData();
       formData.append('project', projectSlug);
       formData.append('media_type', isVideo ? 'video' : 'image');
-      formData.append('file', file);
+      const fileToUpload = isVideo ? file : await compressImageIfNeeded(file);
+      formData.append('file', fileToUpload);
       const mediaLength = isEdit && editingProject ? editingProject.media?.length ?? 0 : newProject.media?.length ?? 0;
       formData.append('order', String(mediaLength));
       

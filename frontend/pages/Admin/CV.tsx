@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { BackButton } from '../../components/BackButton';
 import { API_BASE_URL } from '../../constants';
 import { authFetch, api, APIError } from '../../services/api';
+import { compressImageIfNeeded } from '../../utils/imageCompression';
 
 interface SiteSettings {
   id?: number;
@@ -225,7 +226,7 @@ const CV: React.FC = () => {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', await compressImageIfNeeded(file));
     formData.append('field', field);
 
     setUploading(true);
