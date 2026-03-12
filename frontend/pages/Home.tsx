@@ -58,26 +58,70 @@ const Home: React.FC = () => {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="z-10"
+          className="z-10 max-w-5xl"
         >
-          <p className="font-display text-[10px] md:text-xs tracking-[0.8em] uppercase text-blue-500 mb-8">
+          <motion.p 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="font-display text-[10px] md:text-xs tracking-[0.8em] uppercase text-blue-500 mb-8 relative inline-block"
+          >
+            <span className="absolute -left-6 top-1/2 -translate-y-1/2 w-4 h-px bg-blue-500/50"></span>
             {heroTagline}
-          </p>
-          <h1 className="text-5xl sm:text-7xl md:text-[12rem] font-display font-bold leading-none tracking-tighter uppercase mb-12">
+          </motion.p>
+          
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 1 }}
+            className="text-5xl sm:text-7xl md:text-[11rem] font-display font-black leading-none tracking-tighter uppercase mb-12 relative"
+          >
             {heroTitle} <br />
-            <span className="text-transparent" style={{ WebkitTextStroke: '1.5px white' }}>{heroSubtitle}</span>
-          </h1>
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.8 }}
+              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600" 
+              style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              {heroSubtitle}
+            </motion.span>
+          </motion.h1>
+          
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.8 }}
             className="flex flex-col items-center"
           >
-            <div className="w-px h-24 bg-gradient-to-b from-blue-500 to-transparent mb-8" />
+            <div className="w-px h-24 bg-gradient-to-b from-blue-500 via-blue-500/30 to-transparent mb-8" />
             <p className="max-w-md text-gray-400 text-sm uppercase tracking-widest leading-relaxed">
-              Based in {locationName} <br /> 
-              {latitude}° N, {Math.abs(longitude)}° W
+              Based in <span className="text-white font-semibold">{locationName}</span> <br /> 
+              <span className="text-blue-400">{latitude}° N, {Math.abs(longitude)}° W</span>
             </p>
+            
+            {/* CTA Button */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1, duration: 0.8 }}
+              className="mt-12"
+            >
+              <Link to="/work" className="group relative inline-flex items-center gap-3 px-8 py-4 text-sm font-display tracking-[0.1em] uppercase overflow-hidden">
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors duration-500"></div>
+                
+                {/* Border animation */}
+                <div className="absolute inset-0 border border-blue-500/30 group-hover:border-blue-500 transition-colors duration-500"></div>
+                
+                <span className="relative z-10">Discover My Work</span>
+                <motion.div 
+                  className="relative z-10 w-5 h-5 flex items-center justify-center border border-blue-500/30 group-hover:border-blue-500 rounded-full transition-colors duration-500"
+                  whileHover={{ x: 4 }}
+                >
+                  <ChevronRight size={14} className="group-hover:text-blue-400 transition-colors" />
+                </motion.div>
+              </Link>
+            </motion.div>
           </motion.div>
         </motion.div>
 
@@ -94,17 +138,33 @@ const Home: React.FC = () => {
       <section className="py-16 sm:py-24 md:py-48 px-4 sm:px-8 md:px-24">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
-          <div className="mb-16 md:mb-24">
-            <h3 className="text-3xl sm:text-4xl md:text-7xl font-display font-bold uppercase mb-8 leading-tight">
-              SELECTED <br /> <span className="text-blue-500">PROJECTS</span>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+            className="mb-16 md:mb-24"
+          >
+            <h3 className="text-4xl sm:text-5xl md:text-7xl font-display font-black uppercase mb-8 leading-tight">
+              SELECTED <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">PROJECTS</span>
             </h3>
-            <p className="text-gray-400 text-lg max-w-sm mb-8">
-              A curation of high-performance digital platforms and cinematic drone captures.
-            </p>
-            <Link to="/work" className="group flex items-center gap-4 text-xs font-display tracking-[0.3em] uppercase">
-              Explore All <div className="p-4 border border-gray-800 rounded-full group-hover:bg-white group-hover:text-black transition-all"><ChevronRight size={16}/></div>
-            </Link>
-          </div>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.8 }}
+              className="text-gray-400 text-base md:text-lg max-w-2xl mb-8 leading-relaxed"
+            >
+              A curation of high-performance digital platforms and cinematic drone captures that push the boundaries of what's possible.
+            </motion.p>
+            <motion.div
+              whileHover={{ x: 8 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Link to="/work" className="group inline-flex items-center gap-3 text-xs font-display tracking-[0.3em] uppercase border-b border-blue-500/30 hover:border-blue-500 pb-1 transition-colors duration-300">
+                Explore All Works <ChevronRight size={16} className="group-hover:translate-x-2 transition-transform" />
+              </Link>
+            </motion.div>
+          </motion.div>
 
           {/* Project Cards - Vertical Stack */}
           <div className="space-y-16 md:space-y-24">
@@ -131,14 +191,18 @@ const Home: React.FC = () => {
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, delay: 0.1 }}
+                transition={{ duration: 0.8, delay: i * 0.15 }}
                 className="relative group cursor-pointer"
               >
-                 <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
+                 <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-500">
                     {/* Check if thumbnail is a video */}
                     {isVideoUrl(project.thumbnail) ? (
                       <div className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
-                         <motion.div className="w-full h-full overflow-hidden rounded-2xl">
+                         <motion.div 
+                          className="w-full h-full overflow-hidden rounded-2xl"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                         >
                            <OptimizedVideo
                              src={project.thumbnail}
                              alt={project.title}
@@ -152,27 +216,59 @@ const Home: React.FC = () => {
                          </motion.div>
                         
                         {/* Overlay Info */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 md:p-12 rounded-2xl">
-                          <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
-                          <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
-                          <div className="flex flex-wrap gap-2 md:gap-4">
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          whileHover={{ opacity: 1 }}
+                          transition={{ duration: 0.4 }}
+                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-2xl"
+                        >
+                          <motion.p 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.1, duration: 0.4 }}
+                            className="font-display text-blue-400 text-xs tracking-widest uppercase mb-3"
+                          >
+                            0{i+1} / {project.category}
+                          </motion.p>
+                          <motion.h4 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.15, duration: 0.4 }}
+                            className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6"
+                          >
+                            {project.title}
+                          </motion.h4>
+                          <motion.div 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.2, duration: 0.4 }}
+                            className="flex flex-wrap gap-2 md:gap-3"
+                          >
                             {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
-                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
+                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
                                 {t}
                               </span>
                             )) : []}
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
 
-                        {/* Fixed Project Index */}
-                        <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">
-                           <span className="font-display text-3xl md:text-4xl opacity-50">0{i+1}</span>
-                        </div>
+                        {/* Animated Project Index */}
+                        <motion.div 
+                          className="absolute top-6 left-6 md:top-8 md:left-8 z-20"
+                          whileHover={{ scale: 1.2 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <span className="font-display text-3xl md:text-5xl font-black text-blue-500/40 group-hover:text-blue-500/70 transition-colors duration-500">0{i+1}</span>
+                        </motion.div>
                      </div>
                    ) : (
                      /* For images, keep the link */
-                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9]">
-                        <motion.div className="w-full h-full overflow-hidden rounded-2xl">
+                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-2xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/30 transition-all duration-500">
+                        <motion.div 
+                          className="w-full h-full overflow-hidden rounded-2xl"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        >
                           <OptimizedImage
                             src={project.thumbnail}
                             alt={project.title}
@@ -186,17 +282,50 @@ const Home: React.FC = () => {
                         </motion.div>
                         
                         {/* Overlay Info */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 md:p-12 rounded-2xl">
-                          <p className="font-display text-blue-500 text-xs tracking-widest uppercase mb-4">0{i+1} / {project.category}</p>
-                          <h4 className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6">{project.title}</h4>
-                          <div className="flex flex-wrap gap-2 md:gap-4">
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          whileHover={{ opacity: 1 }}
+                          transition={{ duration: 0.4 }}
+                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-2xl"
+                        >
+                          <motion.p 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.1, duration: 0.4 }}
+                            className="font-display text-blue-400 text-xs tracking-widest uppercase mb-3"
+                          >
+                            0{i+1} / {project.category}
+                          </motion.p>
+                          <motion.h4 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.15, duration: 0.4 }}
+                            className="text-3xl md:text-5xl font-display font-bold uppercase tracking-tighter mb-6"
+                          >
+                            {project.title}
+                          </motion.h4>
+                          <motion.div 
+                            initial={{ y: 10, opacity: 0 }}
+                            whileHover={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.2, duration: 0.4 }}
+                            className="flex flex-wrap gap-2 md:gap-3"
+                          >
                             {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
-                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-white/20 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-md">
+                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
                                 {t}
                               </span>
                             )) : []}
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
+
+                        {/* Animated Project Index */}
+                        <motion.div 
+                          className="absolute top-6 left-6 md:top-8 md:left-8 z-20"
+                          whileHover={{ scale: 1.2 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <span className="font-display text-3xl md:text-5xl font-black text-blue-500/40 group-hover:text-blue-500/70 transition-colors duration-500">0{i+1}</span>
+                        </motion.div>
 
                         {/* Fixed Project Index */}
                         <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">

@@ -558,6 +558,9 @@ const Dashboard: React.FC = () => {
             <Link to="/admin/settings" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <SettingsIcon size={16} /> Settings
             </Link>
+            <Link to="/admin/messages" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
+              <Mail size={16} /> Messages
+            </Link>
             <Link to="/admin/cv" className="flex items-center gap-4 text-gray-500 hover:text-white font-display text-xs uppercase tracking-widest transition-colors">
               <User size={16} /> CV Management
             </Link>

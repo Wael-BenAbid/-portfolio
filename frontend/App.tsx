@@ -95,6 +95,7 @@ const AuthPage = lazy(() => import('./pages/Auth'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const AdminSettings = lazy(() => import('./pages/Admin/Settings'));
+const AdminMessages = lazy(() => import('./pages/Admin/Messages'));
 const AdminCV = lazy(() => import('./pages/Admin/CV'));
 const AdminStatistics = lazy(() => import('./pages/Admin/Statistics'));
 const AdminTracing = lazy(() => import('./pages/Admin/Tracing'));
@@ -300,6 +301,11 @@ const AnimatedRoutes = () => {
           <Route path="/admin/settings" element={
             <ProtectedRoute adminOnly>
               <AdminSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/messages" element={
+            <ProtectedRoute adminOnly>
+              <AdminMessages />
             </ProtectedRoute>
           } />
           <Route path="/admin/cv" element={
