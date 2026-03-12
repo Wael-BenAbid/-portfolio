@@ -261,29 +261,19 @@ const Home: React.FC = () => {
             </Link>
           </motion.div>
 
-          {/* Images column */}
+          {/* Images column — staggered composition */}
           {(profileImage || droneImage) && (
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative flex flex-col gap-4"
-            >
-              {profileImage && (
-                <div className="relative overflow-hidden rounded-2xl aspect-square w-2/3 self-end">
-                  <OptimizedImage
-                    src={profileImage}
-                    alt="Profile"
-                    objectFit="cover"
-                    className="w-full h-full"
-                    grayscale={true}
-                    hoverEffects={true}
-                  />
-                </div>
-              )}
+            <div className="relative h-[480px] md:h-[560px] hidden md:block">
+              {/* Top-right: work/drone image */}
               {droneImage && (
-                <div className="relative overflow-hidden rounded-2xl aspect-video w-2/3 self-start -mt-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.15 }}
+                  className="absolute top-0 right-0 w-[72%] overflow-hidden rounded-2xl shadow-2xl"
+                  style={{ aspectRatio: '4/3' }}
+                >
                   <OptimizedImage
                     src={droneImage}
                     alt="Work / Drone"
@@ -292,9 +282,59 @@ const Home: React.FC = () => {
                     grayscale={true}
                     hoverEffects={true}
                   />
-                </div>
+                </motion.div>
               )}
-            </motion.div>
+              {/* Bottom-left: profile image slightly overlapping */}
+              {profileImage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="absolute bottom-0 left-0 w-[55%] overflow-hidden rounded-2xl shadow-2xl border border-gray-800"
+                  style={{ aspectRatio: '3/4' }}
+                >
+                  <OptimizedImage
+                    src={profileImage}
+                    alt="Profile"
+                    objectFit="cover"
+                    className="w-full h-full"
+                    grayscale={true}
+                    hoverEffects={true}
+                  />
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {/* Mobile: stacked images */}
+          {(profileImage || droneImage) && (
+            <div className="flex flex-col gap-4 md:hidden">
+              {droneImage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7 }}
+                  className="overflow-hidden rounded-2xl"
+                  style={{ aspectRatio: '4/3' }}
+                >
+                  <OptimizedImage src={droneImage} alt="Work / Drone" objectFit="cover" className="w-full h-full" grayscale={true} hoverEffects={true} />
+                </motion.div>
+              )}
+              {profileImage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: 0.15 }}
+                  className="overflow-hidden rounded-2xl w-2/3"
+                  style={{ aspectRatio: '3/4' }}
+                >
+                  <OptimizedImage src={profileImage} alt="Profile" objectFit="cover" className="w-full h-full" grayscale={true} hoverEffects={true} />
+                </motion.div>
+              )}
+            </div>
           )}
         </div>
       </section>

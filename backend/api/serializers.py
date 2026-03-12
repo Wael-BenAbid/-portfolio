@@ -519,23 +519,17 @@ class MediaUploadSerializer(serializers.ModelSerializer):
                 img = Image.open(value)
                 img.verify()  # Verify it's actually an image
                 
-                # Re-open for further checks (verify() closes the file)
+                # Re-open for further checks (verify() consumes the stream)
                 value.seek(0)
                 img = Image.open(value)
                 
-                # Check image format matches detected type
-                img_format = img.format or 'UNKNOWN'
-                if img_format not in ['JPEG', 'PNG', 'WEBP', 'GIF']:
-                    raise serializers.ValidationError(
-                        f"Invalid image format '{img_format}'. "
-                        f"Allowed formats: JPEG, PNG, WEBP, GIF"
-                    )
-                
                 # Check image dimensions (prevent extremely large images causing memory issues)
                 max_dimension = 10000  # 10,000 pixels
-                if img.width > max_dimension or img.height > max_dimension:
+                width = img.width
+                height = img.height
+                if width > max_dimension or height > max_dimension:
                     raise serializers.ValidationError(
-                        f"Image dimensions too large: {img.width}x{img.height}. "
+                        f"Image dimensions too large: {width}x{height}. "
                         f"Maximum allowed: {max_dimension}x{max_dimension} pixels"
                     )
                 
@@ -549,10 +543,11 @@ class MediaUploadSerializer(serializers.ModelSerializer):
                     "Invalid image file. The file may be corrupted or not a valid image."
                 )
         elif detected_mime in ALLOWED_VIDEO_MIME_TYPES:
-            # Video validation - basic checks
-            # For videos, we trust the file signature we detected
+            # Video validation - basic checks only
             pass
         
+        # Reset file pointer so storage backend (Cloudinary) reads from the start
+        value.seek(0)
         return value
 
     def get_url(self, obj):
