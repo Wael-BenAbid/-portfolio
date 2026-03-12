@@ -182,6 +182,7 @@ export const api = {
           method: 'GET',
           headers: getDefaultHeaders(options?.token),
           credentials: 'include',  // Include HttpOnly cookies for authentication
+          cache: 'no-store',       // Always fetch fresh - never use browser HTTP cache
           signal: controller.signal,
         });
         
