@@ -249,12 +249,44 @@ type ProjectsResponse = z.infer<typeof ProjectsResponseSchema>;
 // Fallback empty data when API is unavailable
 const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
 
+// Cache key for localStorage
+const PROJECTS_CACHE_KEY = 'portfolio_projects_cache';
+
+// Get cached projects from localStorage
+const getCachedProjects = (): ProjectsResponse | null => {
+  try {
+    const cached = localStorage.getItem(PROJECTS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Store projects in localStorage cache
+const setCachedProjects = (data: ProjectsResponse): void => {
+  try {
+    localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Silently fail if localStorage is unavailable
+  }
+};
+
 export function useProjects() {
-  return useQuery<ProjectsResponse>('/projects/', {
-    fallbackData: EMPTY_PROJECTS_RESPONSE,
+  // Initialize with cached data if available, otherwise empty
+  const cachedData = getCachedProjects();
+  
+  const { data, error, loading, refetch } = useQuery<ProjectsResponse>('/projects/', {
+    initialData: cachedData || undefined,
+    fallbackData: cachedData || EMPTY_PROJECTS_RESPONSE, // Use cache as fallback, not empty
     schema: ProjectsResponseSchema,
     maxRetries: 5,
+    onSuccess: (data) => {
+      // Cache projects when successfully loaded
+      setCachedProjects(data);
+    },
   });
+
+  return { data, error, loading, refetch };
 }
 
 export function useProject(slug: string | undefined) {
