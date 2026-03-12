@@ -768,38 +768,17 @@ class HealthCheckView(APIView):
     
     def get(self, request, *args, **kwargs):
         """Check health of application and critical dependencies."""
+        # Simplified health check for Render free tier - don't do heavy operations
+        # Just return 200 OK to indicate the app is running
+        # Detailed checks (DB, Redis) can timeout on cold starts
+        
         health_status = {
             'status': 'healthy',
-            'checks': {}
+            'uptime': 'ok',
+            'timestamp': timezone.now().isoformat()
         }
         
-        # Check database connection
-        try:
-            from django.db import connections
-            connections.databases.get('default').ensure_connection()
-            health_status['checks']['database'] = 'healthy'
-        except Exception as e:
-            health_status['checks']['database'] = 'unhealthy'
-            health_status['status'] = 'unhealthy'
-            logger.error(f"Database health check failed: {str(e)}")
-        
-        # Check Redis cache connection
-        try:
-            from django.core.cache import cache
-            cache.set('health_check', 'ok', 10)
-            if cache.get('health_check') == 'ok':
-                health_status['checks']['cache'] = 'healthy'
-            else:
-                health_status['checks']['cache'] = 'unhealthy'
-                health_status['status'] = 'unhealthy'
-        except Exception as e:
-            health_status['checks']['cache'] = 'unhealthy'
-            # Cache failure is non-critical for health check
-            logger.warning(f"Cache health check failed: {str(e)}")
-        
-        # Return appropriate status code
-        status_code = status.HTTP_200_OK if health_status['status'] == 'healthy' else status.HTTP_503_SERVICE_UNAVAILABLE
-        return Response(health_status, status=status_code)
+        return Response(health_status, status=status.HTTP_200_OK)
 
 
 # ============================================================================
