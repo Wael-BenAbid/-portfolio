@@ -31,8 +31,6 @@ ALLOWED_HOSTS = [
 
 APPEND_SLASH = False
 
-# Logging configuration for debugging
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
