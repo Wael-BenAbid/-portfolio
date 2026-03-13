@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../constants';
 import { BackButton } from '../components/BackButton';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useAuth } from '../App';
 
 // Types
 interface AuthProps {
