@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Reply, Trash2, Check, X } from 'lucide-react';
+import { Reply, Trash2, Check, X, Loader2, Inbox } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
 import { authFetch } from '../../services/api';
 import { useAuth } from '../../App';
@@ -25,6 +25,7 @@ export const AdminMessages: React.FC = () => {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState<'all' | 'new' | 'replied'>('all');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.user_type === 'admin') {
@@ -34,6 +35,7 @@ export const AdminMessages: React.FC = () => {
 
   const fetchMessages = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await authFetch(`${API_BASE_URL}/settings/contact/messages/`);
       if (res.ok) {
@@ -41,9 +43,12 @@ export const AdminMessages: React.FC = () => {
         // Handle both array and paginated responses
         const messagesList = Array.isArray(data) ? data : (data.results || []);
         setMessages(messagesList);
+      } else {
+        setError(`Impossible de charger les messages (${res.status})`);
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
+      setError('Erreur reseau lors du chargement des messages');
     }
     setLoading(false);
   };
@@ -77,9 +82,14 @@ export const AdminMessages: React.FC = () => {
         );
         setSelectedMessage(null);
         setReplyText('');
+        setError(null);
+      } else {
+        const payload = await res.json().catch(() => ({}));
+        setError(payload.error || payload.detail || `Envoi impossible (${res.status})`);
       }
     } catch (error) {
       console.error('Failed to send reply:', error);
+      setError('Erreur reseau pendant l envoi de la reponse');
     }
     setSending(false);
   };
@@ -96,9 +106,14 @@ export const AdminMessages: React.FC = () => {
       if (res.ok || res.status === 204) {
         setMessages(prev => prev.filter(m => m.id !== id));
         if (selectedMessage?.id === id) setSelectedMessage(null);
+        setError(null);
+      } else {
+        const payload = await res.json().catch(() => ({}));
+        setError(payload.error || payload.detail || `Suppression impossible (${res.status})`);
       }
     } catch (error) {
       console.error('Failed to delete message:', error);
+      setError('Erreur reseau pendant la suppression');
     }
   };
 
@@ -117,97 +132,122 @@ export const AdminMessages: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="font-display text-4xl font-bold">Messages de Contact</h1>
-        <p className="text-gray-400">Gérez les messages reçus et envoyez des réponses</p>
-      </div>
+    <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-[#050b16]">
+      <div className="pointer-events-none absolute -top-28 -right-24 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
 
-      {/* Filter */}
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'new', 'replied'] as const).map(f => (
+      <div className="relative space-y-6 p-6 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <h1 className="font-display text-3xl md:text-4xl font-bold text-white">Messages de Contact</h1>
+            <p className="text-slate-300">Gerez les messages recus et envoyez des reponses.</p>
+          </div>
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg transition ${
-              filter === f
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-            }`}
+            onClick={fetchMessages}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-xs font-display uppercase tracking-widest text-slate-200 transition hover:border-cyan-500/60 hover:text-white"
           >
-            {f === 'all' && `Tous (${messages.length})`}
-            {f === 'new' && `Nouveaux (${messages.filter(m => m.status === 'new').length})`}
-            {f === 'replied' && `Répondus (${messages.filter(m => m.status === 'replied').length})`}
+            <Loader2 size={14} className={loading ? 'animate-spin' : ''} />
+            Actualiser
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* Messages List */}
-      <div className="grid gap-4">
-        {loading ? (
-          <p className="text-gray-400">Chargement...</p>
-        ) : filteredMessages.length === 0 ? (
-          <p className="text-gray-400">Aucun message</p>
-        ) : (
-          filteredMessages.map((msg, idx) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className={`p-4 rounded-lg border-l-4 cursor-pointer transition ${
-                msg.status === 'new'
-                  ? 'bg-gray-800/50 border-yellow-500 hover:bg-gray-800'
-                  : 'bg-gray-900/50 border-green-500 hover:bg-gray-900'
-              }`}
-              onClick={() => setSelectedMessage(msg)}
-            >
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-bold text-white truncate">{msg.name}</p>
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      msg.status === 'new'
-                        ? 'bg-yellow-500/20 text-yellow-300'
-                        : 'bg-green-500/20 text-green-300'
-                    }`}>
-                      {msg.status === 'new' ? 'Nouveau' : 'Répondu'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-2">{msg.email}</p>
-                  <p className="text-sm font-semibold text-gray-300 mb-1">{msg.subject}</p>
-                  <p className="text-sm text-gray-400 line-clamp-2">{msg.message}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {new Date(msg.created_at).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedMessage(msg);
-                    }}
-                    className="p-2 hover:bg-blue-500/20 rounded transition"
-                    title="Répondre"
-                  >
-                    <Reply size={18} className="text-blue-400" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMessage(msg.id);
-                    }}
-                    className="p-2 hover:bg-red-500/20 rounded transition"
-                    title="Supprimer"
-                  >
-                    <Trash2 size={18} className="text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
         )}
+
+        {/* Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {(['all', 'new', 'replied'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-xl px-4 py-2 text-xs font-display uppercase tracking-widest transition ${
+                filter === f
+                  ? 'bg-cyan-500 text-black'
+                  : 'bg-slate-800/70 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              {f === 'all' && `Tous (${messages.length})`}
+              {f === 'new' && `Nouveaux (${messages.filter(m => m.status === 'new').length})`}
+              {f === 'replied' && `Repondus (${messages.filter(m => m.status === 'replied').length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Messages List */}
+        <div className="grid gap-3 md:gap-4">
+          {loading ? (
+            <div className="flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/40 py-12">
+              <Loader2 size={20} className="animate-spin text-cyan-400" />
+            </div>
+          ) : filteredMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-slate-400">
+              <Inbox size={24} className="mb-2" />
+              Aucun message pour ce filtre.
+            </div>
+          ) : (
+            filteredMessages.map((msg, idx) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className={`rounded-2xl border cursor-pointer transition ${
+                  msg.status === 'new'
+                    ? 'bg-[#0b1423]/90 border-cyan-500/40 hover:border-cyan-400'
+                    : 'bg-[#0b1423]/60 border-slate-700 hover:border-slate-500'
+                }`}
+                onClick={() => setSelectedMessage(msg)}
+              >
+                <div className="flex justify-between items-start gap-4 p-4 md:p-5">
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <p className="truncate font-bold text-white">{msg.name}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-display uppercase tracking-widest ${
+                        msg.status === 'new'
+                          ? 'bg-cyan-400/20 text-cyan-200'
+                          : 'bg-emerald-400/20 text-emerald-200'
+                      }`}>
+                        {msg.status === 'new' ? 'Nouveau' : 'Repondu'}
+                      </span>
+                    </div>
+                    <p className="mb-2 text-xs text-slate-400">{msg.email}</p>
+                    <p className="mb-1 text-sm font-semibold text-slate-200">{msg.subject}</p>
+                    <p className="line-clamp-2 text-sm text-slate-400">{msg.message}</p>
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      {new Date(msg.created_at).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMessage(msg);
+                      }}
+                      className="rounded-lg p-2 transition hover:bg-cyan-500/20"
+                      title="Repondre"
+                    >
+                      <Reply size={17} className="text-cyan-300" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMessage(msg.id);
+                      }}
+                      className="rounded-lg p-2 transition hover:bg-rose-500/20"
+                      title="Supprimer"
+                    >
+                      <Trash2 size={17} className="text-rose-300" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Reply Modal */}
@@ -224,17 +264,17 @@ export const AdminMessages: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
-            className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-700 bg-[#0b1423]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Message de {selectedMessage.name}</h2>
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-700 bg-[#0b1423] p-6">
+              <h2 className="text-2xl font-bold text-white">Message de {selectedMessage.name}</h2>
               <button
                 onClick={() => {
                   setSelectedMessage(null);
                   setReplyText('');
                 }}
-                className="text-gray-400 hover:text-white"
+                className="text-slate-400 hover:text-white"
               >
                 <X size={24} />
               </button>
@@ -243,51 +283,51 @@ export const AdminMessages: React.FC = () => {
             <div className="p-6 space-y-6">
               {/* Original Message */}
               <div className="space-y-2">
-                <h3 className="text-sm uppercase tracking-widest text-gray-400">Message Original</h3>
-                <div className="bg-gray-800/50 p-4 rounded-lg space-y-2">
+                <h3 className="text-sm uppercase tracking-widest text-slate-300">Message Original</h3>
+                <div className="space-y-2 rounded-xl border border-slate-700 bg-slate-900/40 p-4">
                   <p className="text-sm"><strong>De:</strong> {selectedMessage.name} ({selectedMessage.email})</p>
                   <p className="text-sm"><strong>Sujet:</strong> {selectedMessage.subject}</p>
                   <p className="text-sm"><strong>Date:</strong> {new Date(selectedMessage.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                  <p className="text-gray-300 mt-4">{selectedMessage.message}</p>
+                  <p className="mt-4 text-slate-300">{selectedMessage.message}</p>
                 </div>
               </div>
 
               {/* Previous Reply (if exists) */}
               {selectedMessage.admin_reply && (
                 <div className="space-y-2">
-                  <h3 className="text-sm uppercase tracking-widest text-gray-400">Votre Réponse Précédente</h3>
-                  <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-lg">
-                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedMessage.admin_reply}</p>
+                  <h3 className="text-sm uppercase tracking-widest text-slate-300">Votre Reponse Precedente</h3>
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                    <p className="text-sm text-emerald-100 whitespace-pre-wrap">{selectedMessage.admin_reply}</p>
                   </div>
                 </div>
               )}
 
               {/* Reply Form */}
               <div className="space-y-2">
-                <h3 className="text-sm uppercase tracking-widest text-gray-400">Votre Réponse</h3>
+                <h3 className="text-sm uppercase tracking-widest text-slate-300">Votre Reponse</h3>
                 <textarea
                   value={replyText || (selectedMessage.admin_reply || '')}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Tapez votre réponse..."
-                  className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  placeholder="Tapez votre reponse..."
+                  className="h-32 w-full rounded-xl border border-slate-700 bg-slate-900/50 p-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-800">
+              <div className="flex gap-3 border-t border-slate-700 pt-4">
                 <button
                   onClick={() => {
                     setSelectedMessage(null);
                     setReplyText('');
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+                  className="flex-1 rounded-xl bg-slate-800 px-4 py-2 transition hover:bg-slate-700"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={sendReply}
                   disabled={sending || !replyText.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 rounded-lg transition flex items-center justify-center gap-2 font-semibold"
+                  className="flex-1 rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-black transition hover:bg-cyan-400 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {sending ? 'Envoi...' : (
                     <>

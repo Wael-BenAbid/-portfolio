@@ -5,6 +5,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
@@ -16,6 +17,8 @@ from .serializers import (
     ContactMessageSerializer, EmailSubscriptionSerializer, SubscribeSerializer, UnsubscribeSerializer
 )
 from api.permissions import IsAdminUser, IsAdminOrReadOnly
+
+User = get_user_model()
 
 
 # ============ Site Settings Views ============
@@ -92,6 +95,25 @@ class ContactMessageCreate(generics.CreateAPIView):
         else:
             instance = serializer.save()
         self._send_notification_email(instance)
+        self._create_admin_notification(instance)
+
+    def _create_admin_notification(self, message):
+        """Create in-app notification for all active admins when a new contact message arrives."""
+        try:
+            from interactions.models import Notification
+
+            notif = Notification.objects.create(
+                title='Nouveau message de contact',
+                message=f'{message.name}: {message.subject}',
+                notification_type='message',
+                link='/admin/messages',
+            )
+            admin_users = User.objects.filter(user_type='admin', is_active=True)
+            if admin_users.exists():
+                notif.recipients.add(*admin_users)
+        except Exception:
+            # Notifications are best-effort and should not break contact message creation.
+            pass
 
     def _send_notification_email(self, message):
         """Send email notification to admin when a contact message is received."""
@@ -101,8 +123,8 @@ class ContactMessageCreate(generics.CreateAPIView):
             from content.models import SiteSettings
 
             site = SiteSettings.get_settings()
-            from_email = site.default_from_email or site.email_host_user
-            admin_email = site.contact_email or site.email_host_user
+            from_email = site.default_from_email or site.email_host_user or django_settings.DEFAULT_FROM_EMAIL or django_settings.EMAIL_HOST_USER
+            admin_email = site.contact_email or site.email_host_user or django_settings.DEFAULT_FROM_EMAIL
             if not from_email or not admin_email:
                 return
 
@@ -138,6 +160,12 @@ class ContactMessageList(generics.ListAPIView):
         return ContactMessage.objects.all()
 
 
+class ContactMessageDetail(generics.RetrieveDestroyAPIView):
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+    permission_classes = [IsAdminUser]
+
+
 class ContactMessageReplyView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -156,6 +184,8 @@ class ContactMessageReplyView(APIView):
         from django.utils import timezone
         message.replied_at = timezone.now()
         message.save()
+
+        self._create_user_notification(message)
         
         # Send reply email to user
         self._send_reply_email(message, reply)
@@ -170,7 +200,7 @@ class ContactMessageReplyView(APIView):
             from content.models import SiteSettings
 
             site = SiteSettings.get_settings()
-            from_email = site.default_from_email or site.email_host_user
+            from_email = site.default_from_email or site.email_host_user or django_settings.DEFAULT_FROM_EMAIL or django_settings.EMAIL_HOST_USER
             recipient_email = message.email
             
             if not from_email or not recipient_email:
@@ -198,6 +228,28 @@ class ContactMessageReplyView(APIView):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f'Failed to send reply email: {str(e)}')
+
+    def _create_user_notification(self, message):
+        """Create in-app notification for the message owner when admin replies."""
+        try:
+            from interactions.models import Notification
+
+            recipient = message.user
+            if recipient is None:
+                recipient = User.objects.filter(email__iexact=message.email).first()
+            if recipient is None:
+                return
+
+            notif = Notification.objects.create(
+                title='Nouvelle reponse de l\'admin',
+                message=f'Reponse a votre message: {message.subject}',
+                notification_type='message',
+                link='/settings',
+            )
+            notif.recipients.add(recipient)
+        except Exception:
+            # Notifications are best-effort and should not break reply flow.
+            pass
 
 
 # ============ Email Subscription Views ============
