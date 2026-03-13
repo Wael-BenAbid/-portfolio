@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 # ============ Authentication Views ============
 
+@method_decorator(ratelimit_or_exempt(key='ip', rate='5/m', block=True), name='dispatch')
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
@@ -64,6 +65,7 @@ class RegisterView(generics.CreateAPIView):
         return response
 
 
+@method_decorator(ratelimit_or_exempt(key='ip', rate='10/m', block=True), name='dispatch')
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []  # Skip auth so stale cookies don't cause 401
@@ -242,6 +244,7 @@ class OAuthStateView(APIView):
         })
 
 
+@method_decorator(ratelimit_or_exempt(key='ip', rate='10/m', block=True), name='dispatch')
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []  # Skip auth so stale cookies don't cause 401

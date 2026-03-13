@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
@@ -9,254 +9,175 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { OptimizedVideo } from '../components/OptimizedVideo';
 import type { Project } from '../types';
 import { isVideoUrl } from '../constants';
+import { detectImageOrientation, detectVideoOrientation, Orientation } from '../utils/mediaOrientation';
 
 const Home: React.FC = () => {
   const aboutSectionRef = useRef<HTMLDivElement>(null);
   
-  // Fetch projects and settings from API
+  // State pour stocker l'orientation de chaque média (clé = project.id)
+  const [mediaOrientations, setMediaOrientations] = useState<Record<number, Orientation>>({});
+
+  // Callback pour stocker l'orientation détectée
+  const handleOrientation = (projectId: number, orientation: Orientation) => {
+    setMediaOrientations(prev => ({ ...prev, [projectId]: orientation }));
+  };
+
+  const { data: projectsData, error: projectsError, loading: projectsLoading } = useProjects();
+  const { data: settings, loading: settingsLoading } = useSettings();
+
+  // Featured works - first 3 projects
+  const featuredWorks = projectsData?.results.slice(0, 3) || [];
+
+  // Settings values
   const { 
-    data: projectsData, 
-    loading: projectsLoading, 
-    error: projectsError 
-  } = useProjects();
-  
-  const { data: settings } = useSettings();
+    hero_title: heroTitle = "CINEMATIC PORTFOLIO",
+    hero_subtitle: heroSubtitle = "Capturing moments that tell stories",
+    about_title: aboutTitle = "About Me",
+    about_quote: aboutQuote = "Passionate about creating immersive digital experiences",
+    profile_image: profileImage = "",
+    drone_image: droneImage = "",
+    footer_text: footerText = "Portfolio",
+    copyright_year: copyrightYear = "2024",
+    version: version = "1.0.0",
+    location: locationName = "Tunisia",
+    footer_background_video: footerBackgroundVideo = ""
+  } = settings || {};
 
-  // Get featured projects (first 4 active, or all active if no featured)
-  const featuredWorks: Project[] = projectsData?.results?.filter(p => p.is_active).slice(0, 4) || [];
-
-  // Scroll-based image transition for about section
-  const { scrollYProgress: aboutScrollProgress } = useScroll({
-    target: aboutSectionRef,
-    offset: ["start end", "end start"]
-  });
-
-  // Use settings or defaults
-  const heroTitle = settings?.hero_title || 'CREATIVE DEVELOPER';
-  const heroSubtitle = settings?.hero_subtitle || 'Digital Craftsman';
-  const heroTagline = settings?.hero_tagline || 'Digital Experiences & Aerial Visuals';
-  const aboutTitle = settings?.about_title || 'THE MIND BEHIND';
-  const aboutQuote = settings?.about_quote || '"Technology is the vessel, but storytelling is the destination. I create digital landmarks that bridge the gap between imagination and reality."';
-  const locationName = settings?.location || 'Bizerte, Tunisia';
-  const latitude = settings?.latitude || 33.5731;
-  const longitude = settings?.longitude || -7.5898;
-  const footerText = settings?.footer_text || 'DESIGNED BY wael';
-  const footerBackgroundVideo = settings?.footer_background_video;
-  const copyrightYear = settings?.copyright_year || 2026;
-  const version = settings?.version || '1.0';
-  const profileImage = settings?.profile_image;
-  const droneImage = settings?.drone_image;
-  
-
+  // Détection de l'orientation pour tous les projets
+  useEffect(() => {
+    if (featuredWorks.length > 0) {
+      featuredWorks.forEach(project => {
+        if (!project.thumbnail || mediaOrientations[project.id]) return;
+        
+        if (isVideoUrl(project.thumbnail)) {
+          detectVideoOrientation(project.thumbnail, (o) => handleOrientation(project.id, o));
+        } else {
+          detectImageOrientation(project.thumbnail, (o) => handleOrientation(project.id, o));
+        }
+      });
+    }
+  }, [featuredWorks]);
 
   return (
-    <div className="relative bg-transparent selection:bg-blue-500">
-
-      {/* 1. HERO SECTION */}
-      <section className="relative h-[120vh] flex flex-col items-center justify-center px-4 sm:px-8 text-center overflow-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500 selection:text-white overflow-x-hidden">
+      {/* 1. HERO SECTION - Cinematic Intro */}
+      <section className="relative h-screen flex flex-col justify-center items-center px-4 sm:px-8 md:px-24 overflow-hidden">
+        {/* Background gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/60 to-black z-10 pointer-events-none" />
+        
+        {/* Animated hero title */}
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="z-10 max-w-5xl"
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className="relative z-20 text-center max-w-5xl mx-auto"
         >
-          <motion.p 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="font-display text-[10px] md:text-xs tracking-[0.8em] uppercase text-blue-500 mb-8 relative inline-block"
+          <h1 className="text-7xl sm:text-9xl md:text-[15vw] font-display font-black uppercase tracking-tighter leading-none mb-8">
+            {heroTitle}
+          </h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            className="text-lg md:text-2xl font-light tracking-[0.3em] text-blue-400 uppercase"
           >
-            <span className="absolute -left-6 top-1/2 -translate-y-1/2 w-4 h-px bg-blue-500/50"></span>
-            {heroTagline}
+            {heroSubtitle}
           </motion.p>
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 1 }}
-            className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-display font-black leading-[1.1] tracking-tighter uppercase mb-12 relative"
-          >
-            {heroTitle} <br />
-            <motion.span 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.8 }}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600" 
-              style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {heroSubtitle}
-            </motion.span>
-          </motion.h1>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9, duration: 0.8 }}
-            className="flex flex-col items-center"
-          >
-            <div className="w-px h-24 bg-gradient-to-b from-blue-500 via-blue-500/30 to-transparent mb-8" />
-            <p className="max-w-md text-gray-400 text-sm uppercase tracking-widest leading-relaxed">
-              Based in <span className="text-white font-semibold">{locationName}</span> <br /> 
-              <span className="text-blue-400">{latitude}° N, {Math.abs(longitude)}° W</span>
-            </p>
-            
-            {/* CTA Button */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.1, duration: 0.8 }}
-              className="mt-12"
-            >
-              <Link to="/work" className="group relative inline-flex items-center gap-3 px-8 py-4 text-sm font-display tracking-[0.1em] uppercase overflow-hidden">
-                {/* Animated background */}
-                <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors duration-500"></div>
-                
-                {/* Border animation */}
-                <div className="absolute inset-0 border border-blue-500/30 group-hover:border-blue-500 transition-colors duration-500"></div>
-                
-                <span className="relative z-10">Discover My Work</span>
-                <motion.div 
-                  className="relative z-10 w-5 h-5 flex items-center justify-center border border-blue-500/30 group-hover:border-blue-500 rounded-full transition-colors duration-500"
-                  whileHover={{ x: 4 }}
-                >
-                  <ChevronRight size={14} className="group-hover:text-blue-400 transition-colors" />
-                </motion.div>
-              </Link>
-            </motion.div>
-          </motion.div>
         </motion.div>
 
-        {/* Parallax background text */}
-        <motion.div 
-          style={{ y: useTransform(aboutScrollProgress, [0, 0.5], [0, -200]) }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none"
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.5 }}
+          className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-20"
         >
-          <h2 className="text-[30vw] font-display font-black">WORK</h2>
+          <div className="w-px h-16 bg-blue-500/30 relative overflow-hidden">
+            <motion.div
+              className="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-1/3 bg-blue-500"
+              animate={{ y: [0, 24, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </div>
+          <p className="text-xs font-display tracking-widest text-blue-400 uppercase mt-4">Scroll</p>
         </motion.div>
       </section>
 
-      {/* 2. PROJECTS SECTION - Vertical Layout */}
-      <section className="py-24 sm:py-32 md:py-56 px-4 sm:px-8 md:px-24">
+      {/* 2. WORK SHOWCASE - Featured Projects with Orientation Detection */}
+      <section className="py-20 sm:py-32 px-4 sm:px-8 md:px-24 relative">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="mb-24 md:mb-32"
+            className="mb-12 md:mb-20"
           >
-            <h3 className="text-5xl sm:text-6xl md:text-8xl font-display font-black uppercase mb-10 leading-tight">
-              SELECTED <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">PROJECTS</span>
-            </h3>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-gray-400 text-lg md:text-xl max-w-3xl leading-relaxed"
-            >
-              A curation of high-performance digital platforms and cinematic drone captures that push the boundaries of what's possible.
-            </motion.p>
+            <p className="text-xs font-display text-blue-500 uppercase tracking-[0.3em] mb-4">Selected Works</p>
+            <h2 className="text-5xl sm:text-7xl md:text-8xl font-display font-bold uppercase leading-tight">
+              Featured <br className="md:hidden" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
+                Projects
+              </span>
+            </h2>
           </motion.div>
 
-          {/* Project Cards - Vertical Stack */}
-          <div className="space-y-20 md:space-y-32">
-            {projectsLoading && featuredWorks.length === 0 && (
-              <>
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="relative">
-                    <ProjectCardSkeleton />
-                  </div>
-                ))}
-              </>
+          {/* Projects Grid with Orientation Detection */}
+          <div className="space-y-12 md:space-y-16">
+            {projectsLoading && (
+              <div className="space-y-12 md:space-y-16">
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+              </div>
             )}
-            
-            {projectsError && featuredWorks.length === 0 && (
-              <ErrorDisplay 
-                error={projectsError} 
-                onRetry={() => window.location.reload()}
-              />
-            )}
-            
-            {featuredWorks.length > 0 && featuredWorks.map((project, i) => (
-              <motion.div 
-                key={project.id}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, delay: i * 0.15 }}
-                className="relative group cursor-pointer"
-              >
-                 <div className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all duration-500 shadow-2xl group-hover:shadow-blue-500/20 group-hover:shadow-2xl">
-                    {/* Check if thumbnail is a video */}
-                    {isVideoUrl(project.thumbnail) ? (
-                      <div className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9]">
-                         <motion.div 
+
+            {featuredWorks.length > 0 && featuredWorks.map((project, i) => {
+              // Orientation du média (portrait, landscape, square)
+              const orientation = mediaOrientations[project.id];
+
+              // Choix du ratio et objectFit selon orientation
+              let aspectClass = 'aspect-[16/9] md:aspect-[21/9]';
+              let objectFit: 'cover' | 'contain' = 'cover';
+              if (orientation === 'portrait') {
+                aspectClass = 'aspect-[9/10] md:aspect-[9/10]';
+                objectFit = 'cover';
+              } else if (orientation === 'square') {
+                aspectClass = 'aspect-square';
+                objectFit = 'cover';
+              }
+
+              return (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.8, delay: i * 0.15 }}
+                  className="relative group cursor-pointer"
+                >
+                  <Link to={`/project/${project.slug}`} className="block">
+                    <div className={`relative overflow-hidden rounded-3xl ${aspectClass} ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all duration-500 shadow-2xl group-hover:shadow-blue-500/20 group-hover:shadow-2xl`}>
+                      {isVideoUrl(project.thumbnail) ? (
+                        <motion.div
                           className="w-full h-full overflow-hidden rounded-3xl"
                           whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
                         >
-                           <OptimizedVideo
-                             src={project.thumbnail}
-                             alt={project.title}
-                             lazy={true}
-                             placeholder={true}
-                             grayscale={true}
-                             hoverEffects={true}
-                             objectFit="cover"
-                             className="w-full h-full"
-                           />
-                         </motion.div>
-                        
-                        {/* Overlay Info */}
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          whileHover={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
-                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-3xl"
-                        >
-                          <motion.p 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.1, duration: 0.4 }}
-                            className="font-display text-blue-400 text-xs tracking-widest uppercase mb-3"
-                          >
-                            0{i+1} / {project.category}
-                          </motion.p>
-                          <motion.h4 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.15, duration: 0.4 }}
-                            className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-8"
-                          >
-                            {project.title}
-                          </motion.h4>
-                          <motion.div 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2, duration: 0.4 }}
-                            className="flex flex-wrap gap-3 md:gap-4"
-                          >
-                            {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
-                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
-                                {t}
-                              </span>
-                            )) : []}
-                          </motion.div>
+                          <OptimizedVideo
+                            src={project.thumbnail}
+                            alt={project.title}
+                            lazy={true}
+                            placeholder={true}
+                            grayscale={true}
+                            hoverEffects={true}
+                            objectFit={objectFit}
+                            className="w-full h-full"
+                          />
                         </motion.div>
-
-                        {/* Animated Project Index */}
-                        <motion.div 
-                          className="absolute top-6 left-6 md:top-8 md:left-8 z-20"
-                          whileHover={{ scale: 1.2 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <span className="font-display text-3xl md:text-5xl font-black text-blue-500/40 group-hover:text-blue-500/70 transition-colors duration-500">0{i+1}</span>
-                        </motion.div>
-                     </div>
-                   ) : (
-                     /* For images, keep the link */
-                     <Link to={`/project/${project.slug}`} className="block relative overflow-hidden rounded-3xl aspect-[16/9] md:aspect-[21/9] ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all duration-500 shadow-2xl group-hover:shadow-blue-500/20 group-hover:shadow-2xl">
-                        <motion.div 
+                      ) : (
+                        <motion.div
                           className="w-full h-full overflow-hidden rounded-3xl"
                           whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
@@ -268,76 +189,85 @@ const Home: React.FC = () => {
                             placeholder={true}
                             grayscale={true}
                             hoverEffects={true}
-                            objectFit="cover"
+                            objectFit={objectFit}
                             className="w-full h-full"
                           />
                         </motion.div>
-                        
-                        {/* Overlay Info */}
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          whileHover={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
-                          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-3xl"
-                        >
-                          <motion.p 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.1, duration: 0.4 }}
-                            className="font-display text-blue-400 text-xs tracking-widest uppercase mb-3"
-                          >
-                            0{i+1} / {project.category}
-                          </motion.p>
-                          <motion.h4 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.15, duration: 0.4 }}
-                            className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-8"
-                          >
-                            {project.title}
-                          </motion.h4>
-                          <motion.div 
-                            initial={{ y: 10, opacity: 0 }}
-                            whileHover={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2, duration: 0.4 }}
-                            className="flex flex-wrap gap-3 md:gap-4"
-                          >
-                            {Array.isArray(project.technologies) ? project.technologies.slice(0, 3).map(t => (
-                              <span key={t} className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300">
-                                {t}
-                              </span>
-                            )) : []}
-                          </motion.div>
-                        </motion.div>
+                      )}
 
-                        {/* Animated Project Index */}
-                        <motion.div 
-                          className="absolute top-6 left-6 md:top-8 md:left-8 z-20"
-                          whileHover={{ scale: 1.2 }}
-                          transition={{ duration: 0.3 }}
+                      {/* Overlay Info */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        whileHover={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 flex flex-col justify-end p-8 md:p-12 rounded-3xl"
+                      >
+                        <motion.p
+                          initial={{ y: 10, opacity: 0 }}
+                          whileHover={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.1, duration: 0.4 }}
+                          className="font-display text-blue-400 text-xs tracking-widest uppercase mb-3"
                         >
-                          <span className="font-display text-3xl md:text-5xl font-black text-blue-500/40 group-hover:text-blue-500/70 transition-colors duration-500">0{i+1}</span>
+                          0{i + 1} / {project.category}
+                        </motion.p>
+                        <motion.h4
+                          initial={{ y: 10, opacity: 0 }}
+                          whileHover={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.15, duration: 0.4 }}
+                          className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-8"
+                        >
+                          {project.title}
+                        </motion.h4>
+                        <motion.div
+                          initial={{ y: 10, opacity: 0 }}
+                          whileHover={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.2, duration: 0.4 }}
+                          className="flex flex-wrap gap-3 md:gap-4"
+                        >
+                          {Array.isArray(project.technologies)
+                            ? project.technologies.slice(0, 3).map((t) => (
+                                <span
+                                  key={t}
+                                  className="text-[10px] font-display uppercase tracking-widest border border-blue-400/40 hover:border-blue-400 px-3 py-1 md:px-4 md:py-2 rounded-full backdrop-blur-sm hover:bg-blue-500/10 transition-all duration-300"
+                                >
+                                  {t}
+                                </span>
+                              ))
+                            : []}
                         </motion.div>
+                      </motion.div>
 
-                        {/* Fixed Project Index */}
-                        <div className="absolute top-6 left-6 md:top-8 md:left-8 mix-blend-difference z-20">
-                           <span className="font-display text-3xl md:text-4xl opacity-50">0{i+1}</span>
-                        </div>
-                    </Link>
-                   )}
-                  
+                      {/* Animated Project Index */}
+                      <motion.div
+                        className="absolute top-6 left-6 md:top-8 md:left-8 z-20"
+                        whileHover={{ scale: 1.2 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <span className="font-display text-3xl md:text-5xl font-black text-blue-500/40 group-hover:text-blue-500/70 transition-colors duration-500">
+                          0{i + 1}
+                        </span>
+                      </motion.div>
+                    </div>
+                  </Link>
                   {/* Like Button */}
                   <div className="absolute top-6 right-6 md:top-8 md:right-8 z-20">
-                    <LikeButton 
-                      contentId={project.id} 
-                      contentType="project" 
-                      initialLiked={project.is_liked} 
-                      initialLikesCount={project.likes_count} 
+                    <LikeButton
+                      contentId={project.id}
+                      contentType="project"
+                      initialLiked={project.is_liked}
+                      initialLikesCount={project.likes_count}
                     />
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
+            
+            {projectsError && featuredWorks.length === 0 && (
+              <ErrorDisplay 
+                error={projectsError} 
+                onRetry={() => window.location.reload()}
+              />
+            )}
             
             {!projectsLoading && !projectsError && featuredWorks.length === 0 && (
               <div className="py-24 text-center">
@@ -508,4 +438,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-
