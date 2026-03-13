@@ -1,5 +1,6 @@
 """
 API Views - Authentication and User Management
+Handles auth, user management, media uploads, and visitor tracking
 """
 import logging
 import os
