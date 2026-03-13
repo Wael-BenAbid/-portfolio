@@ -763,6 +763,8 @@ class HealthCheckView(APIView):
     - Monitoring systems (Uptime monitoring)
     
     Response: 200 OK if healthy, 503 Service Unavailable if unhealthy
+    
+    Note: Simplified to avoid timeouts on cold starts. No DB/Redis checks.
     """
     permission_classes = [permissions.AllowAny]
     
