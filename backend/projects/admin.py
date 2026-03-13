@@ -10,21 +10,22 @@ class MediaItemInline(admin.TabularInline):
     """Inline admin for MediaItem to allow adding media directly in Project admin"""
     model = MediaItem
     extra = 0
-    fields = ['media_type', 'file', 'thumbnail', 'caption', 'order']
+    fields = ['media_type', 'file', 'external_url', 'thumbnail', 'caption', 'order']
     readonly_fields = ['media_preview']
     
     def media_preview(self, obj):
         """Display a preview of the uploaded media"""
-        if obj.file:
+        media_url = obj.url
+        if media_url:
             if obj.media_type == 'image':
                 return format_html(
                     '<img src="{}" style="max-width: 200px; max-height: 200px; object-fit: contain;" />',
-                    obj.file.url
+                    media_url
                 )
             elif obj.media_type == 'video':
                 return format_html(
                     '<video src="{}" controls style="max-width: 200px; max-height: 200px;"></video>',
-                    obj.file.url
+                    media_url
                 )
         return "No file uploaded"
     media_preview.short_description = 'Preview'
@@ -49,11 +50,11 @@ class MediaItemAdmin(admin.ModelAdmin):
     
     def file_preview(self, obj):
         """Display a small preview in the list view"""
-        if obj.file:
+        if obj.url:
             if obj.media_type == 'image':
                 return format_html(
                     '<img src="{}" style="max-width: 50px; max-height: 50px; object-fit: contain;" />',
-                    obj.file.url
+                    obj.url
                 )
             elif obj.media_type == 'video':
                 return format_html('<span>🎬 Video</span>')
@@ -62,16 +63,16 @@ class MediaItemAdmin(admin.ModelAdmin):
     
     def media_preview(self, obj):
         """Display a preview of the uploaded media"""
-        if obj.file:
+        if obj.url:
             if obj.media_type == 'image':
                 return format_html(
                     '<img src="{}" style="max-width: 400px; max-height: 400px; object-fit: contain;" />',
-                    obj.file.url
+                    obj.url
                 )
             elif obj.media_type == 'video':
                 return format_html(
                     '<video src="{}" controls style="max-width: 400px; max-height: 400px;"></video>',
-                    obj.file.url
+                    obj.url
                 )
         return "No file uploaded"
     media_preview.short_description = 'Preview'

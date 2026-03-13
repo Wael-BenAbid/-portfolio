@@ -27,8 +27,8 @@ const Dashboard: React.FC = () => {
     show_registration: true
   });
   const [techInput, setTechInput] = useState('');
-  const [mediaUrlInput, setMediaUrlInput] = useState('');
-  const [mediaTypeInput, setMediaTypeInput] = useState<'image' | 'video'>('image');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [videoUrlInput, setVideoUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadingField, setUploadingField] = useState<'thumbnail' | 'media' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -290,6 +290,73 @@ const Dashboard: React.FC = () => {
     if (mediaFileInputRef.current) mediaFileInputRef.current.value = '';
   };
 
+  const createMediaFromUrl = async (
+    mediaType: 'image' | 'video',
+    externalUrl: string,
+    isEdit: boolean = false
+  ) => {
+    const normalizedUrl = externalUrl.trim();
+    if (!normalizedUrl) {
+      setError(`Please enter a ${mediaType} URL first.`);
+      return;
+    }
+
+    const projectSlug = isEdit && editingProject ? editingProject.slug : newProject.slug;
+    if (!projectSlug) {
+      setError('Please save the project first before adding media.');
+      return;
+    }
+
+    setUploadingField('media');
+    try {
+      const currentMedia = isEdit && editingProject ? editingProject.media || [] : newProject.media || [];
+      const formData = new FormData();
+      formData.append('project', projectSlug);
+      formData.append('media_type', mediaType);
+      formData.append('external_url', normalizedUrl);
+      formData.append('order', String(currentMedia.length));
+
+      const data = await api.upload<any>('/projects/media/create/', formData);
+      const newMediaItem: MediaItem = {
+        id: data.id,
+        type: data.type,
+        url: data.url,
+        thumbnail_url: data.thumbnail_url,
+        caption: data.caption,
+        order: data.order,
+        likes_count: data.likes_count || 0,
+        is_liked: data.is_liked || false
+      };
+
+      if (isEdit && editingProject) {
+        setEditingProject({
+          ...editingProject,
+          media: [...currentMedia, newMediaItem],
+          thumbnail: editingProject.thumbnail || (mediaType === 'image' ? data.url : editingProject.thumbnail)
+        });
+      } else {
+        setNewProject({
+          ...newProject,
+          media: [...currentMedia, newMediaItem],
+          thumbnail: newProject.thumbnail || (mediaType === 'image' ? data.url : newProject.thumbnail)
+        });
+      }
+
+      if (mediaType === 'image') {
+        setImageUrlInput('');
+      } else {
+        setVideoUrlInput('');
+      }
+      setError(null);
+    } catch (error) {
+      const errorMessage = error instanceof APIError ? error.message : 'Failed to add media from URL. Please try again.';
+      console.error('Create media from URL error:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -403,27 +470,6 @@ const Dashboard: React.FC = () => {
       ...newProject, 
       technologies: currentTechs.filter((_, i) => i !== index)
     });
-  };
-
-  const addMedia = () => {
-    if (mediaUrlInput.trim()) {
-      const currentMedia = newProject.media || [];
-      const newMedia: MediaItem = {
-        id: `m-${Date.now()}`,
-        type: mediaTypeInput,
-        url: mediaUrlInput.trim(),
-        order: currentMedia.length + 1,
-        likes_count: 0,
-        is_liked: false
-      };
-      setNewProject({
-        ...newProject,
-        media: [...currentMedia, newMedia],
-        // Set first image as thumbnail if not set
-        thumbnail: newProject.thumbnail || (mediaTypeInput === 'image' ? mediaUrlInput.trim() : newProject.thumbnail)
-      });
-      setMediaUrlInput('');
-    }
   };
 
   const removeMedia = (index: number) => {
@@ -773,6 +819,8 @@ const Dashboard: React.FC = () => {
                     <div key={i} className="relative group">
                       {media.type === 'image' && media.url ? (
                         <img src={media.url} alt="" className="w-full h-24 object-cover rounded" />
+                      ) : media.type === 'video' && media.url ? (
+                        <video src={media.url} muted playsInline className="w-full h-24 object-cover rounded" />
                       ) : media.type === 'image' ? (
                         <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
                           <span className="text-xs font-display uppercase">No Image</span>
@@ -797,17 +845,15 @@ const Dashboard: React.FC = () => {
                 <div className="flex gap-2 mb-2">
                   <input 
                     type="url"
-                    value={mediaUrlInput}
-                    onChange={e => setMediaUrlInput(e.target.value)}
+                    value={imageUrlInput}
+                    onChange={e => setImageUrlInput(e.target.value)}
                     className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
                     placeholder="Image URL..."
                   />
                   <button 
                     type="button" 
-                    onClick={() => {
-                      setMediaTypeInput('image');
-                      addMedia();
-                    }}
+                    onClick={() => createMediaFromUrl('image', imageUrlInput, false)}
+                    disabled={uploadingField === 'media'}
                     className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
                   >
                     <ImageIcon size={14} /> Add Image
@@ -818,17 +864,15 @@ const Dashboard: React.FC = () => {
                 <div className="flex gap-2 mb-2">
                   <input 
                     type="url"
-                    value={mediaUrlInput}
-                    onChange={e => setMediaUrlInput(e.target.value)}
+                    value={videoUrlInput}
+                    onChange={e => setVideoUrlInput(e.target.value)}
                     className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
                     placeholder="Video URL..."
                   />
                   <button 
                     type="button" 
-                    onClick={() => {
-                      setMediaTypeInput('video');
-                      addMedia();
-                    }}
+                    onClick={() => createMediaFromUrl('video', videoUrlInput, false)}
+                    disabled={uploadingField === 'media'}
                     className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
                   >
                     <ImageIcon size={14} /> Add Video
@@ -1046,6 +1090,8 @@ const Dashboard: React.FC = () => {
                     <div key={i} className="relative group">
                       {media.type === 'image' && media.url ? (
                         <img src={media.url} alt="" className="w-full h-24 object-cover rounded" />
+                      ) : media.type === 'video' && media.url ? (
+                        <video src={media.url} muted playsInline className="w-full h-24 object-cover rounded" />
                       ) : media.type === 'image' ? (
                         <div className="w-full h-24 bg-gray-800 rounded flex items-center justify-center">
                           <span className="text-xs font-display uppercase">No Image</span>
@@ -1099,32 +1145,15 @@ const Dashboard: React.FC = () => {
                 <div className="flex gap-2 mb-2">
                   <input 
                     type="url"
-                    value={mediaUrlInput}
-                    onChange={e => setMediaUrlInput(e.target.value)}
+                    value={imageUrlInput}
+                    onChange={e => setImageUrlInput(e.target.value)}
                     className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
                     placeholder="Image URL..."
                   />
                   <button 
                     type="button" 
-                    onClick={() => {
-                      if (mediaUrlInput.trim()) {
-                        const currentMedia = editingProject.media || [];
-                        const newMediaItem: MediaItem = {
-                          id: `m-${Date.now()}`,
-                          type: 'image',
-                          url: mediaUrlInput.trim(),
-                          order: currentMedia.length + 1,
-                          likes_count: 0,
-                          is_liked: false
-                        };
-                        setEditingProject({
-                          ...editingProject,
-                          media: [...currentMedia, newMediaItem],
-                          thumbnail: editingProject.thumbnail || mediaUrlInput.trim()
-                        });
-                        setMediaUrlInput('');
-                      }
-                    }}
+                    onClick={() => createMediaFromUrl('image', imageUrlInput, true)}
+                    disabled={uploadingField === 'media'}
                     className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
                   >
                     <ImageIcon size={14} /> Add Image
@@ -1135,32 +1164,15 @@ const Dashboard: React.FC = () => {
                 <div className="flex gap-2 mb-2">
                   <input 
                     type="url"
-                    value={mediaUrlInput}
-                    onChange={e => setMediaUrlInput(e.target.value)}
+                    value={videoUrlInput}
+                    onChange={e => setVideoUrlInput(e.target.value)}
                     className="flex-1 min-w-[200px] bg-transparent border-b border-gray-800 py-2 focus:border-blue-500 outline-none font-display"
                     placeholder="Video URL..."
                   />
                   <button 
                     type="button" 
-                    onClick={() => {
-                      if (mediaUrlInput.trim()) {
-                        const currentMedia = editingProject.media || [];
-                        const newMediaItem: MediaItem = {
-                          id: `m-${Date.now()}`,
-                          type: 'video',
-                          url: mediaUrlInput.trim(),
-                          order: currentMedia.length + 1,
-                          likes_count: 0,
-                          is_liked: false
-                        };
-                        setEditingProject({
-                          ...editingProject,
-                          media: [...currentMedia, newMediaItem],
-                          thumbnail: editingProject.thumbnail || mediaUrlInput.trim()
-                        });
-                        setMediaUrlInput('');
-                      }
-                    }}
+                    onClick={() => createMediaFromUrl('video', videoUrlInput, true)}
+                    disabled={uploadingField === 'media'}
                     className="px-4 py-2 border border-gray-800 text-gray-400 hover:text-white hover:border-white transition-colors flex items-center gap-2"
                   >
                     <ImageIcon size={14} /> Add Video

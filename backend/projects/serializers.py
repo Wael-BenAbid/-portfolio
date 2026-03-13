@@ -2,6 +2,7 @@
 Projects App - Serializers for projects and media
 """
 import os
+from urllib.parse import urlparse
 from rest_framework import serializers
 from django.conf import settings
 from .models import Project, MediaItem, Skill, ProjectRegistration
@@ -17,19 +18,22 @@ class MediaItemCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = MediaItem
-        fields = ['id', 'project', 'media_type', 'file', 'thumbnail', 'caption', 'order']
+        fields = ['id', 'project', 'media_type', 'file', 'external_url', 'thumbnail', 'caption', 'order']
     
     def validate(self, attrs):
         """Validate that file or thumbnail is provided based on media type"""
         media_type = attrs.get('media_type')
         file = attrs.get('file')
+        external_url = attrs.get('external_url')
         thumbnail = attrs.get('thumbnail')
         
-        if media_type == 'image' and not file:
-            raise serializers.ValidationError({"file": "File is required for image media type"})
-        
-        if media_type == 'video' and not file:
-            raise serializers.ValidationError({"file": "File is required for video media type"})
+        if not file and not external_url:
+            raise serializers.ValidationError({"file": "File or external URL is required for this media item"})
+
+        if external_url:
+            parsed = urlparse(external_url)
+            if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+                raise serializers.ValidationError({"external_url": "Enter a valid http or https URL"})
         
         # Validate file type based on media type
         if file:
@@ -103,6 +107,8 @@ class MediaItemSerializer(serializers.ModelSerializer):
         if obj.file:
             request = self.context.get('request')
             return request.build_absolute_uri(obj.file.url) if request else obj.file.url
+        if obj.external_url:
+            return obj.external_url
         # Only return test URLs for development or when no file is available
         if settings.DEBUG:
             test_url = f'https://picsum.photos/seed/test{obj.order}/800/600.jpg'

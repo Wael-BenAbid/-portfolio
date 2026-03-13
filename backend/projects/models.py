@@ -95,6 +95,12 @@ class MediaItem(models.Model):
         blank=True,
         help_text="Upload high-resolution image or video file (max 50MB)"
     )
+    external_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Optional remote image/video URL when the asset is already hosted elsewhere"
+    )
     thumbnail = models.ImageField(
         upload_to='project_media/thumbnails/%Y/%m/',
         blank=True,
@@ -114,9 +120,11 @@ class MediaItem(models.Model):
     
     @property
     def url(self):
-        """Return the URL of the uploaded file"""
+        """Return the URL of the uploaded file or external asset."""
         if self.file:
             return self.file.url
+        if self.external_url:
+            return self.external_url
         return None
 
 
