@@ -5,6 +5,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
@@ -149,7 +150,12 @@ class UserContactMessagesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return ContactMessage.objects.filter(user=self.request.user)
+        # Include both explicitly linked messages and legacy messages created
+        # with the same email before account association.
+        user = self.request.user
+        return ContactMessage.objects.filter(
+            Q(user=user) | Q(email__iexact=user.email)
+        ).distinct()
 
 
 class ContactMessageList(generics.ListAPIView):
