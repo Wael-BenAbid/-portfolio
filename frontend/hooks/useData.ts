@@ -268,18 +268,29 @@ const EMPTY_PROJECTS_RESPONSE: ProjectsResponse = { results: [], count: 0 };
 
 // Cache key for localStorage
 const PROJECTS_CACHE_KEY = 'portfolio_projects_cache';
+const CACHE_VERSION = 1; // Increment this to invalidate stale caches
 
-// Get cached projects from localStorage
+// Get cached projects from localStorage - but validate it's not stale
 const getCachedProjects = (): ProjectsResponse | null => {
   try {
     const cached = localStorage.getItem(PROJECTS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : null;
+    if (!cached) return null;
+    
+    const data = JSON.parse(cached);
+    
+    // If cache is empty (0 projects), assume it's stale from backend downtime
+    // and don't use it - force fresh API fetch instead
+    if (data.count === 0) {
+      return null;
+    }
+    
+    return data;
   } catch {
     return null;
   }
 };
 
-// Store projects in localStorage cache
+// Store projects in localStorage cache with version
 const setCachedProjects = (data: ProjectsResponse): void => {
   try {
     localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));

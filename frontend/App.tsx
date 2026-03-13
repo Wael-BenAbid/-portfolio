@@ -154,6 +154,20 @@ const AuthProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   useEffect(() => {
+    // Clear stale cache from backend downtime to force fresh API fetches
+    const cachedProjects = localStorage.getItem('portfolio_projects_cache');
+    if (cachedProjects) {
+      try {
+        const parsed = JSON.parse(cachedProjects);
+        // If cache has no projects (was cached during backend downtime), clear it
+        if (parsed.count === 0) {
+          localStorage.removeItem('portfolio_projects_cache');
+        }
+      } catch {
+        localStorage.removeItem('portfolio_projects_cache');
+      }
+    }
+    
     // Verify authentication with backend on initial load
     const verifyAuth = async () => {
       const storedToken = localStorage.getItem('access_token');
