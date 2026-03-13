@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Reply, Trash2, Check, X, Loader2, Inbox } from 'lucide-react';
+import { Reply, Trash2, Check, X, Loader2, Inbox, AlertTriangle } from 'lucide-react';
 import { API_BASE_URL } from '../../constants';
-import { authFetch } from '../../services/api';
+import api, { APIError, authFetch } from '../../services/api';
 import { useAuth } from '../../App';
 
 interface ContactMessage {
@@ -24,8 +24,10 @@ export const AdminMessages: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState<'all' | 'new' | 'replied'>('all');
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ContactMessage | null>(null);
 
   useEffect(() => {
     if (user?.user_type === 'admin') {
@@ -37,18 +39,16 @@ export const AdminMessages: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/settings/contact/messages/`);
-      if (res.ok) {
-        const data = await res.json();
-        // Handle both array and paginated responses
-        const messagesList = Array.isArray(data) ? data : (data.results || []);
-        setMessages(messagesList);
-      } else {
-        setError(`Impossible de charger les messages (${res.status})`);
-      }
+      const data = await api.get<ContactMessage[] | { results?: ContactMessage[] }>('/settings/contact/messages/', undefined, { maxRetries: 1, timeoutMs: 30000 });
+      const messagesList = Array.isArray(data) ? data : (data.results || []);
+      setMessages(messagesList);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
-      setError('Erreur reseau lors du chargement des messages');
+      if (error instanceof APIError && error.status === 401) {
+        setError('Session admin expiree. Reconnectez-vous puis reessayez.');
+      } else {
+        setError('Erreur reseau lors du chargement des messages');
+      }
     }
     setLoading(false);
   };
@@ -58,62 +58,58 @@ export const AdminMessages: React.FC = () => {
     
     setSending(true);
     try {
-      const res = await authFetch(
-        `${API_BASE_URL}/settings/contact/${selectedMessage.id}/reply/`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reply: replyText }),
-        }
+      await api.post(`/settings/contact/${selectedMessage.id}/reply/`, { reply: replyText }, { maxRetries: 2 });
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === selectedMessage.id
+            ? {
+                ...m,
+                status: 'replied',
+                admin_reply: replyText,
+                replied_at: new Date().toISOString(),
+              }
+            : m
+        )
       );
-      
-      if (res.ok) {
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === selectedMessage.id
-              ? {
-                  ...m,
-                  status: 'replied',
-                  admin_reply: replyText,
-                  replied_at: new Date().toISOString(),
-                }
-              : m
-          )
-        );
-        setSelectedMessage(null);
-        setReplyText('');
-        setError(null);
-      } else {
-        const payload = await res.json().catch(() => ({}));
-        setError(payload.error || payload.detail || `Envoi impossible (${res.status})`);
-      }
+      setSelectedMessage(null);
+      setReplyText('');
+      setError(null);
     } catch (error) {
       console.error('Failed to send reply:', error);
-      setError('Erreur reseau pendant l envoi de la reponse');
+      if (error instanceof APIError && error.status === 401) {
+        setError('Session admin expiree. Reconnectez-vous puis reessayez.');
+      } else if (error instanceof APIError && error.status === 403) {
+        setError('Vous n avez pas les droits admin pour repondre a ce message.');
+      } else if (error instanceof APIError) {
+        setError(error.message || 'Envoi impossible.');
+      } else {
+        setError('Erreur reseau pendant l envoi de la reponse. Verifiez votre connexion et reessayez.');
+      }
     }
     setSending(false);
   };
 
   const deleteMessage = async (id: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce message?')) return;
-    
+    setDeleting(true);
     try {
-      const res = await authFetch(
-        `${API_BASE_URL}/settings/contact/messages/${id}/`,
-        { method: 'DELETE' }
-      );
-      
-      if (res.ok || res.status === 204) {
-        setMessages(prev => prev.filter(m => m.id !== id));
-        if (selectedMessage?.id === id) setSelectedMessage(null);
-        setError(null);
-      } else {
-        const payload = await res.json().catch(() => ({}));
-        setError(payload.error || payload.detail || `Suppression impossible (${res.status})`);
-      }
+      await api.delete(`/settings/contact/messages/${id}/`);
+
+      setMessages(prev => prev.filter(m => m.id !== id));
+      if (selectedMessage?.id === id) setSelectedMessage(null);
+      if (pendingDelete?.id === id) setPendingDelete(null);
+      setError(null);
     } catch (error) {
       console.error('Failed to delete message:', error);
-      setError('Erreur reseau pendant la suppression');
+      if (error instanceof APIError && error.status === 401) {
+        setError('Session admin expiree. Reconnectez-vous puis reessayez.');
+      } else if (error instanceof APIError) {
+        setError(error.message || 'Suppression impossible.');
+      } else {
+        setError('Erreur reseau pendant la suppression');
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -235,7 +231,7 @@ export const AdminMessages: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteMessage(msg.id);
+                        setPendingDelete(msg);
                       }}
                       className="rounded-lg p-2 transition hover:bg-rose-500/20"
                       title="Supprimer"
@@ -337,6 +333,52 @@ export const AdminMessages: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {pendingDelete && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => !deleting && setPendingDelete(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-[#0b1423] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-xl bg-rose-500/15 p-2">
+                <AlertTriangle size={18} className="text-rose-300" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-white">Confirmer la suppression</h3>
+            </div>
+
+            <p className="mb-5 text-sm text-slate-300">
+              Voulez-vous supprimer le message de <span className="font-semibold text-white">{pendingDelete.name}</span> ? Cette action est irreversible.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="flex-1 rounded-xl bg-slate-800 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-700 disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => deleteMessage(pendingDelete.id)}
+                disabled={deleting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:opacity-50"
+              >
+                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Supprimer
+              </button>
             </div>
           </motion.div>
         </motion.div>
