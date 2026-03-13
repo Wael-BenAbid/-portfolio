@@ -1,8 +1,14 @@
 """
 Utility functions for encrypting and decrypting sensitive data
 """
+import logging
+from functools import wraps
+
 from cryptography.fernet import Fernet
 from django.conf import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_fernet():
@@ -46,7 +52,13 @@ def ratelimit_or_exempt(key, rate, method=None, block=True):
         class MyView(APIView):
             pass
     """
-    from django_ratelimit.decorators import ratelimit as django_ratelimit
+    try:
+        from django_ratelimit.decorators import ratelimit as django_ratelimit
+    except Exception:
+        # Fail open when ratelimit dependency is unavailable in runtime.
+        def no_op_decorator(func):
+            return func
+        return no_op_decorator
     
     # In development mode, bypass rate limiting
     if settings.DEBUG:
@@ -55,5 +67,18 @@ def ratelimit_or_exempt(key, rate, method=None, block=True):
             return func
         return no_op_decorator
     
-    # In production, use actual rate limiting
-    return django_ratelimit(key=key, rate=rate, method=method, block=block)
+    # In production, use actual rate limiting with a safe fallback.
+    def decorator(func):
+        decorated = django_ratelimit(key=key, rate=rate, method=method, block=block)(func)
+
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                return decorated(*args, **kwargs)
+            except Exception as exc:
+                logger.error("Rate limit backend failed, bypassing check: %s", exc, exc_info=True)
+                return func(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
