@@ -197,7 +197,9 @@ if REDIS_URL:
 else:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache' if DEBUG else 'django.core.cache.backends.dummy.DummyCache',
+            # Use LocMem as a safe fallback when Redis is not configured.
+            # DummyCache can break features that require cache increments (e.g. rate limiting).
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
             'LOCATION': 'portfolio-cache',
         }
     }
