@@ -232,6 +232,7 @@ LOGGING = {
             'maxBytes': 10 * 1024 * 1024,
             'backupCount': 5,
             'formatter': 'verbose',
+            'delay': True,  # Delay opening the file until first write - helps with Windows file locking
         },
     },
     'loggers': {

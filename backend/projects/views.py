@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from .models import Project, Skill, MediaItem, ProjectRegistration
 from .serializers import ProjectSerializer, SkillSerializer, MediaItemCreateSerializer, ProjectRegistrationSerializer
 from api.permissions import IsAdminUser, IsAdminOrReadOnly
+from api.utils import ratelimit_or_exempt
 
 
 # ============ Pagination ============
@@ -28,7 +29,7 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
 
 # ============ Project Views ============
 
-@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST', block=True), name='dispatch')
 class ProjectListCreate(generics.ListCreateAPIView):
     serializer_class = ProjectSerializer
     pagination_class = StandardResultsSetPagination
@@ -75,9 +76,9 @@ class ProjectListCreate(generics.ListCreateAPIView):
         serializer.save(created_by=self.request.user)
 
 
-@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST', block=True), name='dispatch')
-@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_UPDATE_RATE_LIMIT', '50/h'), method=['PUT', 'PATCH'], block=True), name='dispatch')
-@method_decorator(ratelimit(key='user', rate=os.environ.get('PROJECT_DELETE_RATE_LIMIT', '20/h'), method='DELETE', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('PROJECT_CREATE_RATE_LIMIT', '100/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('PROJECT_UPDATE_RATE_LIMIT', '50/h'), method=['PUT', 'PATCH'], block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('PROJECT_DELETE_RATE_LIMIT', '20/h'), method='DELETE', block=True), name='dispatch')
 class ProjectRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProjectSerializer
     lookup_field = 'slug'
@@ -146,7 +147,7 @@ class SkillRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
 # ============ Media Item Views ============
 
-@method_decorator(ratelimit(key='user', rate=os.environ.get('MEDIA_UPLOAD_RATE_LIMIT', '50/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('MEDIA_UPLOAD_RATE_LIMIT', '50/h'), method='POST', block=True), name='dispatch')
 class MediaItemCreate(generics.CreateAPIView):
     """View for creating media items for a project"""
     serializer_class = MediaItemCreateSerializer
@@ -183,7 +184,7 @@ class MediaItemCreate(generics.CreateAPIView):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-@method_decorator(ratelimit(key='user', rate=os.environ.get('MEDIA_DELETE_RATE_LIMIT', '50/h'), method='DELETE', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate=os.environ.get('MEDIA_DELETE_RATE_LIMIT', '50/h'), method='DELETE', block=True), name='dispatch')
 class MediaItemDelete(generics.DestroyAPIView):
     """View for deleting media items from a project"""
     queryset = MediaItem.objects.all()

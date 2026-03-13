@@ -124,7 +124,7 @@ export function useQuery<T>(
   useEffect(() => {
     isMounted.current = true;
     
-    // Only fetch once on mount
+    // Only fetch once on mount if enabled and endpoint is set
     if (enabled && endpoint) {
       fetchData();
     }
@@ -132,7 +132,9 @@ export function useQuery<T>(
     return () => {
       isMounted.current = false;
     };
-  }, [enabled, endpoint, fetchData]);
+    // Only depend on enabled and endpoint to avoid infinite loops
+    // fetchData is stable via useCallback, so we don't need to include it
+  }, [enabled, endpoint]);
 
   return {
     data,

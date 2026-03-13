@@ -21,6 +21,7 @@ from .serializers import (
 )
 from .models import MediaUpload, Visitor, RefreshToken, OAuthState
 from api.permissions import IsAdminUser
+from api.utils import ratelimit_or_exempt
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # ============ Authentication Views ============
 
-@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate='5/m', block=True), name='dispatch')
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
@@ -64,7 +65,7 @@ class RegisterView(generics.CreateAPIView):
         return response
 
 
-@method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate='10/m', block=True), name='dispatch')
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []  # Skip auth so stale cookies don't cause 401
@@ -243,7 +244,7 @@ class OAuthStateView(APIView):
         })
 
 
-@method_decorator(ratelimit(key='ip', rate='10/m', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate='10/m', block=True), name='dispatch')
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []  # Skip auth so stale cookies don't cause 401
@@ -513,7 +514,7 @@ class UserSettingsView(generics.UpdateAPIView):
         return Response(serializer.data)
 
 
-@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate='5/m', block=True), name='dispatch')
 class PasswordChangeView(APIView):
     """
     Password change view for authenticated users.
@@ -563,7 +564,7 @@ class AdminUserUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
 # ============ Media Upload View ============
 
-@method_decorator(ratelimit(key='user', rate='10/h', method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='user', rate='10/h', method='POST', block=True), name='dispatch')
 class MediaUploadView(generics.CreateAPIView):
     """
     View for handling media uploads (images and videos).
@@ -790,7 +791,7 @@ class HealthCheckView(APIView):
 # PASSWORD RESET VIEWS
 # ============================================================================
 
-@method_decorator(ratelimit(key='ip', rate=os.environ.get('FORGOT_PASSWORD_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate=os.environ.get('FORGOT_PASSWORD_RATE_LIMIT', '5/h'), method='POST', block=True), name='dispatch')
 class ForgotPasswordView(APIView):
     """Request a password reset email."""
     permission_classes = [permissions.AllowAny]
@@ -864,7 +865,7 @@ class ForgotPasswordView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@method_decorator(ratelimit(key='ip', rate=os.environ.get('RESET_PASSWORD_RATE_LIMIT', '10/h'), method='POST', block=True), name='dispatch')
+@method_decorator(ratelimit_or_exempt(key='ip', rate=os.environ.get('RESET_PASSWORD_RATE_LIMIT', '10/h'), method='POST', block=True), name='dispatch')
 class ResetPasswordView(APIView):
     """Reset password with token."""
     permission_classes = [permissions.AllowAny]
