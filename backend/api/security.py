@@ -682,15 +682,9 @@ class SecurityLogger:
             return activity
             
         except Exception as e:
+            # Logging must never break authentication flows.
             logger.error(f"Error logging login attempt: {str(e)}", exc_info=True)
-            # Still create a minimal record
-            from .models import LoginActivity
-            return LoginActivity.objects.create(
-                user=user,
-                status=status,
-                ip_address=ip_address,
-                user_agent=user_agent[:1000]
-            )
+            return None
     
     @staticmethod
     def log_activity(user, action, description, object_type=None, object_id=None,
