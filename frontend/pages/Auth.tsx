@@ -192,11 +192,13 @@ const SocialButton: React.FC<{
 // Main Auth Page Component
 const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loginRedirectPath, setLoginRedirectPath] = useState<string | null>(null);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -209,6 +211,14 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   
   const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
+  // Navigate to the intended page once authenticated
+  useEffect(() => {
+    if (loginRedirectPath && isAuthenticated) {
+      navigate(loginRedirectPath);
+      setLoginRedirectPath(null);
+    }
+  }, [isAuthenticated, loginRedirectPath, navigate]);
 
   // Clear form when switching tabs
   useEffect(() => {
@@ -296,10 +306,10 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       
       if (response.ok) {
         onLogin(data.user, data.access_token || 'http-only-cookie');
-        // Check if user was trying to access admin page before login
+        // Set redirect path to trigger useEffect that waits for isAuthenticated to update
         const searchParams = new URLSearchParams(window.location.search);
         const from = searchParams.get('from') || '/';
-        navigate(from);
+        setLoginRedirectPath(from);
       } else {
         setError(extractError(data, 'Login failed'));
       }
@@ -349,7 +359,8 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
       
       if (response.ok) {
         onLogin(data.user, data.access_token || 'http-only-cookie');
-        navigate('/');
+        // Set redirect path to trigger useEffect that waits for isAuthenticated to update
+        setLoginRedirectPath('/');
       } else {
         setError(extractError(data, 'Registration failed'));
       }
@@ -376,7 +387,8 @@ const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
         if (res.ok) {
           const data = await res.json();
           onLogin(data.user, data.access_token || 'http-only-cookie');
-          navigate('/');
+          // Set redirect path to trigger useEffect that waits for isAuthenticated to update
+          setLoginRedirectPath('/');
         } else {
           const errorData = await res.json();
           setError(extractError(errorData, 'Google authentication failed'));
