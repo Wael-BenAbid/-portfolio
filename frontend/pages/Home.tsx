@@ -74,7 +74,7 @@ const Home: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 1 }}
-            className="text-5xl sm:text-7xl md:text-[11rem] font-display font-black leading-none tracking-tighter uppercase mb-12 relative"
+            className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-display font-black leading-[1.1] tracking-tighter uppercase mb-12 relative"
           >
             {heroTitle} <br />
             <motion.span 
