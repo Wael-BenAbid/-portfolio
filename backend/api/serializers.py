@@ -267,6 +267,10 @@ class SocialAuthSerializer(serializers.Serializer):
             logger.error(f"OAuth verification request failed: {e}")
             # Security: Always fail closed on network errors - never bypass OAuth verification
             return False, None
+        except Exception as e:
+            # Never allow unexpected OAuth parsing/provider issues to bubble up as 500.
+            logger.error(f"OAuth verification unexpected error: {e}", exc_info=True)
+            return False, None
         
         return False, None
 
