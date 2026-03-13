@@ -38,7 +38,9 @@ export const AdminMessages: React.FC = () => {
       const res = await authFetch(`${API_BASE_URL}/settings/contact/messages/`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data);
+        // Handle both array and paginated responses
+        const messagesList = Array.isArray(data) ? data : (data.results || []);
+        setMessages(messagesList);
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
